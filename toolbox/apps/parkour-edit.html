@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Parkour level editor</title><link rel="stylesheet" href="common.css">
+<style>.wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:linear-gradient(#87ceeb,#d6f0ff);touch-action:none}#g{display:block;cursor:crosshair}
+.pal button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}#mine li{display:flex;gap:8px;align-items:center}</style></head>
+<body data-app="parkouredit" data-cat="games" data-title="Parkour level editor"><main>
+<p class="sub">Paint your own Parkour level, test it, then share it as a link. Anyone who opens the link plays your level.</p>
+<div class="row pal" id="pal"></div>
+<div class="row"><label>Width <input type="number" id="w" min="20" max="200" value="60" style="width:70px"></label><label>Height <input type="number" id="h" min="8" max="30" value="14" style="width:70px"></label>
+ <input id="name" placeholder="Level name" maxlength="30" value="My level"><button class="b" id="test">▶ Test it</button><button class="g" id="share">🔗 Copy share link</button><button class="g" id="keep">💾 Save</button><button class="g" id="clear">Clear</button></div>
+<div class="wrap"><canvas id="g"></canvas></div>
+<p class="muted" style="font-size:13px">Click or drag to paint. Right-click erases. A normal jump goes about 3 blocks up and 5 across, so keep gaps smaller than that.</p>
+<h3>My levels</h3><ul class="clean" id="mine"></ul>
+</main><script src="common.js"></script><script src="parkour-code.js"></script><script>
+const T=24,TOOLS=[['#','🟫 Block'],['^','🔺 Spikes'],['S','🙂 Start'],['G','🏁 Goal'],['.','🧽 Eraser']];let tool='#',grid,painting=false;
+$('pal').innerHTML=TOOLS.map(([k,n])=>`<button class="g" data-t="${k}">${n}</button>`).join('');
+const setTool=t=>{tool=t;$('pal').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===t))};$('pal').querySelectorAll('button').forEach(b=>b.onclick=()=>setTool(b.dataset.t));setTool('#');
+function blank(w,h){return Array.from({length:h},(_,y)=>(y===h-1?'#'.repeat(w):y===h-2?'S'+'.'.repeat(w-2)+'G':'.'.repeat(w)).split(''))}
+function resize(){const w=Math.max(20,Math.min(200,+$('w').value)),h=Math.max(8,Math.min(30,+$('h').value));const old=grid;grid=blank(w,h).map(r=>r.map(()=>'.'));
+  if(old){const dy=h-old.length;old.forEach((r,y)=>r.forEach((ch,x)=>{if(x<w&&y+dy>=0&&y+dy<h)grid[y+dy][x]=ch}))}else grid=blank(w,h);draw()}
+function draw(){const c=$('g'),x=c.getContext('2d');c.width=grid[0].length*T;c.height=grid.length*T;
+  grid.forEach((r,ty)=>r.forEach((ch,tx)=>{if(ch==='#'){x.fillStyle=(grid[ty-1]||[])[tx]==='#'?'#8d6e63':'#4caf50';x.fillRect(tx*T,ty*T,T,T)}
+    else if(ch==='^'){x.fillStyle='#e53935';for(let k=0;k<3;k++){x.beginPath();x.moveTo(tx*T+k*8,ty*T+T);x.lineTo(tx*T+k*8+4,ty*T+T*.45);x.lineTo(tx*T+k*8+8,ty*T+T);x.fill()}}
+    else if(ch==='S'||ch==='G'){x.font=`${T-4}px system-ui`;x.textAlign='center';x.fillText(ch==='S'?'🙂':'🏁',tx*T+T/2,ty*T+T-4)}}));
+  x.strokeStyle='rgba(0,0,0,.07)';for(let i=0;i<=grid[0].length;i++){x.beginPath();x.moveTo(i*T,0);x.lineTo(i*T,c.height);x.stroke()}for(let j=0;j<=grid.length;j++){x.beginPath();x.moveTo(0,j*T);x.lineTo(c.width,j*T);x.stroke()}}
+function paint(e,erase){const r=$('g').getBoundingClientRect(),tx=Math.floor((e.clientX-r.left)/T),ty=Math.floor((e.clientY-r.top)/T);if(!grid[ty]||grid[ty][tx]===undefined)return;
+  const t=erase?'.':tool;if(t==='S'||t==='G')grid.forEach(row=>row.forEach((ch,i)=>{if(ch===t)row[i]='.'}));if(grid[ty][tx]!==t){grid[ty][tx]=t;draw()}}
+$('g').addEventListener('pointerdown',e=>{painting=e.button===2?'erase':'paint';$('g').setPointerCapture(e.pointerId);paint(e,painting==='erase')});
+$('g').addEventListener('pointermove',e=>{if(painting)paint(e,painting==='erase')});addEventListener('pointerup',()=>painting=false);$('g').oncontextmenu=e=>e.preventDefault();
+const rows=()=>grid.map(r=>r.join(''));
+function check(){const s=rows().join('');if(!s.includes('S'))return toast('Add a 🙂 start.'),false;if(!s.includes('G'))return toast('Add a 🏁 goal.'),false;return true}
+const link=()=>new URL('parkour.html',location.href).href+'#lvl='+encodeLevel($('name').value.trim()||'Custom level',rows());
+$('test').onclick=()=>{if(check()){save('draft',{name:$('name').value,rows:rows()});location.href=link()}};
+$('share').onclick=()=>{if(check())copy(link())};
+$('keep').onclick=()=>{if(!check())return;const m=load('mine',[]),n=$('name').value.trim()||'My level',i=m.findIndex(l=>l.name===n);const e={name:n,rows:rows(),at:Date.now()};i<0?m.unshift(e):m[i]=e;save('mine',m);drawMine();toast('Saved')};
+$('clear').onclick=()=>{if(confirm('Clear the whole level?')){grid=null;resize()}};
+['w','h'].forEach(id=>$(id).onchange=resize);
+function drawMine(){const m=load('mine',[]);$('mine').innerHTML=m.map((l,i)=>`<li><b>${esc(l.name)}</b><span class="muted">${l.rows[0].length}×${l.rows.length}</span><button class="g" data-e="${i}">Edit</button><a class="g" href="parkour.html#lvl=${encodeLevel(l.name,l.rows)}">Play</a><button class="x" data-x="${i}">✕</button></li>`).join('')||'<li class="muted">Nothing saved yet.</li>';
+  $('mine').querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>load2(m[b.dataset.e]));$('mine').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{m.splice(b.dataset.x,1);save('mine',m);drawMine()})}
+function load2(l){$('name').value=l.name;grid=l.rows.map(r=>r.split(''));$('w').value=grid[0].length;$('h').value=grid.length;draw()}
+const d=load('draft',null);if(d)load2(d);else resize();drawMine();
+</script></body></html>

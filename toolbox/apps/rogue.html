@@ -6,11 +6,17 @@
 <div class="touchpad" id="pad"><button data-m="-1,0">◀</button><button data-m="0,-1">▲</button><button data-m="0,1">▼</button><button data-m="1,0">▶</button><button data-m="0,0" title="Wait">⏳</button></div>
 <div id="log" class="box"></div>
 <p class="muted" style="font-size:13px">Arrow keys or WASD to move, and bump into a monster to fight it. <kbd>.</kbd> waits a turn. Find the ▼ stairs to go deeper. ❤️ heals, 🗡️ makes you stronger, 🛡️ makes you tougher. How deep can you get?</p>
-</main><script src="common.js"></script><script>
+<div id="world" style="margin-top:14px"></div><p class="muted" id="lootTip" style="font-size:13px"></p></main><script src="common.js"></script><script src="scores.js"></script><script>
 const W=48,H=26,TS=20,c=$('c'),x=c.getContext('2d');let g;
 const MON=[{n:'rat',e:'🐀',hp:3,atk:1,d:1},{n:'bat',e:'🦇',hp:4,atk:2,d:1},{n:'goblin',e:'👺',hp:7,atk:3,d:2},{n:'skeleton',e:'💀',hp:10,atk:4,d:3},{n:'orc',e:'👹',hp:15,atk:5,d:4},{n:'ghost',e:'👻',hp:12,atk:6,d:5},{n:'dragon',e:'🐉',hp:30,atk:8,d:7}];
 function log(m){g.log.unshift(m);$('log').innerHTML=g.log.slice(0,30).map(l=>`<div>${l}</div>`).join('')}
-function newRun(){g={depth:0,hp:20,max:20,atk:3,def:0,gold:0,log:[],dead:false};level();log('You step into the dungeon. Good luck!')}
+// real-life loot: every to-do you finish in the Toolbox becomes gear for your next run (up to 10 per run)
+const doneTodos=()=>{try{return (JSON.parse(localStorage.getItem('tb_stats')||'{}').todosDone)||0}catch{return 0}};
+function loot(){const total=doneTodos();let claimed=load('claimed',null);if(claimed===null){claimed=total;save('claimed',total)}return Math.max(0,total-claimed)}
+function newRun(){g={depth:0,hp:20,max:20,atk:3,def:0,gold:0,log:[],dead:false};level();log('You step into the dungeon. Good luck!');
+  const n=Math.min(10,loot());if(n){g.max+=n*2;g.hp=g.max;g.atk+=Math.floor(n/3);g.def+=Math.floor(n/5);save('claimed',load('claimed',0)+n);
+    log(`🎒 You finished ${n} to-do${n>1?'s':''} in real life! Max HP +${n*2}${n>=3?', attack +'+Math.floor(n/3):''}${n>=5?', defence +'+Math.floor(n/5):''}.`);tone(660,.1,'triangle',.1);tone(990,.15,'triangle',.1,.1)}
+  const w=loot();$('lootTip').innerHTML=w?`🎒 ${w} more finished to-do${w>1?'s':''} waiting as loot for your next run.`:'🎒 Finish to-dos in the <a href="../tools.html#dash">Toolbox</a> to earn gear for your next run.'}
 function level(){g.depth++;const m=[...Array(H)].map(()=>Array(W).fill('#')),rooms=[];
   for(let t=0;t<200&&rooms.length<9;t++){const w=5+rnd(8),h=4+rnd(5),rx=1+rnd(W-w-2),ry=1+rnd(H-h-2);if(rooms.some(r=>rx<r.x+r.w+1&&rx+w+1>r.x&&ry<r.y+r.h+1&&ry+h+1>r.y))continue;
     rooms.push({x:rx,y:ry,w,h});for(let j=ry;j<ry+h;j++)for(let i=rx;i<rx+w;i++)m[j][i]='.'}
@@ -46,4 +52,6 @@ function draw(){x.fillStyle='#0b0d12';x.fillRect(0,0,960,520);x.textAlign='cente
 const KM={arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0],arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],'.':[0,0]};
 addEventListener('keydown',e=>{const m=KM[e.key.toLowerCase()];if(m){e.preventDefault();turn(...m)}});
 $('pad').querySelectorAll('button').forEach(b=>b.onclick=()=>turn(...b.dataset.m.split(',').map(Number)));$('new').onclick=()=>{newRun();$('new').blur()};newRun();
+
+worldBoard($('world'),'rogue',{unit:' pts',getScore:()=>load('best',0)});
 </script></body></html>

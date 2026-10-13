@@ -4,7 +4,7 @@
 <div class="row"><b id="score">Score 0</b><span id="lives">❤️❤️❤️</span><span class="muted" id="best" style="margin-left:auto"></span><select id="lvl"><option value="easy">Easy words</option><option value="hard">Hard words</option><option value="code">Code words</option></select><button class="b" id="start">Start</button></div>
 <div class="stage"><canvas id="c"></canvas></div>
 <input id="in" placeholder="Type here…" autocomplete="off" spellcheck="false" style="margin-top:8px">
-</main><script src="common.js"></script><script>
+<div id="world" style="margin-top:14px"></div></main><script src="common.js"></script><script src="scores.js"></script><script>
 const WORDS={easy:'cat sun tree milk blue frog jump cake rain star book fish moon ship bird gold sand leaf ball home rock wind kite lamp door snow corn hand bell nest king'.split(' '),
  hard:'rhythm galaxy whisper quantum lantern blizzard paradox juggle sphinx mystery crystal labyrinth voyage oxygen zephyr bonfire nebula pharaoh syllable jigsaw avalanche'.split(' '),
  code:'function return const array object string boolean promise async await import export class null undefined element console window document event lambda'.split(' ')};
@@ -22,4 +22,6 @@ function loop(t){if(!run)return;const dt=Math.min(.05,(t-last)/1000);last=t;cons
 function over(){run=false;if(score>load('best',0)){save('best',score);toast('🏆 New best!')}hud();const W=c.clientWidth,H=c.clientHeight;x.fillStyle=cssVar('--ink');x.font='bold 34px system-ui';x.textAlign='center';x.fillText('Game over · '+score,W/2,H/2);x.textAlign='left'}
 $('in').oninput=()=>{const t=$('in').value.trim(),i=words.findIndex(o=>o.w===t);if(i>=0){score+=t.length*10;words.splice(i,1);$('in').value='';tone(660+t.length*40,.08,'square',.06);hud()}};
 $('start').onclick=start;hud();
+
+worldBoard($('world'),'typerain',{getScore:()=>load('best',0)});
 </script></body></html>

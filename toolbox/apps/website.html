@@ -9,6 +9,10 @@
 <label>Links <button class="g" id="addLink" style="padding:1px 8px">+</button></label><div class="list" id="links"></div>
 <label>Things I've made <button class="g" id="addProj" style="padding:1px 8px">+</button></label><div class="list" id="projs"></div>
 <div class="row" style="margin-top:14px"><button class="b" id="dl">Download index.html</button><button class="g" id="reset">Start over</button></div>
+<details class="box" style="margin-top:10px"><summary><b>🚀 Publish it free on GitHub Pages</b></summary>
+<ol class="muted" style="font-size:13px"><li>Make a free account at github.com.</li><li>Create a token: GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Under <i>Repository access</i> pick <b>All repositories</b>; under permissions give <b>Administration</b>, <b>Contents</b> and <b>Pages</b> “Read and write”.</li><li>Paste it below. It stays on this device and is sent only to GitHub.</li></ol>
+<div class="row"><input id="ghTok" type="password" class="grow" placeholder="github_pat_…" autocomplete="off"><input id="ghRepo" placeholder="Site name, e.g. my-site" maxlength="60"><button class="b" id="ghGo">Publish</button></div>
+<div id="ghMsg" class="muted" style="font-size:13px"></div></details>
 <p class="muted" style="font-size:12px">You get one ready-to-use file. Put it on GitHub Pages, Netlify or Neocities (all free) to share it, or just open it.</p></div>
 <iframe id="prev" title="Preview" sandbox="allow-popups"></iframe></div>
 </main><script src="common.js"></script><script>
@@ -38,5 +42,22 @@ function upd(){['name','tag','about','emoji','theme','accent'].forEach(k=>S[k]=$
 ['name','tag','about','emoji','theme','accent'].forEach(k=>$(k).addEventListener('input',upd));
 $('photo').onchange=async()=>{const f=$('photo').files[0];if(!f)return;const b=await createImageBitmap(f),s=Math.min(b.width,b.height),c=document.createElement('canvas');c.width=c.height=240;c.getContext('2d').drawImage(b,(b.width-s)/2,(b.height-s)/2,s,s,0,0,240,240);S.photo=c.toDataURL('image/jpeg',.85);upd()};
 $('nophoto').onclick=()=>{S.photo='';$('photo').value='';upd()};$('addLink').onclick=()=>{S.links.push({t:'',u:''});fill()};$('addProj').onclick=()=>{S.projs.push({t:'',d:'',u:''});fill()};
-$('dl').onclick=()=>download('index.html',html(),'text/html');$('reset').onclick=()=>{if(confirm('Clear everything and start over?')){S=JSON.parse(JSON.stringify(DEF));fill();upd()}};fill();upd();
+$('dl').onclick=()=>download('index.html',html(),'text/html');
+// publish: create (or reuse) a repository, upload index.html, switch on Pages
+$('ghTok').value=loadTb('ghToken','');$('ghRepo').value=load('ghRepo','');
+$('ghGo').onclick=async()=>{const tok=$('ghTok').value.trim(),repo=$('ghRepo').value.trim().replace(/[^\w.-]+/g,'-');if(!tok)return toast('Paste a GitHub token first.');if(!repo)return toast('Pick a site name.');
+  saveTb('ghToken',tok);save('ghRepo',repo);const msg=t=>$('ghMsg').innerHTML=t;$('ghGo').disabled=true;
+  const gh=async(path,opt={})=>{const r=await fetch('https://api.github.com'+path,{...opt,headers:{Authorization:'Bearer '+tok,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})}});
+    const j=r.status===204?{}:await r.json().catch(()=>({}));if(!r.ok&&!opt.ok?.includes(r.status))throw new Error((j.message||'GitHub error')+' ('+r.status+')');return{status:r.status,j}};
+  try{msg('Checking your account…');const me=(await gh('/user')).j.login;
+    msg('Finding the repository…');let rr=await gh(`/repos/${me}/${repo}`,{ok:[404]});
+    if(rr.status===404){msg('Creating the repository…');await gh('/user/repos',{method:'POST',body:JSON.stringify({name:repo,description:'Made with The ToolBox website maker',auto_init:true})});await new Promise(r=>setTimeout(r,2500));rr=await gh(`/repos/${me}/${repo}`)}
+    const branch=rr.j.default_branch||'main';msg('Uploading index.html…');
+    const cur=await gh(`/repos/${me}/${repo}/contents/index.html?ref=${branch}`,{ok:[404]}),content=btoa(unescape(encodeURIComponent(html())));
+    await gh(`/repos/${me}/${repo}/contents/index.html`,{method:'PUT',body:JSON.stringify({message:'Update site from The ToolBox',content,branch,...(cur.status===200?{sha:cur.j.sha}:{})})});
+    msg('Switching on GitHub Pages…');await gh(`/repos/${me}/${repo}/pages`,{method:'POST',ok:[409],body:JSON.stringify({source:{branch,path:'/'}})});
+    const url=repo.toLowerCase()===me.toLowerCase()+'.github.io'?`https://${me}.github.io/`:`https://${me}.github.io/${repo}/`;
+    msg(`✅ Published! Your site will be live in a minute or two at <a href="${url}" target="_blank" rel="noopener">${url}</a>. Press Publish again any time to update it.`)}
+  catch(e){msg('❌ '+esc(e.message)+(String(e.message).includes('401')?' · Check the token.':String(e.message).includes('403')?' · The token needs Administration, Contents and Pages write access.':''))}
+  finally{$('ghGo').disabled=false}};$('reset').onclick=()=>{if(confirm('Clear everything and start over?')){S=JSON.parse(JSON.stringify(DEF));fill();upd()}};fill();upd();
 </script></body></html>

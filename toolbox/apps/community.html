@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Community apps</title><link rel="stylesheet" href="common.css">
+<style>#run{width:100%;height:min(70vh,640px);border:1px solid var(--line);border-radius:12px;background:#fff}.apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.capp{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;display:flex;gap:10px;align-items:flex-start}.capp .e{font-size:28px}.capp div{flex:1}</style></head>
+<body data-app="community" data-cat="community" data-title="Community apps"><main>
+<div id="list">
+<p class="sub">Mini-apps made by other people. They run in a locked box: they can’t see your notes, scores or anything else in The ToolBox, and they can’t open pop-ups or download files.</p>
+<h3>From the community</h3><div class="apps" id="shared"><p class="muted">Loading…</p></div>
+<h3>Added by me</h3><div class="apps" id="mine"></div>
+<div class="row" style="margin-top:10px"><label class="b" style="cursor:pointer">＋ Add an .html file<input type="file" id="file" accept=".html,.htm,text/html" hidden></label></div>
+<details class="box" style="margin-top:14px"><summary><b>Make your own and share it</b></summary><ol>
+ <li>Make one <code>.html</code> file with everything inside it (styles and scripts too). Copy <a href="../community/dice.html" target="_blank">the dice roller</a> to start.</li>
+ <li>Test it here with <b>Add an .html file</b>.</li>
+ <li>To share it with everyone, open a pull request on GitHub that adds your file to <code>toolbox/community/</code> and a line to <code>toolbox/community/apps.json</code>. Once it’s accepted, it shows up for every ToolBox user.</li></ol></details>
+</div>
+<div id="player" hidden><div class="row"><button class="g" id="close">← Back to the list</button><b id="pName"></b><span class="muted" id="pBy"></span></div><iframe id="run" title="Community app" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
+</main><script src="common.js"></script><script>
+// Apps run with sandbox="allow-scripts" but WITHOUT allow-same-origin, so they get a blank origin:
+// no access to this site's storage, cookies or pages.
+const mine=()=>load('mine',[]);
+const card=(a,i,local)=>`<div class="capp"><span class="e">${esc(a.emoji||'🧩')}</span><div><b>${esc(a.name)}</b><br><span class="muted" style="font-size:13px">${esc(a.desc||'')}${a.author?' · by '+esc(a.author):''}</span><div class="row" style="margin-top:6px"><button class="b" data-${local?'m':'s'}="${i}">Open</button>${local?`<button class="x" data-x="${i}" title="Remove">✕</button>`:''}</div></div></div>`;
+function play(name,by,html){$('list').hidden=true;$('player').hidden=false;$('pName').textContent=name;$('pBy').textContent=by?'by '+by:'';$('run').srcdoc=html}
+$('close').onclick=()=>{$('run').srcdoc='';$('player').hidden=true;$('list').hidden=false};
+let shared=[];
+fetch('../community/apps.json').then(r=>r.json()).then(list=>{shared=Array.isArray(list)?list.filter(a=>a&&/^[\w-]+\.html$/.test(a.file)):[];
+  $('shared').innerHTML=shared.map((a,i)=>card(a,i,false)).join('')||'<p class="muted">Nothing yet.</p>';
+  $('shared').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const a=shared[b.dataset.s];try{play(a.name,a.author,await (await fetch('../community/'+a.file)).text())}catch{toast('Could not open it (offline?).')}})})
+ .catch(()=>{$('shared').innerHTML='<p class="muted">Couldn’t load the list. The Windows app and the online version both include it.</p>'});
+function drawMine(){const m=mine();$('mine').innerHTML=m.map((a,i)=>card(a,i,true)).join('')||'<p class="muted">Nothing added yet.</p>';
+  $('mine').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const a=mine()[b.dataset.m];play(a.name,'you',a.html)});
+  $('mine').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const m=mine();m.splice(b.dataset.x,1);save('mine',m);drawMine()})}
+$('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;if(f.size>1.5e6)return toast('That file is too big (1.5 MB max).');const html=await f.text();
+  const t=(html.match(/<title>([^<]{1,60})<\/title>/i)||[])[1]||f.name.replace(/\.html?$/,'');const m=mine();m.unshift({name:t,desc:f.name,html,emoji:'🧩'});save('mine',m);$('file').value='';drawMine();toast('Added '+t)};
+drawMine();
+</script></body></html>

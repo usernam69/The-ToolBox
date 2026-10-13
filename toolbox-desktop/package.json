@@ -1,8 +1,8 @@
 {
   "name": "useful-toolbox",
   "productName": "Useful Toolbox",
-  "version": "1.0.0",
-  "description": "64 small everyday tools in one window",
+  "version": "1.1.0",
+  "description": "Apps, games and tools in one window",
   "author": "Dovi",
   "private": true,
   "main": "main.js",
@@ -10,7 +10,8 @@
     "copy": "node -e \"const fs=require('fs');fs.rmSync('app',{recursive:true,force:true});fs.cpSync('../toolbox','app',{recursive:true})\"",
     "start": "npm run copy && electron .",
     "build": "npm run copy && electron-builder --win portable --x64",
-    "lan": "node -e \"require('./lan-server').createLanServer(require('path').resolve('../toolbox')).start().then(i=>{console.log('ToolBox is hosting on your Wi-Fi. Open one of these in any browser:');i.ips.concat('localhost').forEach(ip=>console.log('  http://'+ip+':'+i.port+'/'))})\""
+    "lan": "node -e \"require('./lan-server').createLanServer(require('path').resolve('../toolbox')).start().then(i=>{console.log('ToolBox is hosting on your Wi-Fi. Open one of these in any browser:');i.ips.concat('localhost').forEach(ip=>console.log('  http://'+ip+':'+i.port+'/'))})\"",
+    "build:linux": "npm run copy && electron-builder --linux AppImage --x64 --arm64"
   },
   "build": {
     "appId": "local.dovi.useful-toolbox",
@@ -32,6 +33,15 @@
     },
     "portable": {
       "artifactName": "UsefulToolbox.exe"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icon.png",
+      "category": "Utility",
+      "synopsis": "Apps, games and tools in one window"
+    },
+    "appImage": {
+      "artifactName": "TheToolBox-${arch}.AppImage"
     }
   },
   "devDependencies": {

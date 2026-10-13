@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ToolBox OS</title>
+<style>
+:root{--glass:rgba(20,24,36,.72);--ink:#f2f4f8;--accent:#6b9bff}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+body{background:#0e1a33}#wall{position:fixed;inset:0;z-index:0}
+#desk{position:fixed;inset:0 0 52px 0;display:grid;grid-template-columns:repeat(auto-fill,92px);grid-auto-rows:96px;gap:4px;padding:14px;align-content:start;z-index:1}
+.ic{display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:10px;padding:6px 2px;cursor:pointer;text-align:center;font-size:12px;text-shadow:0 1px 3px #000;user-select:none;border:0;background:none;color:inherit;font-family:inherit}
+.ic:hover,.ic:focus-visible{background:rgba(255,255,255,.14);outline:none}.ic .e{font-size:38px;line-height:1}
+.win{position:fixed;background:#1b1f2b;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden;min-width:280px;min-height:200px;z-index:5;resize:both;border:1px solid rgba(255,255,255,.12)}
+.win.max{inset:0 0 52px 0!important;width:auto!important;height:auto!important;border-radius:0;resize:none}.win.min{display:none}
+.bar{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;background:#252a38;cursor:move;user-select:none;font-size:14px}.bar b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar button{border:0;background:rgba(255,255,255,.08);color:inherit;width:28px;height:24px;border-radius:6px;cursor:pointer;font-size:13px}.bar button:hover{background:rgba(255,255,255,.2)}.bar .cl:hover{background:#e5484d}
+.win iframe{flex:1;border:0;background:#fff;width:100%}.win.drag iframe{pointer-events:none}
+#task{position:fixed;left:0;right:0;bottom:0;height:52px;background:var(--glass);backdrop-filter:blur(14px);display:flex;align-items:center;gap:6px;padding:0 8px;z-index:20}
+#task button{border:0;background:rgba(255,255,255,.08);color:inherit;height:38px;border-radius:9px;padding:0 12px;cursor:pointer;font:inherit;font-size:14px;display:flex;align-items:center;gap:6px;max-width:180px;white-space:nowrap;overflow:hidden}
+#task button.on{background:rgba(107,155,255,.35)}#startBtn{font-size:22px!important}#clock{margin-left:auto;font-variant-numeric:tabular-nums;font-size:14px;text-align:right;padding:0 8px;line-height:1.2}
+#start{position:fixed;left:8px;bottom:60px;width:min(420px,calc(100vw - 16px));max-height:70vh;background:var(--glass);backdrop-filter:blur(18px);border-radius:14px;padding:12px;z-index:30;display:none;flex-direction:column;gap:8px;border:1px solid rgba(255,255,255,.12)}
+#start.open{display:flex}#start input{font:inherit;padding:9px 12px;border-radius:9px;border:0;background:rgba(255,255,255,.12);color:inherit}
+#sList{overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:4px}#start .row{display:flex;gap:6px}#start .row a,#start .row button{flex:1;text-align:center;padding:8px;border-radius:8px;background:rgba(255,255,255,.08);color:inherit;text-decoration:none;border:0;font:inherit;cursor:pointer}
+</style></head><body>
+<canvas id="wall"></canvas><div id="desk"></div><div id="layer"></div>
+<div id="start"><input id="sq" placeholder="Search apps…" aria-label="Search apps"><div id="sList"></div><div class="row"><button id="wallBtn">🎨 New wallpaper</button><button id="fsBtn">⛶ Full screen</button><a href="../index.html">⏻ Leave OS</a></div></div>
+<div id="task"><button id="startBtn" title="Start" aria-label="Start">🧰</button><div id="tabs" style="display:flex;gap:6px;overflow:hidden"></div><div id="clock"></div></div>
+<script src="registry.js"></script><script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LS={get(k,d){try{const v=localStorage.getItem('app_os_'+k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem('app_os_'+k,JSON.stringify(v))}catch{}}};
+const APPS=ALL_APPS.filter(a=>a.id!=='os').map(a=>({...a,href:'../'+a.href}));
+// wallpaper: soft generated gradient blobs, re-rolled on demand
+function wall(seed=LS.get('wall',1)){const c=$('wall'),x=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;let s=seed;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const h=r()*360,g=x.createLinearGradient(0,0,c.width,c.height);g.addColorStop(0,`hsl(${h},55%,18%)`);g.addColorStop(1,`hsl(${(h+60)%360},60%,10%)`);x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+  for(let i=0;i<7;i++){const cx=r()*c.width,cy=r()*c.height,rad=150+r()*380,gg=x.createRadialGradient(cx,cy,0,cx,cy,rad);gg.addColorStop(0,`hsla(${(h+r()*120)%360},80%,60%,.35)`);gg.addColorStop(1,'hsla(0,0%,0%,0)');x.fillStyle=gg;x.fillRect(0,0,c.width,c.height)}}
+addEventListener('resize',()=>wall());wall();$('wallBtn').onclick=()=>{LS.set('wall',1+Math.floor(Math.random()*1e6));wall()};
+// desktop icons: favourites first, then a starter set
+const favs=(()=>{try{return JSON.parse(localStorage.getItem('menu_favs')||'[]')}catch{return[]}})();
+const deskIds=[...new Set([...favs,'toolbox','sticky','petfocus','parkour','pixel','lofi','chat','voxel','genart','community'])].filter(id=>APPS.some(a=>a.id===id)).slice(0,18);
+const icon=a=>`<button class="ic" data-id="${a.id}" title="${esc(a.desc)}"><span class="e">${a.emoji}</span>${esc(a.name)}</button>`;
+$('desk').innerHTML=deskIds.map(id=>icon(APPS.find(a=>a.id===id))).join('');
+$('desk').addEventListener('dblclick',e=>{const b=e.target.closest('.ic');if(b)open(b.dataset.id)});
+$('desk').addEventListener('keydown',e=>{const b=e.target.closest('.ic');if(b&&e.key==='Enter')open(b.dataset.id)});
+$('desk').addEventListener('click',e=>{const b=e.target.closest('.ic');if(b&&matchMedia('(pointer:coarse)').matches)open(b.dataset.id)});
+// windows
+let wins=[],z=10,n=0;
+function open(id){const a=APPS.find(x=>x.id===id);if(!a)return;closeStart();const w=document.createElement('div');w.className='win';const k=n++%8;
+  const W=Math.min(980,innerWidth-40),H=Math.min(680,innerHeight-110);Object.assign(w.style,{left:Math.max(0,(innerWidth-W)/2-120+k*30)+'px',top:20+k*26+'px',width:W+'px',height:H+'px',zIndex:++z});
+  w.innerHTML=`<div class="bar"><span>${a.emoji}</span><b>${esc(a.name)}</b><button class="mi" title="Minimise" aria-label="Minimise">—</button><button class="mx" title="Maximise" aria-label="Maximise">▢</button><button class="cl" title="Close" aria-label="Close">✕</button></div><iframe src="${esc(a.href)}" title="${esc(a.name)}"></iframe>`;
+  $('layer').append(w);const rec={id:k+'_'+Date.now(),a,w};wins.push(rec);
+  if(innerWidth<700)w.classList.add('max');
+  w.addEventListener('pointerdown',()=>focus(rec),true);
+  w.querySelector('.cl').onclick=()=>{w.remove();wins=wins.filter(x=>x!==rec);tabs()};w.querySelector('.mi').onclick=e=>{e.stopPropagation();w.classList.add('min');tabs()};
+  w.querySelector('.mx').onclick=()=>w.classList.toggle('max');w.querySelector('.bar').ondblclick=()=>w.classList.toggle('max');
+  const bar=w.querySelector('.bar');bar.addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON'||w.classList.contains('max'))return;const sx=e.clientX-w.offsetLeft,sy=e.clientY-w.offsetTop;w.classList.add('drag');bar.setPointerCapture(e.pointerId);
+    const mv=ev=>{w.style.left=Math.min(innerWidth-80,Math.max(-w.offsetWidth+80,ev.clientX-sx))+'px';w.style.top=Math.min(innerHeight-100,Math.max(0,ev.clientY-sy))+'px'};
+    const up=()=>{w.classList.remove('drag');bar.removeEventListener('pointermove',mv);bar.removeEventListener('pointerup',up)};bar.addEventListener('pointermove',mv);bar.addEventListener('pointerup',up)});
+  focus(rec)}
+function focus(rec){rec.w.style.zIndex=++z;rec.w.classList.remove('min');wins.forEach(x=>x.on=x===rec);tabs()}
+function tabs(){$('tabs').innerHTML=wins.map((r,i)=>`<button data-i="${i}" class="${r.on&&!r.w.classList.contains('min')?'on':''}" title="${esc(r.a.name)}">${r.a.emoji} <span>${esc(r.a.name)}</span></button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{const r=wins[b.dataset.i];if(r.on&&!r.w.classList.contains('min')){r.w.classList.add('min');r.on=false;tabs()}else focus(r)})}
+// start menu
+function drawStart(){const q=$('sq').value.trim().toLowerCase();$('sList').innerHTML=APPS.filter(a=>!q||(a.name+' '+a.desc).toLowerCase().includes(q)).map(icon).join('');
+  $('sList').querySelectorAll('.ic').forEach(b=>b.onclick=()=>open(b.dataset.id))}
+const closeStart=()=>$('start').classList.remove('open');
+$('startBtn').onclick=e=>{e.stopPropagation();const o=$('start').classList.toggle('open');if(o){$('sq').value='';drawStart();$('sq').focus()}};
+$('sq').oninput=drawStart;$('sq').onkeydown=e=>{if(e.key==='Enter'){const b=$('sList').querySelector('.ic');if(b)open(b.dataset.id)}if(e.key==='Escape')closeStart()};
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('#start,#startBtn'))closeStart()});
+addEventListener('keydown',e=>{if(e.key==='Meta'||(e.ctrlKey&&e.key===' ')){e.preventDefault();$('startBtn').click()}});
+$('fsBtn').onclick=()=>{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})};
+setInterval(()=>{const d=new Date();$('clock').innerHTML=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'<br><span style="font-size:11px;opacity:.75">'+d.toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})+'</span>'},1000);
+try{const r=JSON.parse(localStorage.getItem('menu_recent')||'[]');localStorage.setItem('menu_recent',JSON.stringify(['os',...r.filter(x=>x!=='os')].slice(0,8)))}catch{}
+</script></body></html>

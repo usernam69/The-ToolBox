@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>The ToolBox</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--muted:#6b6b72;--line:#e3e1dc;--accent:#2f6fde}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--card:#1e1e22;--ink:#ececef;--muted:#9a9aa2;--line:#33333a;--accent:#6b9bff}}
+body{margin:0;width:340px;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}header img{width:24px;height:24px}header b{flex:1}
+header a{color:var(--accent);text-decoration:none;font-size:13px}
+#q{margin:10px 12px;width:calc(100% - 24px);box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+#list{max-height:420px;overflow:auto;padding:0 6px 8px}.cat{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:10px 6px 4px}
+button.app{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;color:inherit;font:inherit;padding:6px 8px;border-radius:8px;cursor:pointer}
+button.app:hover,button.app:focus-visible{background:var(--card);outline:1px solid var(--accent)}button.app .e{font-size:20px;width:26px;text-align:center}
+</style></head><body>
+<header><img src="icon-48.png" alt=""><b>The ToolBox</b><a href="#" id="menu">Open menu ↗</a></header>
+<input id="q" placeholder="Search apps and tools…" aria-label="Search apps and tools" autofocus>
+<div id="list"></div>
+<script src="registry.js"></script><script src="popup.js"></script>
+</body></html>

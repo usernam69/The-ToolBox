@@ -5,7 +5,7 @@
 <canvas id="c" width="560" height="560"></canvas>
 <div class="touchpad" id="pad"><button data-d="L">◀</button><button data-d="U">▲</button><button data-d="D">▼</button><button data-d="R">▶</button></div>
 <p class="muted" style="font-size:13px" id="help"></p>
-</main><script src="common.js"></script><script>
+<div id="world" style="margin-top:14px"></div></main><script src="common.js"></script><script src="scores.js"></script><script>
 const N=28,S=20,c=$('c'),x=c.getContext('2d');const HELP={walls:'Walls slide across the board. Do not get squashed! 🟡 gold apples are worth 3.',twin:'A second snake copies your moves in a mirror. If either one crashes, you lose. Both can eat.',classic:'Plain snake. Eat, grow, don\'t bite yourself.'};
 const D={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]};let st=null,loop=null;
 function reset(){const m=$('mode').value;st={m,s:[[8,14],[7,14],[6,14]],t:m==='twin'?[[19,14],[20,14],[21,14]]:null,dir:'R',q:[],food:null,gold:null,walls:[],score:0,tick:0,dead:false};place();if(m==='walls')st.walls=[{x:4,y:3,w:1,h:6,dx:1,dy:0},{x:20,y:20,w:6,h:1,dx:0,dy:-1}];draw()}
@@ -37,4 +37,6 @@ addEventListener('keydown',e=>{const k=KEYMAP[e.key.toLowerCase()];if(k&&st){st.
 $('pad').querySelectorAll('button').forEach(b=>b.onpointerdown=e=>{e.preventDefault();if(!st||st.dead)return start();st.q.push(b.dataset.d)});
 let sx,sy;c.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});c.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<20){if(!st||st.dead)start();return}st.q.push(Math.abs(dx)>Math.abs(dy)?(dx>0?'R':'L'):(dy>0?'D':'U'))});
 $('go').onclick=()=>{start();$('go').blur()};$('mode').onchange=()=>{clearTimeout(loop);reset();hud();$('mode').blur()};reset();
+
+const wb=()=>worldBoard($('world'),'snake-'+$('mode').value,{title:'🌍 World top 10 ('+$('mode').selectedOptions[0].text+')',getScore:()=>load('best_'+$('mode').value,0)});$('mode').addEventListener('change',wb);wb();
 </script></body></html>

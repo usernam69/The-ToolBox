@@ -3,26 +3,47 @@
 <body data-app="duel" data-cat="games" data-title="Two-player duel"><main>
 <div class="row" style="justify-content:center;gap:30px"><span class="sc" style="color:#ff5c5c" id="s1">0</span><b>Sumo duel · first to 5</b><span class="sc" style="color:#4cc9f0" id="s2">0</span></div>
 <canvas id="c" width="800" height="600"></canvas>
-<div class="row" style="justify-content:center"><button class="b" id="go">Start (Space)</button></div>
+<div class="row" style="justify-content:center"><button class="b" id="go">Start (Space)</button><button class="g" id="onl">🌐 Play online</button></div>
+<div id="lanPanel" hidden></div><p id="netMsg" class="muted" style="text-align:center"></p>
 <p class="muted" style="text-align:center;font-size:13px"><b style="color:#ff5c5c">Red</b>: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move, <kbd>Shift</kbd> to dash · <b style="color:#4cc9f0">Blue</b>: arrow keys to move, <kbd>Enter</kbd> to dash.<br>Push the other player off the platform. It shrinks over time!</p>
-</main><script src="common.js"></script><script>
+</main><script src="common.js"></script><script src="lan.js"></script><script>
 const c=$('c'),x=c.getContext('2d');let st,run=false,score=[0,0],last=0,parts=[];
 function round(){st={R:240,t:0,p:[{x:280,y:300,vx:0,vy:0,col:'#ff5c5c',dash:0,cd:0,out:false},{x:520,y:300,vx:0,vy:0,col:'#4cc9f0',dash:0,cd:0,out:false}],over:0}}
 const CTL=[{u:'w',d:'s',l:'a',r:'d',dash:'shift'},{u:'arrowup',d:'arrowdown',l:'arrowleft',r:'arrowright',dash:'enter'}];
 function frame(now){if(!run)return;const dt=Math.min(.033,(now-last)/1000);last=now;st.t+=dt;st.R=Math.max(110,240-st.t*6);
-  st.p.forEach((p,i)=>{if(p.out)return;const k=CTL[i],ax=(keys.has(k.r)?1:0)-(keys.has(k.l)?1:0),ay=(keys.has(k.d)?1:0)-(keys.has(k.u)?1:0);p.vx+=ax*900*dt;p.vy+=ay*900*dt;
-    p.cd-=dt;if(keys.has(k.dash)&&p.cd<=0&&(ax||ay)){const n=Math.hypot(ax,ay);p.vx+=ax/n*520;p.vy+=ay/n*520;p.cd=1.2;tone(300+i*100,.08,'square',.06);for(let q=0;q<10;q++)parts.push({x:p.x,y:p.y,vx:(Math.random()-.5)*200,vy:(Math.random()-.5)*200,l:.4,col:p.col})}
+  st.p.forEach((p,i)=>{if(p.out)return;const{ax,ay,dash}=input(i);p.vx+=ax*900*dt;p.vy+=ay*900*dt;
+    p.cd-=dt;if(dash&&p.cd<=0&&(ax||ay)){const n=Math.hypot(ax,ay);p.vx+=ax/n*520;p.vy+=ay/n*520;p.cd=1.2;tone(300+i*100,.08,'square',.06);for(let q=0;q<10;q++)parts.push({x:p.x,y:p.y,vx:(Math.random()-.5)*200,vy:(Math.random()-.5)*200,l:.4,col:p.col})}
     p.vx*=Math.pow(.18,dt);p.vy*=Math.pow(.18,dt);p.x+=p.vx*dt;p.y+=p.vy*dt});
   const[a,b]=st.p,dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d<56&&d>0&&!a.out&&!b.out){const nx=dx/d,ny=dy/d,rel=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;if(rel>0){a.vx-=rel*nx*1.1;a.vy-=rel*ny*1.1;b.vx+=rel*nx*1.1;b.vy+=rel*ny*1.1;tone(180,.05,'triangle',.08)}const o=(56-d)/2;a.x-=nx*o;a.y-=ny*o;b.x+=nx*o;b.y+=ny*o}
   st.p.forEach((p,i)=>{if(!p.out&&Math.hypot(p.x-400,p.y-300)>st.R+10){p.out=true;tone(90,.5,'sawtooth',.1)}});
   if(!st.over&&st.p.some(p=>p.out)){st.over=1.6;const w=st.p.findIndex(p=>!p.out);if(w>=0)score[w]++;$('s1').textContent=score[0];$('s2').textContent=score[1]}
-  if(st.over){st.over-=dt;if(st.over<=0){if(score.some(s=>s>=5)){run=false;draw(`${score[0]>=5?'Red':'Blue'} wins! 🏆`);score=[0,0];return}round()}}
-  parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt});parts=parts.filter(q=>q.l>0);draw();requestAnimationFrame(frame)}
+  if(st.over){st.over-=dt;if(st.over<=0){if(score.some(s=>s>=5)){run=false;const m=`${score[0]>=5?NET.names[0]||'Red':NET.names[1]||'Blue'} wins! 🏆`;draw(m);if(NET.host)NET.push(m);score=[0,0];return}round()}}
+  parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt});parts=parts.filter(q=>q.l>0);draw();if(NET.host)NET.push();requestAnimationFrame(frame)}
 function draw(msg){x.fillStyle='#0e1a2b';x.fillRect(0,0,800,600);x.fillStyle='#1e3a5f';x.beginPath();x.arc(400,300,st.R+28,0,7);x.fill();x.fillStyle='#e9d8a6';x.beginPath();x.arc(400,300,st.R,0,7);x.fill();x.strokeStyle='#c9a227';x.lineWidth=6;x.stroke();
   parts.forEach(q=>{x.globalAlpha=q.l*2;x.fillStyle=q.col;x.fillRect(q.x,q.y,4,4)});x.globalAlpha=1;
   st.p.forEach(p=>{const s=p.out?Math.max(.2,1-(st.t%10)):1;x.save();x.translate(p.x,p.y);x.scale(s,s);x.fillStyle=p.col;x.beginPath();x.arc(0,0,28,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(-9,-6,6,0,7);x.arc(9,-6,6,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(-9,-5,3,0,7);x.arc(9,-5,3,0,7);x.fill();
     if(p.cd>0){x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=3;x.beginPath();x.arc(0,0,34,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-p.cd/1.2));x.stroke()}x.restore()});
   if(msg){x.fillStyle='rgba(0,0,0,.5)';x.fillRect(0,0,800,600);x.fillStyle='#fff';x.font='bold 44px system-ui';x.textAlign='center';x.fillText(msg,400,300);x.font='18px system-ui';x.fillText('Press Space to play',400,340);x.textAlign='left'}}
-function start(){if(run)return;round();run=true;last=performance.now();requestAnimationFrame(frame)}
-addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();start()}});$('go').onclick=()=>{$('go').blur();start()};round();draw('Sumo duel');
+function start(){if(NET.on&&!NET.host){LAN.send({type:'go'});return}if(NET.on&&NET.members.length<2)return toast('Waiting for the other player…');if(run)return;round();run=true;last=performance.now();requestAnimationFrame(frame)}
+addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();start()}});$('go').onclick=()=>{$('go').blur();start()};function keyInput(k){return{ax:(keys.has(k.r)?1:0)-(keys.has(k.l)?1:0),ay:(keys.has(k.d)?1:0)-(keys.has(k.u)?1:0),dash:keys.has(k.dash)}}
+// online: either key set moves your own sumo
+function myInput(){const a=keyInput(CTL[0]),b=keyInput(CTL[1]);return{ax:Math.max(-1,Math.min(1,a.ax+b.ax)),ay:Math.max(-1,Math.min(1,a.ay+b.ay)),dash:a.dash||b.dash}}
+function input(i){if(!NET.on)return keyInput(CTL[i]);return i===0?myInput():NET.remote}
+// Online play: the first player in the room runs the match (red); the second sends moves and draws what it receives (blue).
+const NET={on:false,host:false,me:null,members:[],names:['',''],remote:{ax:0,ay:0,dash:false},lastPush:0,lastIn:'',
+  push(msg){const now=performance.now();if(!msg&&now-NET.lastPush<50)return;NET.lastPush=now;const r=v=>Math.round(v*10)/10;
+    LAN.send({type:'st',p:st.p.map(p=>[r(p.x),r(p.y),p.out?1:0,r(Math.max(0,p.cd))]),R:r(st.R),sc:score,msg:msg||'',run})},
+  apply(m){m.p.forEach((q,i)=>{const p=st.p[i];if(!p)return;if(!p.out&&q[2])tone(90,.5,'sawtooth',.1);p.x=q[0];p.y=q[1];p.out=!!q[2];p.cd=q[3]});st.R=m.R;st.t+=.05;
+    $('s1').textContent=m.sc[0];$('s2').textContent=m.sc[1];draw(m.msg||(m.run?'':'Waiting for '+(NET.names[0]||'red')+' to start'))},
+  roles(){const ids=NET.members.map(x=>x.id).sort();NET.host=ids[0]===NET.me;NET.names=ids.slice(0,2).map(id=>NET.members.find(x=>x.id===id).name);
+    $('netMsg').innerHTML=NET.members.length<2?'Waiting for a friend to join with the same code…':`<b style="color:#ff5c5c">${esc(NET.names[0])}</b> vs <b style="color:#4cc9f0">${esc(NET.names[1])}</b> · you are ${NET.host?'red':'blue'}. Use WASD or the arrows, Shift or Enter to dash.`}};
+$('onl').onclick=()=>{$('lanPanel').hidden=false;$('onl').hidden=true;lanPanel('duel.html',(room,name)=>{$('lanPanel').hidden=true;NET.on=true;
+  LAN.join(room,name,m=>{if(m.type==='hello')NET.me=m.id;
+    else if(m.type==='members'){NET.members=m.members;NET.roles();if(NET.members.length<2&&run){run=false;round();draw('Your friend left')}}
+    else if(m.type==='in'&&NET.host&&m.from!==NET.me){NET.remote=m.k}
+    else if(m.type==='go'&&NET.host)start();
+    else if(m.type==='st'&&!NET.host)NET.apply(m)});
+  // the blue player sends its keys 20 times a second when they change, and every half second anyway
+  setInterval(()=>{if(!NET.on||NET.host)return;const k=myInput(),j=JSON.stringify(k);if(j!==NET.lastIn||performance.now()-NET.lastPush>500){NET.lastIn=j;NET.lastPush=performance.now();LAN.send({type:'in',k,from:NET.me})}},50)})};
+round();draw('Sumo duel');
 </script></body></html>

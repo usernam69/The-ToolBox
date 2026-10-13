@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Escape room builder</title><link rel="stylesheet" href="common.css">
+<style>.lock{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;margin-bottom:10px}.lock .row input,.lock textarea{flex:1}
+#play{max-width:620px;margin:auto;text-align:center}.scene{font-size:72px;margin:10px 0}.clue{font-size:18px;white-space:pre-wrap;background:#fffbea;color:#3b3020;border-radius:12px;padding:16px;border:1px solid #e8d9a8;text-align:left}
+.dots{display:flex;gap:6px;justify-content:center;margin:8px 0}.dots span{width:12px;height:12px;border-radius:50%;background:var(--line)}.dots span.ok{background:var(--good)}.dots span.now{background:var(--accent)}
+#ans{font-size:20px;text-align:center;letter-spacing:2px;width:min(280px,100%)}.shake{animation:sh .3s}@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}</style></head>
+<body data-app="escapemaker" data-cat="games" data-title="Escape room builder"><main>
+<div id="edit">
+<p class="sub">Build your own escape room as a chain of locks. Each lock has a clue and an answer. Share it as a link and see if your friends can get out!</p>
+<div class="box"><input id="title" placeholder="Room name, e.g. The Wizard’s Attic" style="width:100%" maxlength="50"><textarea id="intro" placeholder="Story at the start (optional)" style="min-height:60px;margin-top:8px" maxlength="500"></textarea>
+<textarea id="outro" placeholder="Message when they escape (optional)" style="min-height:50px;margin-top:8px" maxlength="300"></textarea></div>
+<div id="locks"></div>
+<div class="row"><button class="g" id="add">＋ Add a lock</button><button class="b" id="test">▶ Play it</button><button class="g" id="share">🔗 Copy share link</button><button class="g" id="ex">Load an example</button></div>
+<p class="muted" style="font-size:13px">Answers aren’t case-sensitive and ignore spaces. They’re hidden in the link with a one-way hash, so peeking at the link won’t give them away (very short answers can still be guessed).</p>
+</div>
+<div id="play" hidden></div>
+</main><script src="common.js"></script><script>
+const b64u={to:u=>btoa(String.fromCharCode(...u)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),from:s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))};
+async function pack(o){const cs=new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'));return b64u.to(new Uint8Array(await new Response(cs).arrayBuffer()))}
+async function unpack(s){const ds=new Blob([b64u.from(s)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(ds).text())}
+const norm=a=>String(a).toLowerCase().replace(/\s+/g,'').normalize('NFKC');
+async function h(a,salt){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('escape:'+salt+':'+norm(a)));return b64u.to(new Uint8Array(d).slice(0,12))}
+const EMO=['🚪','🗝️','📦','🧪','📜','🕯️','🖼️','🧩','🔢','🪞','🕰️','📚','🪴','🧸','💎','🗺️'];
+let R=load('draft',null)||{title:'',intro:'',outro:'',locks:[{e:'🚪',clue:'',ans:'',hint:''}]};
+const EXAMPLE={title:'The Wizard’s Attic',intro:'You climb into a dusty attic. The trapdoor slams shut behind you!',outro:'The trapdoor creaks open. You’re free!',locks:[
+ {e:'📜',clue:'A note on the floor: “I have keys but open no locks. I have space but no room. You can enter, but you can’t go outside.”',ans:'keyboard',hint:'You type on it.'},
+ {e:'🕰️',clue:'The old clock is stuck. Its hands point to the 3 and the 9. The number on the box is the sum of the two numbers times ten.',ans:'120',hint:'(3 + 9) × 10'},
+ {e:'🧪',clue:'Three potions: red, blue, green. A label says: “Not the first, not the last.” Type the colour.',ans:'blue',hint:'The middle one.'}]};
+function drawEdit(){$('title').value=R.title;$('intro').value=R.intro;$('outro').value=R.outro;
+  $('locks').innerHTML=R.locks.map((l,i)=>`<div class="lock"><div class="row"><b>Lock ${i+1}</b><select data-f="e" data-i="${i}">${EMO.map(e=>`<option ${e===l.e?'selected':''}>${e}</option>`).join('')}</select><span style="flex:1"></span>${i?`<button class="g" data-up="${i}" title="Move up" aria-label="Move up">↑</button>`:''}<button class="x" data-del="${i}" title="Remove lock" aria-label="Remove lock">✕</button></div>
+    <textarea data-f="clue" data-i="${i}" placeholder="The clue or riddle" style="min-height:60px;width:100%;margin-top:6px" maxlength="600">${esc(l.clue)}</textarea>
+    <div class="row"><input data-f="ans" data-i="${i}" placeholder="Answer" maxlength="40" value="${esc(l.ans)}"><input data-f="hint" data-i="${i}" placeholder="Hint (optional)" maxlength="200" value="${esc(l.hint)}"></div></div>`).join('');
+  $('locks').querySelectorAll('[data-f]').forEach(el=>el.oninput=el.onchange=()=>{R.locks[el.dataset.i][el.dataset.f]=el.value;save('draft',R)});
+  $('locks').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(R.locks.length>1){R.locks.splice(b.dataset.del,1);save('draft',R);drawEdit()}});
+  $('locks').querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[R.locks[i-1],R.locks[i]]=[R.locks[i],R.locks[i-1]];save('draft',R);drawEdit()})}
+['title','intro','outro'].forEach(id=>$(id).oninput=()=>{R[id]=$(id).value;save('draft',R)});
+$('add').onclick=()=>{if(R.locks.length>=12)return toast('12 locks is the most.');R.locks.push({e:pick(EMO),clue:'',ans:'',hint:''});save('draft',R);drawEdit()};
+$('ex').onclick=()=>{R=JSON.parse(JSON.stringify(EXAMPLE));save('draft',R);drawEdit()};
+async function packed(){const ok=R.locks.every(l=>l.clue.trim()&&norm(l.ans));if(!ok){toast('Every lock needs a clue and an answer.');return null}const salt=uid();
+  return pack({v:1,t:R.title.trim()||'Escape room',i:R.intro.trim(),o:R.outro.trim(),s:salt,l:await Promise.all(R.locks.map(async l=>({e:l.e,c:l.clue.trim(),h:l.hint.trim(),a:await h(l.ans,salt)})))})}
+$('test').onclick=async()=>{const p=await packed();if(p)location.href=location.pathname+'#r='+p};
+$('share').onclick=async()=>{const p=await packed();if(p)copy(location.href.split('#')[0]+'#r='+p)};
+async function play(code){let g;try{g=await unpack(code);if(g.v!==1||!Array.isArray(g.l))throw 0}catch{toast('That room link is broken.');return}
+  $('edit').hidden=true;$('play').hidden=false;let i=0,t0=Date.now(),hints=0;
+  const show=()=>{if(i>=g.l.length){const s=Math.round((Date.now()-t0)/1000);$('play').innerHTML=`<div class="scene">🎉</div><h2>You escaped ${esc(g.t)}!</h2>${g.o?`<p>${esc(g.o)}</p>`:''}<p class="muted">Time: ${Math.floor(s/60)}m ${s%60}s · hints used: ${hints}</p><p><a class="b" href="${location.pathname}">Build your own room</a></p>`;[523,659,784,1047,1319].forEach((f,k)=>tone(f,.2,'triangle',.12,k*.1));return}
+    const l=g.l[i];$('play').innerHTML=`<h2>${esc(g.t)}</h2>${i===0&&g.i?`<p>${esc(g.i)}</p>`:''}<div class="dots">${g.l.map((_,k)=>`<span class="${k<i?'ok':k===i?'now':''}"></span>`).join('')}</div>
+      <div class="scene">${esc(l.e)}</div><div class="clue">${esc(l.c)}</div><div class="row" style="justify-content:center;margin-top:12px"><input id="ans" placeholder="Answer" autocomplete="off" aria-label="Answer"><button class="b" id="try">Unlock</button></div>
+      ${l.h?'<button class="g" id="hint">💡 Hint</button>':''}<p id="hintTxt" class="muted"></p>`;
+    $('ans').focus();const go=async()=>{if(await h($('ans').value,g.s)===l.a){tone(880,.12,'triangle',.12);tone(1320,.15,'triangle',.1,.1);i++;show()}else{tone(140,.2,'sawtooth',.08);$('ans').classList.remove('shake');void $('ans').offsetWidth;$('ans').classList.add('shake')}};
+    $('try').onclick=go;$('ans').onkeydown=e=>{if(e.key==='Enter')go()};if($('hint'))$('hint').onclick=()=>{$('hintTxt').textContent=l.h;hints++;$('hint').remove()}};show()}
+const m=location.hash.match(/r=([\w-]+)/);if(m)play(m[1]);else drawEdit();addEventListener('hashchange',()=>location.reload());
+</script></body></html>

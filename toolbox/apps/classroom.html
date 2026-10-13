@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Classroom pack</title><link rel="stylesheet" href="common.css">
+<style>textarea{min-height:120px}.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px}#student .apps a{display:inline-flex;margin:4px}</style></head>
+<body data-app="classroom" data-cat="tools" data-title="Classroom pack"><main>
+<div id="student" hidden></div>
+<div id="teacher">
+<p class="sub">For teachers and parents: make one link with a Wordle word list, a set of flashcards and the apps to use. Students open the link and press <b>Add to my ToolBox</b>. Nothing is uploaded: everything is packed into the link itself.</p>
+<div class="box"><input id="title" placeholder="Pack name, e.g. Year 5 Science, week 3" style="width:100%" maxlength="60"><textarea id="note" placeholder="A note for students (optional)" style="min-height:60px;margin-top:8px" maxlength="400"></textarea></div>
+<div class="grid2"><div class="box"><b>🟩 Wordle words</b><p class="muted" style="font-size:13px">One word per line, 4–7 letters, at least 5 words.</p><textarea id="words" placeholder="atom&#10;cell&#10;energy&#10;force&#10;orbit"></textarea></div>
+<div class="box"><b>🃏 Flashcards</b><p class="muted" style="font-size:13px">One card per line: <code>question = answer</code></p><textarea id="cards" placeholder="H2O = water&#10;Closest star = the Sun"></textarea></div></div>
+<div class="box"><b>Apps to use</b><div class="picks" id="picks"></div></div>
+<div class="row"><button class="b" id="make">🔗 Make the link</button><button class="g" id="preview">Preview as a student</button><span class="muted" id="size"></span></div><div id="out"></div>
+</div>
+</main><script src="common.js"></script><script src="registry.js"></script><script>
+const b64u={to:u=>btoa(String.fromCharCode(...u)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),from:s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))};
+async function pack(o){const cs=new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'));return b64u.to(new Uint8Array(await new Response(cs).arrayBuffer()))}
+async function unpack(s){const ds=new Blob([b64u.from(s)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(ds).text())}
+const PICKABLE=ALL_APPS.filter(a=>a.id!=='classroom'&&a.id!=='family');
+$('picks').innerHTML=PICKABLE.map(a=>`<label><input type="checkbox" value="${a.id}" ${['wordle'].includes(a.id)?'checked':''}> ${a.emoji} ${esc(a.name)}</label>`).join('');
+const d=load('draft',null);if(d){$('title').value=d.t||'';$('note').value=d.n||'';$('words').value=(d.w||[]).join('\n');$('cards').value=(d.c||[]).map(([q,a])=>q+' = '+a).join('\n');$('picks').querySelectorAll('input').forEach(i=>i.checked=(d.a||[]).includes(i.value))}
+function build(){const w=$('words').value.toLowerCase().split(/\s+/).filter(x=>/^[a-z]{4,7}$/.test(x)),c=$('cards').value.split('\n').map(l=>l.split('=')).filter(p=>p.length>=2&&p[0].trim()&&p[1].trim()).map(p=>[p[0].trim().slice(0,200),p.slice(1).join('=').trim().slice(0,200)]);
+  const o={v:1,t:$('title').value.trim().slice(0,60)||'Class pack',n:$('note').value.trim().slice(0,400),w:[...new Set(w)],c,a:[...$('picks').querySelectorAll(':checked')].map(i=>i.value)};save('draft',o);return o}
+async function link(){const o=build();if(o.w.length&&o.w.length<5){toast('Wordle needs at least 5 words (4–7 letters).');return null}if(!o.w.length&&!o.c.length&&!o.a.length){toast('Add some words, cards or apps first.');return null}
+  return location.href.split(/[?#]/)[0]+'#p='+await pack(o)}
+$('make').onclick=async()=>{const u=await link();if(!u)return;$('size').textContent=u.length>8000?'⚠️ Long link: it may not fit in some chat apps.':'';
+  $('out').innerHTML=`<div class="box"><textarea readonly style="min-height:70px">${esc(u)}</textarea><div class="row"><button class="b" id="cp">Copy link</button><button class="g" id="qr">Show QR code</button></div><div id="qrBox"></div></div>`;$('cp').onclick=()=>copy(u);
+  $('qr').onclick=()=>{const s=document.createElement('script');s.src='vendor/qrcode.min.js';s.onload=()=>{try{const q=qrcode(0,'L');q.addData(u);q.make();$('qrBox').innerHTML=q.createSvgTag({cellSize:4,margin:2,scalable:true});$('qrBox').querySelector('svg').style.cssText='width:min(320px,100%);height:auto;background:#fff'}catch{$('qrBox').textContent='Too long for a QR code. Share the link instead.'}};document.head.append(s)}};
+$('preview').onclick=async()=>{const u=await link();if(u)location.href=u};
+async function student(code){let o;try{o=await unpack(code);if(o.v!==1)throw 0}catch{toast('That class link is broken.');return}
+  $('teacher').hidden=true;$('student').hidden=false;const apps=(o.a||[]).map(id=>ALL_APPS.find(a=>a.id===id)).filter(Boolean);
+  $('student').innerHTML=`<div class="box"><h2 style="margin-top:0">📚 ${esc(o.t)}</h2>${o.n?`<p>${esc(o.n)}</p>`:''}
+   <ul>${o.w.length?`<li>🟩 A Wordle list with ${o.w.length} words</li>`:''}${o.c.length?`<li>🃏 ${o.c.length} flashcards (deck “${esc(o.t)}”)</li>`:''}${apps.length?`<li>📱 ${apps.length} app${apps.length>1?'s':''} to use</li>`:''}</ul>
+   <button class="b" id="add">Add to my ToolBox</button> <a class="g" href="${location.pathname}">Make my own pack</a></div>
+   ${apps.length?`<h3>Your apps</h3><div class="apps">${apps.map(a=>`<a class="chip" href="../${esc(a.href)}">${a.emoji} ${esc(a.name)}</a>`).join('')}</div>`:''}`;
+  $('add').onclick=()=>{if(o.w.length){try{localStorage.setItem('app_wordle_custom',JSON.stringify(o.w.join('\n')));localStorage.setItem('app_wordle_list',JSON.stringify('My words'))}catch{}}
+    if(o.c.length){const cards=loadTb('cards',[]),have=new Set(cards.map(c=>c.deck+'|'+c.q));o.c.forEach(([q,a])=>{if(!have.has(o.t+'|'+q))cards.push({id:uid(),q,a,box:0,due:0,deck:o.t})});saveTb('cards',cards)}
+    const cls=loadTb('classes',[]);if(!cls.some(c=>c.t===o.t))cls.unshift({t:o.t,at:Date.now(),a:o.a});saveTb('classes',cls.slice(0,20));
+    $('add').disabled=true;$('add').textContent='✓ Added';toast(o.w.length?'Added! Wordle is set to the class words.':'Added!')}}
+const m=location.hash.match(/p=([\w-]+)/);if(m)student(m[1]);
+addEventListener('hashchange',()=>location.reload());
+</script></body></html>

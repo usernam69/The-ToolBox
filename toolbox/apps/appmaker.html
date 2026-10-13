@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI app maker</title><link rel="stylesheet" href="common.css">
+<style>#prev{width:100%;height:min(65vh,600px);border:1px solid var(--line);border-radius:12px;background:#fff}#prog{font-variant-numeric:tabular-nums}</style></head>
+<body data-app="appmaker" data-cat="bigger" data-title="AI app maker"><main>
+<p class="sub">Describe a small app or game and Claude builds it. It’s saved to <a href="community.html">Community apps → Added by me</a> and runs in the same locked box, so it can’t touch your other ToolBox data.</p>
+<div class="box"><textarea id="ask" placeholder="e.g. A reaction-time game: the screen turns green at a random moment and I click as fast as I can. Keep my 5 best times." style="min-height:90px"></textarea>
+<div class="row"><button class="b" id="go">✨ Build it</button><button class="g" id="change" hidden>✎ Change it</button><button class="g" id="keep" hidden>💾 Keep it</button><span id="prog" class="muted"></span></div>
+<div class="row" id="ideas"></div></div>
+<details class="box"><summary><b>🔑 Claude API key</b> <span class="muted" id="keyState"></span></summary>
+<p class="sub" style="margin-top:8px">The same key as the AI study buddy. Get one at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>. It’s kept only on this device and sent only to Anthropic. One app usually costs well under a dollar.</p>
+<div class="row"><input id="key" type="password" class="grow" placeholder="sk-ant-…" autocomplete="off"><button class="g" id="saveKey">Save</button><button class="g" id="forget">Forget key</button></div></details>
+<div id="out" hidden><h3 id="title"></h3><iframe id="prev" title="Your new app" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
+</main><script src="common.js"></script>
+<script type="module">
+import Anthropic from 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm';
+const MODEL='claude-opus-5-5';
+const keyNow=()=>loadTb('claudeKey','');
+const showKey=()=>{$('keyState').textContent=keyNow()?'· saved ✓':'· not set yet'};showKey();
+$('saveKey').onclick=()=>{const k=$('key').value.trim();if(!k.startsWith('sk-ant-'))return toast('That doesn’t look like a Claude API key.');saveTb('claudeKey',k);$('key').value='';showKey();toast('Key saved')};
+$('forget').onclick=()=>{saveTb('claudeKey','');showKey();toast('Key forgotten')};
+const IDEAS=['A reaction-time game','A tip jar for chores with stickers','A drum machine with 4 sounds','A guess-the-flag quiz','A breathing exercise with a growing circle','Bubble wrap to pop'];
+$('ideas').innerHTML=IDEAS.map(i=>`<button class="g" data-i="${esc(i)}">${esc(i)}</button>`).join('');$('ideas').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('ask').value=b.dataset.i});
+const SYSTEM=`You build small, delightful single-file web apps for "The ToolBox", a family-friendly collection of mini-apps.
+Rules for the HTML you return:
+- One complete HTML document with all CSS and JavaScript inline. No external scripts, fonts, images or network requests of any kind.
+- It runs in a sandboxed iframe with no same-origin access: localStorage, cookies, IndexedDB, popups, downloads and top navigation are unavailable, so keep state in memory only, and never touch window.top or window.parent.
+- Works with mouse, touch and keyboard, fits phone widths without horizontal scrolling, and looks polished with a light, friendly design.
+- Suitable for all ages. Plain English labels.`;
+const SCHEMA={type:'object',additionalProperties:false,required:['name','emoji','description','html'],properties:{name:{type:'string'},emoji:{type:'string'},description:{type:'string'},html:{type:'string'}}};
+let cur=null;
+async function build(prompt){if(!keyNow())return toast('Add your Claude API key first (🔑 below).');
+  $('go').disabled=$('change').disabled=true;$('prog').textContent='Thinking…';
+  try{const client=new Anthropic({apiKey:keyNow(),dangerouslyAllowBrowser:true});
+    const stream=client.beta.messages.stream({model:MODEL,max_tokens:32000,betas:['server-side-fallback-2026-07-01'],fallbacks:'default',system:SYSTEM,
+      messages:[{role:'user',content:prompt}],output_config:{effort:'medium',format:{type:'json_schema',schema:SCHEMA}}});
+    let chars=0;stream.on('text',t=>{chars+=t.length;$('prog').textContent=`Writing… ${Math.round(chars/1000)}k characters`});
+    const res=await stream.finalMessage();
+    if(res.stop_reason==='refusal')throw new Error('Claude declined this one'+(res.stop_details?.explanation?`: ${res.stop_details.explanation}`:'. Try describing it differently.'));
+    if(res.stop_reason==='max_tokens')throw new Error('That app came out too big. Try asking for something smaller.');
+    const r=JSON.parse(res.content.filter(b=>b.type==='text').map(b=>b.text).join(''));
+    cur={name:String(r.name).slice(0,40),emoji:String(r.emoji).slice(0,4)||'✨',desc:String(r.description).slice(0,160),html:String(r.html),ask:prompt};
+    $('out').hidden=false;$('title').textContent=cur.emoji+' '+cur.name;$('prev').srcdoc=cur.html;$('change').hidden=$('keep').hidden=false;$('keep').disabled=false;$('keep').textContent='💾 Keep it';$('prog').textContent='Done ✓ Try it below.'}
+  catch(e){$('prog').textContent='';toast(e instanceof Anthropic.AuthenticationError?'That API key was rejected.':e instanceof Anthropic.RateLimitError?'Too many requests. Wait a moment and try again.':e instanceof Anthropic.APIConnectionError?'Could not reach the Claude API. Are you online?':e instanceof Anthropic.APIError?`API error ${e.status}: ${e.message}`:e.message)}
+  finally{$('go').disabled=$('change').disabled=false}}
+$('go').onclick=()=>{const t=$('ask').value.trim();if(t.length<8)return toast('Describe your app in a sentence or two.');build('Build this app: '+t)};
+$('change').onclick=()=>{const t=prompt('What should change?');if(t&&cur)build(`Here is an app you built earlier:\n\n${cur.html}\n\nChange it like this: ${t}\n\nReturn the whole updated app.`)};
+$('keep').onclick=()=>{if(!cur)return;let m=[];try{m=JSON.parse(localStorage.getItem('app_community_mine')||'[]')}catch{}
+  m.unshift({name:cur.name,emoji:cur.emoji,desc:cur.desc+' (made with AI)',html:cur.html});try{localStorage.setItem('app_community_mine',JSON.stringify(m));$('keep').disabled=true;$('keep').textContent='✓ Kept';toast('Saved to Community apps')}catch{toast('Not enough space to save it.')}};
+</script></body></html>

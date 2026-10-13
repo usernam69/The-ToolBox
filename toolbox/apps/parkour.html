@@ -5,7 +5,7 @@
 <div class="stage"><canvas id="c"></canvas></div>
 <div class="touchpad" id="pad"><button data-key="arrowleft">◀</button><button data-key="arrowright">▶</button><button data-key=" ">⤒</button></div>
 <p class="muted" style="font-size:13px"><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> to run, <kbd>Space</kbd>/<kbd>↑</kbd> to jump (hold it to jump higher), <kbd>R</kbd> to restart. Avoid the red spikes and reach 🏁. Your best run plays as a grey ghost.</p>
-</main><script src="common.js"></script><script src="platform.js"></script><script>
+<div id="world" style="margin-top:14px"></div></main><script src="common.js"></script><script src="scores.js"></script><script src="platform.js"></script><script src="parkour-code.js"></script><script>
 // # block, ^ spikes, S start, G goal, . empty. Each char is 32px.
 const LEVELS=[["................................................",
  "................................................",
@@ -52,24 +52,30 @@ const LEVELS=[["................................................",
  "#####..##^##..###...##^^##..###.....................",
  "#####^^#####^^###^^^######^^###^^^^^^^^^^^^^^^^^^^^^"]];
 const T=32,c=$('c');let li=load('level',0),game;
+// a shared custom level arrives as parkour.html#lvl=<code> (made in the level editor)
+const CUSTOM=(()=>{const m=location.hash.match(/lvl=([^&]+)/);if(!m)return null;try{return decodeLevel(m[1])}catch{toast('That level link is broken.');return null}})();
+const isCustom=i=>CUSTOM&&i===LEVELS.length-1;if(CUSTOM)LEVELS.push(CUSTOM.rows);
 function build(i){const L=LEVELS[i],at=(x,y)=>(L[Math.floor(y/T)]||'')[Math.floor(x/T)]||'.';let start={x:10,y:10},goal=null;
   L.forEach((r,y)=>[...r].forEach((ch,x)=>{if(ch==='S')start={x:x*T+7,y:y*T+4};if(ch==='G')goal={x:x*T,y:y*T,w:T,h:T}}));
   if(game)game.stop();
   game=new Platformer(c,{start,goal,worldW:L[0].length*T,worldH:L.length*T,sound:true,zoom:Math.max(1,Math.min(1.6,c.clientHeight/(L.length*T)*1.4)),
     solid:(x,y)=>x<0||at(x,y)==='#',hazard:(x,y)=>{const ch=at(x,y);return ch==='^'&&(y%T)>T*.45},
-    ghost:$('ghostOn').checked?load('ghost'+i,null):null,
+    ghost:$('ghostOn').checked&&!isCustom(i)?load('ghost'+i,null):null,
     drawWorld(x,cam,vw,vh){x.fillStyle='rgba(255,255,255,.6)';for(let k=0;k<6;k++){const cx=((k*397)%(L[0].length*T))-cam.x*.3+cam.x,cy=40+k*37%160;x.beginPath();x.ellipse(cx,cy,40,14,0,0,7);x.fill()}
       const y0=Math.max(0,Math.floor(cam.y/T)),y1=Math.min(L.length,Math.ceil((cam.y+vh)/T)+1),x0=Math.max(0,Math.floor(cam.x/T)),x1=Math.min(L[0].length,Math.ceil((cam.x+vw)/T)+1);
       for(let ty=y0;ty<y1;ty++)for(let tx=x0;tx<x1;tx++){const ch=L[ty][tx];if(ch==='#'){x.fillStyle=(L[ty-1]||'')[tx]==='#'?'#8d6e63':'#4caf50';x.fillRect(tx*T,ty*T,T,T);if((L[ty-1]||'')[tx]!=='#'){x.fillStyle='#8d6e63';x.fillRect(tx*T,ty*T+8,T,T-8)}x.strokeStyle='rgba(0,0,0,.12)';x.strokeRect(tx*T+.5,ty*T+.5,T-1,T-1)}
         else if(ch==='^'){x.fillStyle='#e53935';for(let k=0;k<4;k++){x.beginPath();x.moveTo(tx*T+k*8,ty*T+T);x.lineTo(tx*T+k*8+4,ty*T+T*.45);x.lineTo(tx*T+k*8+8,ty*T+T);x.fill()}}}},
     onDie(g){tone(120,.3,'sawtooth',.1);g.reset()},
     onWin(g){const t=+g.t.toFixed(2),b=load('best'+i,null);[523,659,784,1047].forEach((f,k)=>tone(f,.15,'triangle',.12,k*.08));
+      if(isCustom(i)){toast(`🏁 You beat “${CUSTOM.name}” in ${t}s!`);setTimeout(()=>build(i),1400);return}
       if(b===null||t<b){save('best'+i,t);save('ghost'+i,g.rec);toast(`🏆 New best: ${t}s`)}else toast(`Finished in ${t}s (best ${b}s)`);
-      const u=load('unlocked',0);if(i+1>u&&i+1<LEVELS.length)save('unlocked',i+1);drawLevels();setTimeout(()=>{if(i+1<LEVELS.length){li=i+1;save('level',li);build(li)}else build(i)},1400)},
+      const u=load('unlocked',0);if(i+1>u&&i+1<LEVELS.length-(CUSTOM?1:0))save('unlocked',i+1);drawLevels();setTimeout(()=>{if(i+1<LEVELS.length){li=i+1;save('level',li);build(li)}else build(i)},1400)},
     onFrame(g){$('time').textContent=g.t.toFixed(2)+'s'}});
   const b=load('best'+i,null);$('best').textContent=b?`best ${b}s`:'';game.play();drawLevels()}
-function drawLevels(){const u=load('unlocked',0);$('levels').innerHTML=LEVELS.map((_,i)=>`<button class="g ${i===li?'on':''}" ${i>u?'disabled title="Beat the level before"':''} data-i="${i}">${i>u?'🔒':''}Level ${i+1}${load('best'+i,null)?' ⭐':''}</button>`).join('');
+function drawLevels(){const u=load('unlocked',0);$('levels').innerHTML=LEVELS.map((_,i)=>`<button class="g ${i===li?'on':''}" ${i>u&&!isCustom(i)?'disabled title="Beat the level before"':''} data-i="${i}">${isCustom(i)?'✨ '+esc(CUSTOM.name):(i>u?'🔒':'')+'Level '+(i+1)+(load('best'+i,null)?' ⭐':'')}</button>`).join('')+'<a class="g" href="parkour-edit.html">✎ Level editor</a>';
   $('levels').querySelectorAll('button').forEach(b=>b.onclick=()=>{li=+b.dataset.i;save('level',li);build(li);b.blur()})}
 addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R'){game.reset()}});$('ghostOn').onchange=()=>build(li);bindTouch($('pad'));
-if(li>load('unlocked',0))li=0;build(li);
+if(CUSTOM)li=LEVELS.length-1;else if(li>load('unlocked',0))li=0;build(li);
+
+let wbLevel=-1;setInterval(()=>{if(li!==wbLevel){wbLevel=li;if(isCustom(li)){$('world').innerHTML='';return}worldBoard($('world'),'parkour-'+li,{lower:true,unit:'s',title:'🌍 World top 10 (Level '+(li+1)+')',getScore:()=>load('best'+li,null)})}},500);
 </script></body></html>

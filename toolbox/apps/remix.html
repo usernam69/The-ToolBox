@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Remix an app</title><link rel="stylesheet" href="common.css">
+<style>main{max-width:none}.split{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:calc(100vh - 170px);min-height:420px}@media (max-width:800px){.split{grid-template-columns:1fr;height:auto}.split>*{height:60vh}}
+#src{width:100%;height:100%;font:13px/1.45 ui-monospace,Consolas,monospace;tab-size:2;white-space:pre;resize:none;border-radius:10px}#view{width:100%;height:100%;border:1px solid var(--line);border-radius:10px;background:#fff}</style></head>
+<body data-app="remix" data-cat="creative" data-title="Remix an app"><main>
+<div class="row"><select id="pick" aria-label="App to remix"></select><button class="b" id="run">▶ Run (Ctrl+Enter)</button><button class="g" id="reset">↺ Original</button><button class="g" id="keep">💾 Save to my apps</button><button class="g" id="dl">⬇ Download</button><span class="muted" style="font-size:13px">Change anything: colours, speeds, words. Your copy runs in a safe box and never changes the real app.</span></div>
+<div class="split"><textarea id="src" spellcheck="false" aria-label="App code"></textarea><iframe id="view" title="Preview" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
+</main><script src="common.js"></script><script src="registry.js"></script><script>
+// The preview gets a <base> pointing at the real apps folder, so shared files (common.js, common.css…) still load.
+const BASE=new URL('./',location.href).href,PAGES=ALL_APPS.filter(a=>/^apps\/[\w-]+\.html$/.test(a.href)&&!['remix','os','community','family','open'].includes(a.id));
+$('pick').innerHTML=PAGES.map(a=>`<option value="${a.href.slice(5)}">${a.emoji} ${esc(a.name)}</option>`).join('');
+let file=new URLSearchParams(location.search).get('app');if(!PAGES.some(a=>a.href==='apps/'+file))file=PAGES[0].href.slice(5);$('pick').value=file;
+const withBase=h=>h.replace(/<head([^>]*)>/i,`<head$1><base href="${BASE}">`);
+async function original(){return (await fetch(file,{cache:'no-store'})).text()}
+async function loadApp(){const saved=load('src_'+file,null);$('src').value=saved||await original();run()}
+function run(){$('view').srcdoc=withBase($('src').value);save('src_'+file,$('src').value)}
+$('pick').onchange=()=>{file=$('pick').value;history.replaceState(null,'','?app='+file);loadApp()};
+$('run').onclick=run;$('src').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();run()}
+  if(e.key==='Tab'){e.preventDefault();const t=e.target,s=t.selectionStart;t.setRangeText('  ',s,t.selectionEnd,'end')}});
+$('reset').onclick=async()=>{if(!confirm('Throw away your changes to this app?'))return;localStorage.removeItem('app_remix_src_'+file);$('src').value=await original();run()};
+$('dl').onclick=()=>download(file.replace('.html','-remix.html'),withBase($('src').value),'text/html');
+$('keep').onclick=()=>{const a=PAGES.find(p=>p.href==='apps/'+file);let m=[];try{m=JSON.parse(localStorage.getItem('app_community_mine')||'[]')}catch{}
+  m.unshift({name:'My '+a.name,emoji:a.emoji,desc:'A remix of '+a.name,html:withBase($('src').value)});try{localStorage.setItem('app_community_mine',JSON.stringify(m));toast('Saved to Community apps → Added by me')}catch{toast('Not enough space to save it.')}};
+loadApp();
+</script></body></html>

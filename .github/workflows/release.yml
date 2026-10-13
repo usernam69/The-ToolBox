@@ -1,0 +1,54 @@
+name: Build release
+# Push a tag like v1.2.0 (or run it by hand) to build the Windows exe and the Linux AppImages
+# (for Chromebooks with Linux turned on) and attach them to a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults: { run: { working-directory: toolbox-desktop } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install
+      - run: npm run build -- --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: toolbox-desktop/dist/UsefulToolbox.exe }
+  linux:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: toolbox-desktop } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install
+      - run: npm run build:linux -- --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: linux, path: toolbox-desktop/dist/*.AppImage }
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp toolbox/apps/registry.js toolbox-extension/ && cd toolbox-extension && zip -r ../TheToolBox-extension.zip .
+      - uses: actions/upload-artifact@v4
+        with: { name: extension, path: TheToolBox-extension.zip }
+  release:
+    needs: [windows, linux, extension]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
+          name: The ToolBox ${{ github.ref_type == 'tag' && github.ref_name || format('build {0}', github.run_number) }}
+          files: out/*
+          body: |
+            - **Windows:** download `UsefulToolbox.exe` and double-click it (no install needed).
+            - **Chromebook:** easiest is to open https://usernam69.github.io/The-ToolBox/ in Chrome and click Install. With Linux turned on, `TheToolBox-x86_64.AppImage` (Intel/AMD) or `TheToolBox-arm64.AppImage` (ARM) also runs, including Wi-Fi hosting.
+            - **Chrome extension:** unzip `TheToolBox-extension.zip`, open `chrome://extensions`, turn on Developer mode and click **Load unpacked**.

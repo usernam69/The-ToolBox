@@ -29,7 +29,13 @@ const CMDS={ping:['🏓 ping','Checks the bot is awake and shows its speed.',`  
  user:['👤 userinfo','Shows info about a member.',`  userinfo: { description: 'Show info about a member', options: [{ name: 'user', description: 'Who', type: 6, required: false }],
     run: async (i) => { const u = i.options.getUser('user') || i.user; i.reply({ embeds: [{ color: COLOR, title: u.username, thumbnail: { url: u.displayAvatarURL() }, fields: [{ name: 'Joined Discord', value: \`<t:\${Math.floor(u.createdTimestamp / 1000)}:D>\` }] }] }); } },`],
  choose:['🤔 choose','Picks between options for you.',`  choose: { description: 'Let the bot decide', options: [{ name: 'options', description: 'Comma-separated options', type: 3, required: true }],
-    run: async (i) => { const o = i.options.getString('options').split(',').map((s) => s.trim()).filter(Boolean); i.reply(o.length ? \`🤔 I choose… **\${o[Math.floor(Math.random() * o.length)]}**!\` : 'Give me some options!'); } },`]};
+    run: async (i) => { const o = i.options.getString('options').split(',').map((s) => s.trim()).filter(Boolean); i.reply(o.length ? \`🤔 I choose… **\${o[Math.floor(Math.random() * o.length)]}**!\` : 'Give me some options!'); } },`],
+ streaks:['🔥 streaks','Shows your ToolBox habit streaks (from streaks.json in the bot folder).',`  streaks: { description: 'Show my ToolBox habit streaks', run: async (i) => { let s; try { s = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'streaks.json'), 'utf8')); } catch { return i.reply({ content: 'No streaks.json yet. Export it from The ToolBox → Discord bot maker.', ephemeral: true }); }
+    i.reply({ embeds: [{ color: COLOR, title: '🔥 ' + (s.owner ? s.owner + '’s' : 'My') + ' habit streaks', description: s.habits.map((h) => \`\${h.streak >= 7 ? '🔥' : h.streak ? '✅' : '⬜'} **\${h.name}**: \${h.streak} day\${h.streak === 1 ? '' : 's'}\${h.doneToday ? ' (done today)' : ''}\`).join('\\n') || 'No habits yet.', footer: { text: 'Updated ' + s.updated } }] }); } },`]};
+// streaks.json for the /streaks command, made from the habits in your Toolbox
+function streaksJson(){const habits=loadTb('habits',[]),day=d=>isoDay(d),today=new Date();
+  const streak=h=>{let n=0,d=new Date(today);if(!(h.days||{})[day(d)])d.setDate(d.getDate()-1);while((h.days||{})[day(d)]){n++;d.setDate(d.getDate()-1)}return n};
+  return JSON.stringify({owner:loadTb('lanName','')||'',updated:new Date().toLocaleString(),habits:habits.map(h=>({name:h.name,streak:streak(h),doneToday:!!(h.days||{})[day(today)]}))},null,2)+'\n'}
 const picked=load('picked',['ping','roll','coin','ball','joke','poll']);
 $('cmds').innerHTML=Object.entries(CMDS).map(([k,[n,d]])=>`<label><input type="checkbox" value="${k}" ${picked.includes(k)?'checked':''}><span><b>/${n.split(' ')[1]}</b> ${n.split(' ')[0]}<small>${d}</small></span></label>`).join('');
 $('cmds').onchange=()=>save('picked',[...$('cmds').querySelectorAll(':checked')].map(c=>c.value));$('custom').value=load('custom','');$('custom').oninput=()=>save('custom',$('custom').value);
@@ -75,7 +81,7 @@ if (!process.env.DISCORD_TOKEN || !process.env.APPLICATION_ID) {
 client.login(process.env.DISCORD_TOKEN);
 `;
   return{'package.json':JSON.stringify({name:slug,version:'1.0.0',private:true,main:'index.js',scripts:{start:'node index.js'},dependencies:{'discord.js':'^14.16.3',dotenv:'^16.4.5'}},null,2)+'\n',
-    'index.js':index,'.env.example':'DISCORD_TOKEN=paste-your-bot-token-here\nAPPLICATION_ID=paste-your-application-id-here\n','.gitignore':'node_modules/\n.env\n',
+    'index.js':index,...(sel.includes('streaks')?{'streaks.json':streaksJson()}:{}),'.env.example':'DISCORD_TOKEN=paste-your-bot-token-here\nAPPLICATION_ID=paste-your-application-id-here\n','.gitignore':'node_modules/\n.env\n',
     'README.md':`# ${name}\n\nA Discord bot made with The ToolBox.\n\n1. Copy \`.env.example\` to \`.env\` and fill in your bot token and application ID.\n2. \`npm install\`\n3. \`npm start\`\n\nKeep \`.env\` secret. It's already in \`.gitignore\`.\n`}}
 // minimal ZIP writer (no compression)
 function crc32(b){let c,t=crc32.t||(crc32.t=[...Array(256)].map((_,n)=>{c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0}));let x=0xffffffff;for(const v of b)x=t[(x^v)&255]^(x>>>8);return(x^0xffffffff)>>>0}
@@ -88,4 +94,5 @@ function zip(fs,folder){const enc=new TextEncoder(),parts=[],central=[];let off=
   return new Blob([...parts,...central,e],{type:'application/zip'})}
 $('zip').onclick=()=>{const slug=($('bname').value.trim()||'toolbot').toLowerCase().replace(/[^\w-]+/g,'-');download(slug+'.zip',zip(files(),slug));toast('Downloaded! See "How to run it" below.')};
 $('show').onclick=()=>{$('code').hidden=!$('code').hidden;$('code').textContent=files()['index.js']};
+{const b=document.createElement('button');b.className='g';b.textContent='🔥 Export streaks.json';b.title='Put this file in your bot folder to update /streaks';b.onclick=()=>{download('streaks.json',streaksJson(),'application/json');toast('Put streaks.json in the bot folder. /streaks reads it each time.')};$('show').after(b)}
 </script></body></html>

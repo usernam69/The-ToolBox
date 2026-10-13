@@ -36,12 +36,108 @@
   "description": "The ToolBox: 100+ small tools, games and creative apps that work offline.",
   "shortcuts": [
     {
-      "name": "All tools",
-      "url": "./tools.html"
+      "name": "Parkour",
+      "url": "./apps/parkour.html",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
-      "name": "Games",
-      "url": "./index.html#games"
+      "name": "Sticky notes",
+      "url": "./apps/sticky.html",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Timers",
+      "url": "./tools.html#timers",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "All tools",
+      "url": "./tools.html",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
-  ]
+  ],
+  "file_handlers": [
+    {
+      "action": "./apps/open.html",
+      "accept": {
+        "image/*": [
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".gif",
+          ".webp",
+          ".bmp"
+        ],
+        "application/pdf": [
+          ".pdf"
+        ],
+        "audio/*": [
+          ".mp3",
+          ".wav",
+          ".ogg",
+          ".m4a"
+        ],
+        "video/*": [
+          ".mp4",
+          ".webm",
+          ".mov"
+        ],
+        "text/html": [
+          ".html",
+          ".htm"
+        ],
+        "application/json": [
+          ".json"
+        ]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "./apps/open.html",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "image/*",
+            "audio/*",
+            "video/*",
+            "application/pdf",
+            "text/html",
+            "application/json",
+            ".json",
+            ".html"
+          ]
+        }
+      ]
+    }
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }

@@ -5,7 +5,7 @@
 #intro{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;text-align:center;cursor:pointer}#intro .box{background:rgba(20,22,30,.92);color:#eee;border-color:#444;max-width:440px}#info{position:absolute;top:8px;left:10px;color:#fff;font:12px ui-monospace,monospace;text-shadow:0 1px 2px #000}</style></head>
 <body data-app="voxel" data-cat="bigger" data-title="Voxel world">
 <div id="wrap"><div id="cross"></div><div id="bar"></div><div id="info"></div>
-<div id="intro"><div class="box"><h2 style="margin-bottom:8px">⛏️ Voxel world</h2><p>Click to play.<br><b>WASD</b> to move · <b>mouse</b> to look · <b>Space</b> to jump · <b>Shift</b> to run<br><b>Left click</b> breaks · <b>Right click</b> places · <b>1–8</b> or the wheel to pick a block<br><b>F</b> to fly · <b>Esc</b> to pause</p><p class="muted" style="color:#aaa;font-size:13px">Your builds are saved automatically.</p><button class="g" id="reset" style="color:#eee">New world</button></div></div></div>
+<div id="intro"><div class="box"><h2 style="margin-bottom:8px">⛏️ Voxel world</h2><p>Click to play.<br><b>WASD</b> to move · <b>mouse</b> to look · <b>Space</b> to jump · <b>Shift</b> to run<br><b>Left click</b> breaks · <b>Right click</b> places · <b>1–8</b> or the wheel to pick a block<br><b>F</b> to fly · <b>Esc</b> to pause</p><p class="muted" style="color:#aaa;font-size:13px">Your builds are saved automatically.</p><div class="row" style="justify-content:center"><button class="g" id="reset" style="color:#eee">New world</button><button class="g" id="vxExport" style="color:#eee">⬇ Save to file</button><label class="g" style="color:#eee;cursor:pointer;border:1px solid #555;padding:6px 11px;border-radius:8px">⬆ Open file<input type="file" id="vxImport" accept=".json" hidden></label><button class="g" id="vxShare" style="color:#eee">🔗 Share link</button></div></div></div></div>
 <script src="common.js"></script><script src="vendor/three.min.js"></script><script>
 const SX=64,SZ=64,SY=32,B={AIR:0,GRASS:1,DIRT:2,STONE:3,WOOD:4,LEAF:5,SAND:6,PLANK:7,BRICK:8,GLASS:9,WATER:10};
 const COLORS={1:[0x5fa83c,0x7a5230],2:[0x7a5230],3:[0x8a8a8a],4:[0x6b4a2b],5:[0x3f8f3a],6:[0xe3d59c],7:[0xb5884f],8:[0xa8452e],9:[0xbfe6ff],10:[0x3a7bd5]};
@@ -47,7 +47,19 @@ const locked=()=>document.pointerLockElement===renderer.domElement;
 renderer.domElement.addEventListener('mousedown',e=>{if(!locked())return;const r=ray();if(!r)return;if(e.button===0){setBlock(...r.hit,0);tone(180,.06,'square',.05)}
   else if(e.button===2&&r.prev){const[x,y,z]=r.prev;if(!(Math.floor(P.x)===x&&Math.floor(P.z)===z&&(y===Math.floor(P.y)||y===Math.floor(P.y+1)))){setBlock(x,y,z,HOTBAR[sel]);tone(320,.05,'triangle',.05)}}});
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
-$('intro').onclick=e=>{if(e.target.id==='reset'){if(confirm('Make a brand new world? Your builds will be lost.')){localStorage.removeItem('app_voxel_meta');localStorage.removeItem('app_voxel_player');location.reload()}return}renderer.domElement.requestPointerLock()};
+// share worlds: a file, or a link with the edits packed into the address (#w=…)
+const b64u={to:u=>btoa(String.fromCharCode(...u)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),from:s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))};
+async function pack(o){const cs=new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'));return b64u.to(new Uint8Array(await new Response(cs).arrayBuffer()))}
+async function unpack(s){const ds=new Blob([b64u.from(s)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(ds).text())}
+function useWorld(m){if(!m||typeof m.seed!=='number'||typeof m.edits!=='object')throw new Error('That is not a voxel world.');
+  const edits={};for(const k in m.edits)if(/^\d+,\d+,\d+$/.test(k)&&Number.isInteger(m.edits[k]))edits[k]=m.edits[k];
+  save('meta',{seed:m.seed,edits});localStorage.removeItem('app_voxel_player');location.href=location.pathname}
+(async()=>{const m=location.hash.match(/w=([\w-]+)/);if(!m)return;try{const w=await unpack(m[1]);
+  if(confirm(`Open the shared world (${Object.keys(w.edits||{}).length} changed blocks)? It replaces the world you have now. Press Cancel, then “Save to file”, if you want to keep yours first.`))useWorld(w);else history.replaceState(null,'',location.pathname)}catch{toast('That world link is broken.')}})();
+$('intro').onclick=e=>{if(e.target.closest('#vxImport')||e.target.closest('label'))return;
+  if(e.target.id==='vxExport'){download('voxel-world.json',JSON.stringify({app:'toolbox-voxel',...meta}));return}
+  if(e.target.id==='vxShare'){pack({seed:meta.seed,edits:meta.edits}).then(p=>{const u=location.href.split('#')[0]+'#w='+p;if(u.length>30000)toast('This world is too big for a link. Use Save to file instead.');else copy(u)});return}
+  if(e.target.id==='reset'){if(confirm('Make a brand new world? Your builds will be lost.')){localStorage.removeItem('app_voxel_meta');localStorage.removeItem('app_voxel_player');location.reload()}return}renderer.domElement.requestPointerLock()};
 document.addEventListener('pointerlockchange',()=>$('intro').style.display=locked()?'none':'flex');
 addEventListener('mousemove',e=>{if(!locked())return;P.yaw-=e.movementX*.0022;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.0022))});
 addEventListener('wheel',e=>{if(locked()){sel=(sel+(e.deltaY>0?1:HOTBAR.length-1))%HOTBAR.length;bar()}});
@@ -66,4 +78,5 @@ function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;
   cam.position.set(P.x,P.y+1.6,P.z);cam.rotation.set(P.pitch,P.yaw,0,'YXZ');const r=locked()?ray():null;outline.visible=!!r;if(r)outline.position.set(r.hit[0]+.5,r.hit[1]+.5,r.hit[2]+.5);
   $('info').textContent=`x ${P.x.toFixed(1)} y ${P.y.toFixed(1)} z ${P.z.toFixed(1)}${P.fly?' · flying':''}`;renderer.render(scene,cam);requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
+$('vxImport').onchange=async()=>{const f=$('vxImport').files[0];if(!f)return;try{const w=JSON.parse(await f.text());if(confirm('Replace your world with this file?'))useWorld(w)}catch(e){toast(e.message)}};
 </script></body></html>

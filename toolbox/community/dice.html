@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dice roller</title>
+<style>body{font-family:system-ui,sans-serif;text-align:center;padding:24px;background:#faf7f0;color:#222}button{font-size:20px;padding:10px 22px;border-radius:12px;border:0;background:#2f6fde;color:#fff;cursor:pointer;margin:4px}
+#dice{font-size:80px;margin:20px 0;min-height:100px}select{font-size:18px;padding:6px}</style></head><body>
+<h1>🎲 Dice roller</h1><p>An example community app. Pick how many dice and roll.</p>
+<select id="n"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select> <button id="roll">Roll</button>
+<div id="dice"></div><p id="total"></p>
+<script>
+const F='⚀⚁⚂⚃⚄⚅';document.getElementById('roll').onclick=()=>{const n=+document.getElementById('n').value,r=[...Array(n)].map(()=>1+Math.floor(Math.random()*6));
+document.getElementById('dice').textContent=r.map(v=>F[v-1]).join(' ');document.getElementById('total').textContent='Total: '+r.reduce((a,b)=>a+b,0)};
+</script></body></html>

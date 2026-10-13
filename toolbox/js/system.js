@@ -1,13 +1,27 @@
 // System: backup & sync, share with a friend, achievements, plugins, help.
 
 // ---------- backup ----------
-const PRIVATE_KEYS=['gistToken'];// never leaves this browser
+const PRIVATE_KEYS=['gistToken','claudeKey','ghToken'];// never leaves this browser
 function allData(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PREFIX)&&!PRIVATE_KEYS.includes(k.slice(PREFIX.length)))o[k.slice(PREFIX.length)]=JSON.parse(localStorage.getItem(k))}return o}
 function restoreData(o,{keepPrivate=true}={}){if(!o||typeof o!=='object')throw new Error('Not a toolbox backup');
   const keep={};PRIVATE_KEYS.concat(keepPrivate?['gistId']:[]).forEach(k=>keep[k]=load(k,undefined));
   Object.keys(localStorage).filter(k=>k.startsWith(PREFIX)).forEach(k=>localStorage.removeItem(k));
   Object.entries(o).forEach(([k,v])=>save(k,v));Object.entries(keep).forEach(([k,v])=>v!==undefined&&save(k,v))}
-const backupText=()=>JSON.stringify({app:'useful-toolbox',version:2,saved:new Date().toISOString(),data:allData()},null,1);
+// The 43 menu apps keep data under app_<id>_ and the menu under menu_; back those up too.
+const EXTRA_PREFIXES=['app_','menu_'];
+function extraData(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(EXTRA_PREFIXES.some(p=>k.startsWith(p)))o[k]=localStorage.getItem(k)}return o}
+function restoreExtra(o){if(!o||typeof o!=='object')return;Object.keys(localStorage).filter(k=>EXTRA_PREFIXES.some(p=>k.startsWith(p))).forEach(k=>localStorage.removeItem(k));
+  Object.entries(o).forEach(([k,v])=>{if(EXTRA_PREFIXES.some(p=>k.startsWith(p))&&typeof v==='string')try{localStorage.setItem(k,v)}catch{}})}
+const backupText=()=>JSON.stringify({app:'useful-toolbox',version:3,saved:new Date().toISOString(),data:allData(),apps:extraData()},null,1);
+// Auto-backup into a folder the user picks (on a Chromebook, pick Google Drive in the Files app and it syncs to the cloud).
+const FOLDER={db:()=>new Promise((ok,no)=>{const r=indexedDB.open('toolbox-folder',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}),
+  async get(){try{const d=await FOLDER.db();return await new Promise(ok=>{const q=d.transaction('h').objectStore('h').get('dir');q.onsuccess=()=>ok(q.result||null);q.onerror=()=>ok(null)})}catch{return null}},
+  async set(h){const d=await FOLDER.db();await new Promise(ok=>{const t=d.transaction('h','readwrite');h?t.objectStore('h').put(h,'dir'):t.objectStore('h').delete('dir');t.oncomplete=ok})},
+  async write(dir,ask){const opt={mode:'readwrite'};if(await dir.queryPermission(opt)!=='granted'&&(!ask||await dir.requestPermission(opt)!=='granted'))return false;
+    const f=await dir.getFileHandle('toolbox-backup.json',{create:true}),w=await f.createWritable();await w.write(backupText());await w.close();save('folderBackup',Date.now());return true},
+  async read(dir){const f=await dir.getFileHandle('toolbox-backup.json');return (await f.getFile()).text()}};
+// once a day, quietly (only works while permission is still granted, e.g. in the installed app)
+setTimeout(async()=>{if(!window.showDirectoryPicker||Date.now()-load('folderBackup',0)<20*36e5)return;const d=await FOLDER.get();if(d)try{await FOLDER.write(d,false)}catch{}},4000);
 function parseBackup(t){const j=JSON.parse(t);if(j.app!=='useful-toolbox'||!j.data)throw new Error('That file is not a toolbox backup.');return j}
 // AES-GCM with a key from PBKDF2 (250k rounds). The password is never stored.
 async function pwKey(pw,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
@@ -32,13 +46,20 @@ tool({id:'backup',name:'Backup & sync',group:'System',html:`
 <div class="box"><b>Sync with GitHub Gist</b><p class="muted" style="font-size:13px">Create a token at github.com → Settings → Developer settings → Personal access tokens, with only the <b>gist</b> permission, and paste it here. It's kept only in this browser and is never included in backups.</p>
  <div class="row"><input id="gTok" type="password" class="grow" placeholder="GitHub token" autocomplete="off"></div>
  <div class="row"><input id="gId" class="grow" placeholder="Gist ID (filled in after first upload; paste it on your other device)"></div>
- <div class="row"><button class="b" id="gUp">Upload</button><button class="g" id="gDown">Download &amp; replace</button></div><div id="gMsg" class="muted"></div></div></div>`,
-init(){
+ <div class="row"><button class="b" id="gUp">Upload</button><button class="g" id="gDown">Download &amp; replace</button></div><div id="gMsg" class="muted"></div></div>
+<div class="box"><b>Auto-backup to a folder</b><p class="muted" style="font-size:13px">Pick a folder and The ToolBox keeps <code>toolbox-backup.json</code> there up to date once a day. On a Chromebook, pick <b>Google Drive</b> in the Files app and your backup is in the cloud. On Windows, a Google Drive, OneDrive or Dropbox folder works the same way, so two devices can share one backup.</p>
+ <div class="row"><button class="b" id="fdPick">Choose folder</button><button class="g" id="fdNow">Back up now</button><button class="g" id="fdLoad">Restore from folder</button><button class="x" id="fdOff" title="Stop">✕</button></div><div id="fdMsg" class="muted" style="font-size:13px"></div></div></div>`,
+init(){const me=this;
+  $('fdPick').onclick=async()=>{try{const d=await showDirectoryPicker({id:'toolbox-backup',mode:'readwrite'});await FOLDER.set(d);await FOLDER.write(d,true);bump('backups');toast('Saved to '+d.name)}catch(e){if(e.name!=='AbortError')toast(e.message)}me.fdInfo()};
+  $('fdNow').onclick=async()=>{const d=await FOLDER.get();try{if(await FOLDER.write(d,true)){bump('backups');toast('Backed up ✓')}else toast('Permission was not given.')}catch(e){toast(e.message)}me.fdInfo()};
+  $('fdLoad').onclick=async()=>{const d=await FOLDER.get();try{if(await d.requestPermission({mode:'read'})!=='granted')return;const j=parseBackup(await FOLDER.read(d));if(confirm(`Replace everything here with the folder backup from ${new Date(j.saved).toLocaleString()}?`)){restoreData(j.data);restoreExtra(j.apps);location.reload()}}catch(e){toast(e.name==='NotFoundError'?'No backup in that folder yet.':e.message)}};
+  $('fdOff').onclick=async()=>{await FOLDER.set(null);me.fdInfo()};
+  
   $('bkExport').onclick=async()=>{const pw=$('bkPw').value;download(`toolbox-backup-${isoDay()}${pw?'-locked':''}.json`,pw?await encryptText(backupText(),pw):backupText());bump('backups');save('lastBackup',Date.now());this.show()};
   $('bkImport').onchange=async()=>{const f=$('bkImport').files[0];if(!f)return;try{let t=await f.text();
     if(isEncrypted(t)){const pw=$('bkPw').value||prompt('This backup is encrypted. Password:');if(!pw)throw new Error('Password needed.');t=await decryptText(t,pw)}
     const j=parseBackup(t);
-    if(confirm(`Replace everything here with the backup from ${new Date(j.saved).toLocaleString()}?`)){restoreData(j.data);location.reload()}}catch(e){toast(e.message)}$('bkImport').value=''};
+    if(confirm(`Replace everything here with the backup from ${new Date(j.saved).toLocaleString()}?`)){restoreData(j.data);restoreExtra(j.apps);location.reload()}}catch(e){toast(e.message)}$('bkImport').value=''};
   $('gTok').value=load('gistToken','');$('gId').value=load('gistId','');
   $('gTok').onchange=()=>save('gistToken',$('gTok').value.trim());$('gId').onchange=()=>save('gistId',$('gId').value.trim());
   $('gUp').onclick=async()=>{$('gMsg').textContent='Uploading…';try{const id=load('gistId',''),files={'toolbox.json':{content:backupText()}};
@@ -47,8 +68,10 @@ init(){
   $('gDown').onclick=async()=>{const id=load('gistId','');if(!id)return $('gMsg').textContent='Paste the Gist ID first.';$('gMsg').textContent='Downloading…';
     try{const g=await gist('GET','/'+id),f=g.files['toolbox.json'];if(!f)throw new Error('No toolbox.json in that gist.');
       const text=f.truncated?await(await fetch(f.raw_url)).text():f.content,j=parseBackup(text);
-      if(confirm(`Replace everything here with the copy saved ${new Date(j.saved).toLocaleString()}?`)){restoreData(j.data);location.reload()}else $('gMsg').textContent=''}catch(e){$('gMsg').textContent=e.message}}},
-show(){const n=Object.keys(allData()).length,lb=load('lastBackup',0);$('bkInfo').textContent=`${n} kinds of data stored. `+(lb?`Last backup ${new Date(lb).toLocaleString()}.`:'Never backed up.')}});
+      if(confirm(`Replace everything here with the copy saved ${new Date(j.saved).toLocaleString()}?`)){restoreData(j.data);restoreExtra(j.apps);location.reload()}else $('gMsg').textContent=''}catch(e){$('gMsg').textContent=e.message}}},
+async fdInfo(){const d=await FOLDER.get(),t=load('folderBackup',0);$('fdMsg').textContent=!window.showDirectoryPicker?'This browser can’t save to folders. Use Chrome or Edge, or the desktop app.':d?`Folder: ${d.name}. ${t?'Last saved '+new Date(t).toLocaleString()+'.':'Not saved yet.'}`:'No folder chosen.';
+  ['fdNow','fdLoad','fdOff'].forEach(id=>$(id).hidden=!d);$('fdPick').hidden=!window.showDirectoryPicker},
+show(){this.fdInfo();const n=Object.keys(allData()).length+Object.keys(extraData()).length,lb=load('lastBackup',0);$('bkInfo').textContent=`${n} kinds of data stored. `+(lb?`Last backup ${new Date(lb).toLocaleString()}.`:'Never backed up.')}});
 
 // ---------- share with a friend ----------
 const toB64=s=>btoa(String.fromCharCode(...new TextEncoder().encode(s)));
@@ -92,7 +115,21 @@ const BADGES=[
   ['notes-10','📝','Note taker','Write 10 notes',()=>load('notes',[]).length>=10],
   ['backup','💾','Safe and sound','Make a backup',()=>stat('backups')>=1],
   ['commander','⌨️','Commander','Use the command bar 10 times',()=>stat('commands')>=10],
-  ['plugin','🧩','Tinkerer','Add a plugin',()=>load('plugins',[]).length>=1]];
+  ['plugin','🧩','Tinkerer','Add a plugin',()=>load('plugins',[]).length>=1],
+  // achievements earned in the menu apps (their data lives under app_<id>_)
+  ['parkour-1','🏃','Parkour rookie','Finish Parkour level 1',()=>appData('parkour','best0',null)!==null],
+  ['parkour-all','🧗','Rooftop legend','Finish all 4 Parkour levels',()=>[0,1,2,3].every(i=>appData('parkour','best'+i,null)!==null)],
+  ['snake-30','🐍','Long snake','Score 30 in any Snake mode',()=>['walls','twin','classic'].some(m=>appData('snake','best_'+m,0)>=30)],
+  ['wordle-10','🟩','Word wizard','Win 10 Wordles',()=>appData('wordle','stats',{w:0}).w>=10],
+  ['typerain-50','⌨️','Fast fingers','Score 50 in Falling words',()=>appData('typerain','best',0)>=50],
+  ['rogue-3','🗡️','Dungeon diver','Reach 300 points in the roguelike',()=>appData('rogue','best',0)>=300],
+  ['escape','🔓','Escape artist','Escape the escape room',()=>appData('escape','best',null)!==null],
+  ['idle-prestige','🍪','Cookie tycoon','Prestige in the idle clicker',()=>(appData('idle','g',{prestige:0})||{prestige:0}).prestige>=1],
+  ['journal-30','📓','Dear diary','Write 30 one-liner journal entries',()=>Object.keys(appData('journal','entries',{})).length>=30],
+  ['story-ends','📖','Every ending','Find all 4 endings of the built-in story',()=>Object.keys(appData('story','ends',{})).filter(k=>k.startsWith('The Lighthouse Keeper|')).length>=4],
+  ['pet-dragon','🐉','Dragon keeper','Grow your focus pet into a dragon',()=>appData('petfocus','pet',{xp:0}).xp>=2000],
+  ['explorer','🧭','Explorer','Open 20 different apps from the menu',()=>{try{return JSON.parse(localStorage.getItem('menu_visited')||'[]').length>=20}catch{return false}}]];
+function appData(app,k,d){try{const v=localStorage.getItem('app_'+app+'_'+k);return v?JSON.parse(v):d}catch{return d}}
 function checkBadges(){const got=load('badges',{});let changed=false;
   BADGES.forEach(([id,e,name,,test])=>{if(!got[id]){let ok=false;try{ok=test()}catch{}if(ok){got[id]=Date.now();changed=true;toast(`${e} Achievement unlocked: ${name}!`)}}});
   if(changed)save('badges',got)}

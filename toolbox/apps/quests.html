@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Quests</title><link rel="stylesheet" href="common.css">
+<style>.q{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:14px;margin-bottom:12px}.q.done{opacity:.75}.q h3{margin:0 0 4px}.steps{list-style:none;padding:0;margin:10px 0 0}
+.steps li{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed var(--line)}.steps .st{font-size:20px;width:28px;text-align:center}.steps li.now{font-weight:600}.steps a{margin-left:auto}
+.prog{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:8px}.prog div{height:100%;background:var(--accent)}</style></head>
+<body data-app="quests" data-cat="quick" data-title="Quests"><main>
+<p class="sub">Little adventures across the ToolBox. Start a quest, then do each step in its app. Steps tick themselves off when you come back here.</p>
+<div id="list"></div>
+</main><script src="common.js"></script><script>
+// a step is done when that app's saved data has changed since the quest started
+const QUESTS=[
+ {id:'artist',emoji:'🎨',name:'Artist’s day',reward:'🖌️ Artist badge',steps:[['Save a color palette you like','palette','saved','palette.html'],['Draw some pixel art','pixel','px','pixel.html'],['Put it in a comic','comic','c','comic.html']]},
+ {id:'music',emoji:'🎵',name:'Music maker',reward:'🎧 Producer badge',steps:[['Turn your mood into music','moodmusic','t','moodmusic.html'],['Make a lo-fi loop','lofi','p','lofi.html'],['Keep a remixed poem as lyrics','poem','kept','poem.html']]},
+ {id:'story',emoji:'📖',name:'Storyteller',reward:'🪶 Author badge',steps:[['Roll and save an idea in the make-something machine','makemachine','saved','makemachine.html'],['Write your own interactive story','story','mine','story.html'],['Draw a comic about it','comic','c','comic.html']]},
+ {id:'focus',emoji:'🧠',name:'Focus hero',reward:'🐣 Focus badge',steps:[['Finish a focus session with your pet','petfocus','pet','petfocus.html'],['Write today’s one-liner','journal','entries','journal.html'],['Water your to-do list','decay','t','decay.html']]},
+ {id:'future',emoji:'💌',name:'Letter to the future',reward:'🕰️ Time traveller badge',steps:[['Write today’s one-liner','journal','entries','journal.html'],['Seal a time capsule','capsule','list','capsule.html'],['Start a countdown to its date','countdown','list','countdown.html']]},
+ {id:'gamer',emoji:'🎮',name:'Arcade tour',reward:'🕹️ Gamer badge',steps:[['Finish Parkour level 1','parkour','best0','parkour.html'],['Set a Snake score','snake','best_walls|best_twin|best_classic','snake.html'],['Win a Wordle','wordle','stats','wordle.html']]},
+ {id:'builder',emoji:'🏗️',name:'Master builder',reward:'🧱 Builder badge',steps:[['Build something in the voxel world','voxel','meta','voxel.html'],['Make your own Parkour level','parkouredit','mine','parkour-edit.html'],['Make a personal website','website','s','website.html']]}];
+const sig=(app,keys)=>keys.split('|').map(k=>localStorage.getItem('app_'+app+'_'+k)||'').join('§');
+const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h+':'+s.length};
+const S=()=>load('state',{active:{},done:{}});
+function refresh(){const st=S();let changed=false;
+  QUESTS.forEach(q=>{const a=st.active[q.id];if(!a)return;a.got=a.got||[];
+    // steps go in order; record each one as it happens so later edits don't undo it
+    for(let i=0;i<q.steps.length;i++){if(a.got[i])continue;const[, app,keys]=q.steps[i];if(hash(sig(app,keys))!==a.base[i]){a.got[i]=true;changed=true}else break}
+    if(a.got.filter(Boolean).length===q.steps.length){st.done[q.id]=Date.now();delete st.active[q.id];changed=true;cheer(q)}});
+  if(changed)save('state',st);draw()}
+function cheer(q){toast(`🏆 Quest complete: ${q.name}! You earned ${q.reward}.`);[523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'triangle',.12,i*.09))}
+function draw(){const st=S();$('list').innerHTML=QUESTS.map(q=>{const a=st.active[q.id],done=st.done[q.id],got=a?(a.got||[]):[],n=done?q.steps.length:got.filter(Boolean).length;
+  return`<div class="q ${done?'done':''}"><h3>${q.emoji} ${esc(q.name)}</h3><span class="muted" style="font-size:13px">Reward: ${esc(q.reward)}${done?' · finished '+new Date(done).toLocaleDateString():''}</span>
+   ${a||done?`<div class="prog"><div style="width:${n/q.steps.length*100}%"></div></div><ul class="steps">${q.steps.map(([t,,,href],i)=>{const ok=done||got[i],now=!ok&&a&&i===got.filter(Boolean).length;
+     return`<li class="${now?'now':''}"><span class="st">${ok?'✅':now?'👉':'⬜'}</span>${esc(t)}${now?`<a class="b" href="${href}">Go</a>`:''}</li>`}).join('')}</ul>`:''}
+   <div class="row" style="margin-top:8px">${done?`<button class="g" data-again="${q.id}">Play again</button>`:a?`<button class="x" data-quit="${q.id}" title="Give up">Give up</button>`:`<button class="b" data-start="${q.id}">Start quest</button>`}</div></div>`}).join('');
+  $('list').querySelectorAll('[data-start],[data-again]').forEach(b=>b.onclick=()=>{const id=b.dataset.start||b.dataset.again,q=QUESTS.find(x=>x.id===id),st=S();
+    st.active[id]={base:q.steps.map(([, app,keys])=>hash(sig(app,keys))),got:[],at:Date.now()};delete st.done[id];save('state',st);draw();toast(`${q.emoji} Quest started. First: ${q.steps[0][0].toLowerCase()}.`)});
+  $('list').querySelectorAll('[data-quit]').forEach(b=>b.onclick=()=>{const st=S();delete st.active[b.dataset.quit];save('state',st);draw()})}
+addEventListener('pageshow',refresh);addEventListener('focus',refresh);refresh();
+</script></body></html>

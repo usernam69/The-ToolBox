@@ -140,5 +140,9 @@ body.compact header{padding-top:8px}
 <script src="js/review.js"></script>
 <script src="js/fun.js"></script>
 <script src="js/start.js"></script>
+<script src="apps/family-rules.js"></script>
+<script src="apps/remind.js"></script>
+<script>if(/[?&]handoff=/.test(location.search))document.write('<script src="apps/handoff.js"><\/script>')</script>
+<script>{const w=FAM.why('tools','tools');if(w)FAM.block(w,'index.html');FAM.track('tools','tools','index.html');try{const v=JSON.parse(localStorage.getItem('menu_visited')||'[]');if(!v.includes('tools'))localStorage.setItem('menu_visited',JSON.stringify([...v,'tools']))}catch{}}</script>
 </body>
 </html>

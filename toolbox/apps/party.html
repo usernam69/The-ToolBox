@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Party quiz</title><link rel="stylesheet" href="common.css">
+<style>#role{text-align:center}#role button{font-size:20px;padding:18px 24px;margin:8px}
+#host .q{font-size:clamp(22px,4vw,40px);font-weight:700;text-align:center;margin:18px 0}#host .ans{text-align:center;font-size:22px;color:var(--good);min-height:1.4em}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:14px}.pl{border:2px solid var(--line);border-radius:12px;padding:10px;text-align:center;background:var(--card)}.pl.buzz{border-color:var(--warn);background:rgba(240,184,81,.15);animation:pop .3s}.pl b{display:block;font-size:26px}
+@keyframes pop{50%{transform:scale(1.08)}}#first{text-align:center;font-size:28px;min-height:1.4em}
+#buzzer{text-align:center}#bz{width:min(70vw,320px);height:min(70vw,320px);border-radius:50%;border:0;font-size:40px;font-weight:800;color:#fff;background:radial-gradient(circle at 35% 30%,#ff8a8a,#d62828);box-shadow:0 12px 0 #8d1515,0 18px 30px rgba(0,0,0,.3);cursor:pointer;touch-action:manipulation}
+#bz:active{transform:translateY(8px);box-shadow:0 4px 0 #8d1515}#bz:disabled{filter:grayscale(.8);opacity:.6}#bzMsg{font-size:22px;margin:16px 0;min-height:1.4em}</style></head>
+<body data-app="party" data-cat="bigger" data-title="Party quiz"><main>
+<p class="sub" id="intro">A game show for the living room: one big screen asks the questions, everyone buzzes in from their phone. Works on home Wi-Fi with no internet (with the desktop app’s Host button), or online with a room code.</p>
+<div id="lanPanel"></div>
+<div id="role" hidden><h2>What is this device?</h2><button class="b" id="asHost">📺 The big screen</button><button class="b" id="asBuzz">🔴 My buzzer</button></div>
+<div id="host" hidden><div class="row"><select id="pack"></select><button class="g" id="next">Next question ▶</button><button class="g" id="reveal">Show answer</button><span class="muted" id="qn" style="margin-left:auto"></span></div>
+ <div class="q" id="qText">Waiting for players to join…</div><div id="first"></div><div class="row" style="justify-content:center" id="judge" hidden><button class="b" id="right">✓ Right (+10)</button><button class="g" id="wrong">✕ Wrong (−5)</button></div>
+ <div class="ans" id="ans"></div><div class="board" id="board"></div>
+ <details class="box" style="margin-top:14px"><summary><b>Write your own questions</b></summary><p class="muted" style="font-size:13px">One per line: <code>question = answer</code></p><textarea id="mine" style="min-height:120px"></textarea></details></div>
+<div id="buzzer" hidden><h2 id="bName"></h2><div id="bzMsg">Get ready…</div><button id="bz" disabled>BUZZ</button><p class="muted" id="bScore"></p></div>
+</main><script src="common.js"></script><script src="lan.js"></script><script>
+const PACKS={'General knowledge':[['What is the largest planet in our solar system?','Jupiter'],['How many legs does a spider have?','8'],['What colour do you get by mixing blue and yellow?','Green'],['Which animal is known as the king of the jungle?','The lion'],['How many continents are there?','7'],['What is frozen water called?','Ice'],['Which ocean is the biggest?','The Pacific'],['How many days are in a leap year?','366'],['What gas do plants breathe in?','Carbon dioxide'],['What is the fastest land animal?','The cheetah'],['How many sides does a hexagon have?','6'],['What is the capital of Japan?','Tokyo']],
+ 'Science':[['What planet is known as the Red Planet?','Mars'],['What is H2O?','Water'],['What force keeps us on the ground?','Gravity'],['How many bones are in the adult human body?','206'],['What part of the plant makes food from sunlight?','The leaves'],['What is the closest star to Earth?','The Sun'],['What do bees make?','Honey'],['Which organ pumps blood around the body?','The heart']],
+ 'Food':[['Which fruit has its seeds on the outside?','Strawberry'],['What is the main ingredient in guacamole?','Avocado'],['Which country did pizza come from?','Italy'],['What is sushi traditionally wrapped in?','Seaweed (nori)'],['Which nut is used to make marzipan?','Almond'],['What colour is a ripe banana?','Yellow']]};
+let me=null,myName='',members=[],role=null,scores={},cur=null,qi=-1,order=[],buzzes=[],open=false;
+$('pack').innerHTML=Object.keys(PACKS).map(k=>`<option>${k}</option>`).join('')+'<option value="mine">My questions</option>';$('mine').value=load('mine','');$('mine').oninput=()=>save('mine',$('mine').value);
+const deck=()=>$('pack').value==='mine'?$('mine').value.split('\n').map(l=>l.split('=')).filter(p=>p.length>1&&p[0].trim()).map(p=>[p[0].trim(),p.slice(1).join('=').trim()]):PACKS[$('pack').value];
+lanPanel('party.html',(room,name)=>{$('lanPanel').hidden=true;$('intro').hidden=true;$('role').hidden=false;myName=name;
+  LAN.join(room,name,m=>{if(m.type==='hello')me=m.id;else if(m.type==='members'){members=m.members;if(role==='host')board()}else onMsg(m)})});
+$('asHost').onclick=()=>{role='host';$('role').hidden=true;$('host').hidden=false;board();sendState()};
+$('asBuzz').onclick=()=>{role='buzz';$('role').hidden=true;$('buzzer').hidden=false;$('bName').textContent='🔴 '+myName;LAN.send({type:'hi',from:me,name:myName})};
+function board(){const ps=members.filter(p=>p.id!==me);$('board').innerHTML=ps.map(p=>`<div class="pl ${buzzes[0]===p.id?'buzz':''}">${esc(p.name)}<b>${scores[p.id]||0}</b></div>`).join('')||'<p class="muted">Players join with the same room on their phones and pick “My buzzer”.</p>'}
+function sendState(){LAN.send({type:'state',open,q:cur?cur[0]:'',scores,first:buzzes[0]||null,n:qi+1})}
+$('next').onclick=()=>{const d=deck();if(!d.length)return toast('No questions in this pack.');if(qi<0||qi>=order.length-1){order=d.map((_,i)=>i).sort(()=>Math.random()-.5);qi=-1}qi++;cur=d[order[qi]];buzzes=[];open=true;
+  $('qText').textContent=cur[0];$('ans').textContent='';$('first').textContent='';$('judge').hidden=true;$('qn').textContent=`Question ${qi+1} of ${order.length}`;tone(660,.12,'triangle',.1);board();sendState()};
+$('reveal').onclick=()=>{if(cur){$('ans').textContent='Answer: '+cur[1];open=false;sendState()}};
+$('right').onclick=()=>{const w=buzzes[0];if(!w)return;scores[w]=(scores[w]||0)+10;$('ans').textContent='✓ '+cur[1];open=false;$('judge').hidden=true;[523,659,784].forEach((f,i)=>tone(f,.15,'triangle',.12,i*.08));board();sendState()};
+$('wrong').onclick=()=>{const w=buzzes[0];if(!w)return;scores[w]=(scores[w]||0)-5;buzzes.shift();tone(140,.3,'sawtooth',.08);showFirst();board();sendState()};
+function showFirst(){const w=buzzes[0],p=members.find(x=>x.id===w);$('first').textContent=p?`🔔 ${p.name} buzzed first!`:open?'':'';$('judge').hidden=!p}
+function onMsg(m){
+  if(role==='host'){if(m.type==='buzz'&&open&&!buzzes.includes(m.from)){buzzes.push(m.from);if(buzzes.length===1){tone(880,.2,'square',.12);showFirst();sendState()}board()}
+    if(m.type==='hi'){board();sendState()}}
+  if(role==='buzz'&&m.type==='state'){const mine=m.scores[me]||0;$('bScore').textContent=`Your score: ${mine}`;
+    $('bz').disabled=!m.open||!!m.first;$('bzMsg').textContent=m.first===me?'🔔 You’re first! Say your answer.':m.first?'Someone else buzzed first.':m.open?(m.q||'Buzz when you know it!'):'Wait for the next question…'}}
+$('bz').onclick=()=>{LAN.send({type:'buzz',from:me,name:myName,at:Date.now()});$('bz').disabled=true;if(navigator.vibrate)navigator.vibrate(80);tone(520,.1,'square',.1)};
+</script></body></html>

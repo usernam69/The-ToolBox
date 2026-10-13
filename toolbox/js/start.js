@@ -84,3 +84,5 @@ document.addEventListener('keydown',e=>{
 
 // ---------- offline / install (only works when served over http/https) ----------
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+// tools.html?cmd=… runs a command-bar command (used by the voice launcher on the main menu)
+{const c=new URLSearchParams(location.search).get('cmd');if(c){history.replaceState(null,'',location.pathname+location.hash);setTimeout(()=>{const r=runCommand(c.slice(0,300));if(r)toast(String(r).split('\n')[0].slice(0,140))},300)}}

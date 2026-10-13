@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Family settings</title><link rel="stylesheet" href="common.css">
+<style>.bars{display:flex;gap:6px;align-items:flex-end;height:120px;margin-top:8px}.bars div{flex:1;background:var(--accent);border-radius:6px 6px 0 0;min-height:2px;position:relative}.bars span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}td{padding:4px 6px;border-bottom:1px solid var(--line)}.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px}#gate{max-width:360px;margin:40px auto;text-align:center}</style></head>
+<body data-app="family" data-cat="tools" data-title="Family settings"><main>
+<div id="gate" hidden><div style="font-size:48px">👪</div><h2>Grown-ups only</h2><p class="muted">Type the family PIN to change these settings.</p><div class="row" style="justify-content:center"><input type="password" inputmode="numeric" id="gPin" placeholder="PIN" style="width:120px"><button class="b" id="gGo">Open</button></div></div>
+<div id="panel" hidden>
+<p class="sub">Profiles, screen time, school hours and kiosk mode for this device. These are gentle limits for kids, not real security: someone who knows browser developer tools can get around them.</p>
+<div class="grid2">
+<div class="box"><b>👤 Profiles</b><p class="muted" style="font-size:13px">Each person gets their own notes, games, scores and settings. Limits below apply to the profile that is open now.</p><ul class="clean" id="profs"></ul><div class="row"><input id="newProf" placeholder="New profile name" maxlength="20"><button class="g" id="addProf">Add</button></div></div>
+<div class="box"><b>🔑 Family PIN</b><p class="muted" style="font-size:13px" id="pinState"></p><div class="row"><input type="password" inputmode="numeric" id="pin1" placeholder="New PIN" maxlength="12" style="width:110px"><input type="password" inputmode="numeric" id="pin2" placeholder="Again" maxlength="12" style="width:110px"><button class="g" id="setPin">Save PIN</button><button class="x" id="clrPin" title="Remove PIN">✕</button></div></div>
+</div>
+<div class="box"><b>📊 Time used by <span class="cur"></span></b><div class="bars" id="bars"></div><div style="height:22px"></div><p id="todayTot"></p><table id="perApp"></table></div>
+<div class="grid2">
+<div class="box"><b>⏰ Daily limits</b><div class="row"><label>Whole ToolBox <input type="number" id="limit" min="0" max="1440" style="width:80px"> minutes a day</label></div><p class="muted" style="font-size:13px">0 means no limit. Set a limit for one app from the table above.</p></div>
+<div class="box"><b>🏫 School mode</b><div class="row"><label><input type="checkbox" id="schOn"> On</label><label>from <input type="time" id="schFrom"></label><label>to <input type="time" id="schTo"></label></div>
+ <div class="row" id="schDays"></div><div class="row" id="schCats"></div></div></div>
+<div class="box"><b>🧒 Kiosk mode</b> <label><input type="checkbox" id="kOn"> Only allow the apps ticked below</label><p class="muted" style="font-size:13px">Everything else is hidden from the menu and shows a lock screen. Pair it with Chrome’s full screen (F11 or the ⛶ key on a Chromebook).</p><div class="kgrid" id="kApps"></div></div>
+<p><button class="g" id="lockNow">🔒 Lock settings now</button></p>
+</div></main><script src="common.js"></script><script src="registry.js"></script><script src="family-rules.js"></script><script>
+const R=()=>FAM.rules(),setR=f=>{const r=R();f(r);FAM.set('menu_family',r);draw()};let open=false;
+function gate(){const r=R();open=!r.pin||FAM.unlocked();$('gate').hidden=open;$('panel').hidden=!open;if(open)draw()}
+$('gGo').onclick=async()=>{if(await FAM.check($('gPin').value)){FAM.set('menu_unlockUntil',Date.now()+30*6e4);gate()}else toast('Wrong PIN')};$('gPin').onkeydown=e=>{if(e.key==='Enter')$('gGo').click()};
+const nameOf=id=>{const a=ALL_APPS.find(a=>a.id===id);return a?a.emoji+' '+a.name:id==='tools'?'🧰 Toolbox tools':id};
+const mins=s=>s<60?Math.round(s)+'s':Math.round(s/60)+' min';
+function draw(){const r=R(),cur=FAM.current();document.querySelectorAll('.cur').forEach(e=>e.textContent=cur);
+  $('profs').innerHTML=FAM.list().map(n=>`<li>${n===cur?'<b>'+esc(n)+'</b> (open now)':esc(n)}${n===cur?'':` <button class="g" data-s="${esc(n)}">Switch</button> <button class="x" data-r="${esc(n)}" title="Delete">✕</button>`}</li>`).join('');
+  $('profs').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{if(FAM.switchTo(b.dataset.s))location.href='../index.html'});
+  $('profs').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{if(confirm(`Delete ${b.dataset.r} and all their data?`)){FAM.remove(b.dataset.r);draw()}});
+  $('pinState').textContent=r.pin?'A PIN is set. It’s needed to change settings, switch away from a limited profile, and unlock blocked apps.':'No PIN yet. Without one, anyone can change these settings.';
+  const t=FAM.time(),days=[...Array(7)].map((_,i)=>{const d=new Date(Date.now()-(6-i)*864e5);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')});
+  const tot=days.map(d=>Object.values(t[d]||{}).reduce((a,b)=>a+b,0)),mx=Math.max(60,...tot);
+  $('bars').innerHTML=tot.map((v,i)=>`<div style="height:${v/mx*100}%" title="${mins(v)}"><span>${new Date(days[i]+'T12:00').toLocaleDateString(undefined,{weekday:'short'})}</span></div>`).join('');
+  const today=t[FAM.today()]||{};$('todayTot').innerHTML=`Today: <b>${mins(tot[6])}</b>${r.limit?` of ${r.limit} min`:''}`;
+  const ids=[...new Set([...Object.keys(today),...Object.keys(r.perApp||{})])].sort((a,b)=>(today[b]||0)-(today[a]||0));
+  $('perApp').innerHTML=ids.map(id=>`<tr><td>${esc(nameOf(id))}</td><td>${mins(today[id]||0)} today</td><td>limit <input type="number" min="0" max="600" data-p="${id}" value="${(r.perApp||{})[id]||0}" style="width:64px"> min</td></tr>`).join('')||'<tr><td class="muted">Nothing used yet today.</td></tr>';
+  $('perApp').querySelectorAll('[data-p]').forEach(i=>i.onchange=()=>setR(r=>{r.perApp=r.perApp||{};r.perApp[i.dataset.p]=Math.max(0,+i.value||0)}));
+  $('limit').value=r.limit||0;$('schOn').checked=r.school.on;$('schFrom').value=r.school.from;$('schTo').value=r.school.to;
+  $('schDays').innerHTML=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<label><input type="checkbox" data-d="${i}" ${r.school.days.includes(i)?'checked':''}> ${d}</label>`).join('');
+  $('schCats').innerHTML='Pause: '+CATEGORIES.map(c=>`<label><input type="checkbox" data-c="${c.id}" ${r.school.block.includes(c.id)?'checked':''}> ${c.emoji} ${esc(c.name)}</label>`).join('');
+  $('schDays').querySelectorAll('[data-d]').forEach(i=>i.onchange=()=>setR(r=>{r.school.days=[...$('schDays').querySelectorAll(':checked')].map(x=>+x.dataset.d)}));
+  $('schCats').querySelectorAll('[data-c]').forEach(i=>i.onchange=()=>setR(r=>{r.school.block=[...$('schCats').querySelectorAll(':checked')].map(x=>x.dataset.c)}));
+  $('kOn').checked=r.kiosk.on;$('kApps').innerHTML=[{id:'tools',emoji:'🧰',name:'Toolbox tools'},...ALL_APPS.filter(a=>a.cat!=='tools')].map(a=>`<label><input type="checkbox" data-k="${a.id}" ${r.kiosk.allow.includes(a.id)?'checked':''}> ${a.emoji} ${esc(a.name)}</label>`).join('');
+  $('kApps').querySelectorAll('[data-k]').forEach(i=>i.onchange=()=>setR(r=>{r.kiosk.allow=[...$('kApps').querySelectorAll(':checked')].map(x=>x.dataset.k)}))}
+$('limit').onchange=()=>setR(r=>r.limit=Math.max(0,+$('limit').value||0));$('schOn').onchange=()=>setR(r=>r.school.on=$('schOn').checked);
+$('schFrom').onchange=()=>setR(r=>r.school.from=$('schFrom').value);$('schTo').onchange=()=>setR(r=>r.school.to=$('schTo').value);
+$('kOn').onchange=()=>setR(r=>{r.kiosk.on=$('kOn').checked;if(r.kiosk.on&&!r.pin)toast('Tip: set a PIN so kiosk mode can’t just be switched off.')});
+$('addProf').onclick=()=>{const n=$('newProf').value.trim();if(!n)return;if(FAM.list().includes(n))return toast('That name is taken.');FAM.add(n);$('newProf').value='';draw()};
+$('setPin').onclick=async()=>{const a=$('pin1').value;if(a.length<4)return toast('Use at least 4 digits.');if(a!==$('pin2').value)return toast('The two PINs don’t match.');const h=await FAM.hash(a);setR(r=>r.pin=h);$('pin1').value=$('pin2').value='';toast('PIN saved')};
+$('clrPin').onclick=()=>{if(confirm('Remove the PIN?'))setR(r=>r.pin='')};
+$('lockNow').onclick=()=>{FAM.set('menu_unlockUntil',0);gate()};
+gate();
+</script></body></html>
