@@ -5,10 +5,10 @@ A main menu with six categories: Quick wins, Games, Useful tools, Creative & art
 ## Use it
 
 - **Online / Chromebook:** open **https://usernam69.github.io/The-ToolBox/** in Chrome. To install it, click the install icon at the right end of the address bar. After that it opens from the launcher and works offline.
-- **Windows app:** download [](release/UsefulToolbox.exe) and double-click it. No install needed. Windows may show "Windows protected your PC" because the file isn't signed. Click *More info* → *Run anyway*.
-- **From the files:** open  in Chrome or Edge.
+- **Windows app:** download [`release/UsefulToolbox.exe`](release/UsefulToolbox.exe) and double-click it. No install needed. Windows may show "Windows protected your PC" because the file isn't signed. Click *More info* → *Run anyway*.
+- **From the files:** open `toolbox/index.html` in Chrome or Edge.
 
-**Room chat** and **Draw & guess** play over home Wi-Fi. Someone on Windows presses **Host** in the desktop app, or runs  in . Everyone else, Chromebooks included, opens the address it shows. Draw & guess also has a one-screen mode.
+**Room chat** and **Draw & guess** play over home Wi-Fi. Someone on Windows presses **Host** in the desktop app, or runs `npm run lan` in `toolbox-desktop`. Everyone else, Chromebooks included, opens the address it shows. Draw & guess also has a one-screen mode.
 
 ## The 64 tools (Useful tools)
 
