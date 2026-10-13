@@ -15,7 +15,7 @@ var REMIND={
   check(){if(!REMIND.ok())return;const c=REMIND.cfg(),now=new Date(),hm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),today=REMIND.day();
     if(c.habitTime&&hm>=c.habitTime){const left=REMIND.get('habits',[]).filter(h=>!(h.days||{})[today]);
       if(left.length)REMIND.once('habits',()=>REMIND.show('🔥 Keep your streaks going','Still to do today: '+left.map(h=>h.name).slice(0,4).join(', ')+(left.length>4?'…':''),'habits'))}
-    if(c.bills&&now.getHours()>=9){const last=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),due=REMIND.get('bills',[]).filter(b=>Math.min(b.day,last)===now.getDate());
+    if(c.bills&&now.getHours()>=9){const last=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),due=REMIND.get('bills',[]).filter(b=>Math.min(b.day,last)===now.getDate()&&b.paid!==today.slice(0,7));
       if(due.length)REMIND.once('bills',()=>REMIND.show('💸 Bills due today',due.map(b=>b.name+(b.amt?' ('+b.amt+')':'')).join(', '),'bills'))}
     if(c.birthdays&&now.getHours()>=8){const bd=REMIND.get('birthdays',[]).filter(b=>b.m===now.getMonth()+1&&b.d===now.getDate());
       if(bd.length)REMIND.once('birthdays',()=>REMIND.show('🎂 Birthday today',bd.map(b=>b.name+(b.y?' turns '+(now.getFullYear()-b.y):'')).join(', '),'birthdays'))}},

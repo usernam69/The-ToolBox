@@ -27,7 +27,7 @@ let audioCtx;const AC=()=>audioCtx||(audioCtx=new (window.AudioContext||window.w
 function tone(freq,dur=.15,type='sine',vol=.15,when=0){try{const a=AC(),o=a.createOscillator(),g=a.createGain(),t=a.currentTime+when;o.type=type;o.frequency.value=freq;
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+.02)}catch{}}
 // Hold-to-move keys helper for games
-const keys=new Set();addEventListener('keydown',e=>{if(!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){keys.add(e.key.toLowerCase());if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault()}});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+const keys=new Set();addEventListener('keydown',e=>{if(!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){keys.add(e.key.toLowerCase());if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault()}});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));addEventListener('blur',()=>keys.clear());
 function bindTouch(el){el.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;
   b.addEventListener('pointerdown',e=>{e.preventDefault();keys.add(k)});['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>keys.delete(k)))})}
 // share button, ? shortcut sheet, gamepad support
