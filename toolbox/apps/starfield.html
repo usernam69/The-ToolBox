@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Starfield</title><link rel="stylesheet" href="common.css">
+<style>body{background:#000}#c{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}.ui{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:2;background:rgba(20,20,30,.7);color:#eee;padding:8px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;transition:opacity .5s}.ui select,.ui input{background:#222;color:#eee;border-color:#444}.ui button{background:#333;color:#eee;border-color:#555}.topbar{z-index:3;position:fixed;width:100%;transition:opacity .5s}.hide .ui,.hide .topbar{opacity:0}</style></head>
+<body data-app="starfield" data-cat="creative" data-title="Starfield">
+<canvas id="c"></canvas>
+<div class="ui"><select id="mode"><option value="warp">Warp</option><option value="drift">Drift</option><option value="nebula">Nebula</option></select><label>Speed <input type="range" id="sp" min="1" max="60" value="12"></label><label>Stars <input type="range" id="n" min="200" max="3000" value="1200"></label><label><input type="checkbox" id="music"> Space hum</label><button class="g" id="fs">⛶ Full screen</button></div>
+<script src="common.js"></script><script>
+const c=$('c'),x=c.getContext('2d');let W,H,stars=[],hum=null,idle;
+function size(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio}addEventListener('resize',size);size();
+const make=()=>({x:(Math.random()-.5)*W*2,y:(Math.random()-.5)*H*2,z:Math.random()*W,hue:pick([210,200,40,0,280,190]),pz:0});
+function fill(){const n=+$('n').value;while(stars.length<n)stars.push(make());stars.length=n}
+const neb=[...Array(6)].map(()=>({x:Math.random(),y:Math.random(),r:.2+Math.random()*.35,h:pick([270,200,320,180,240]),dx:(Math.random()-.5)*.0002,dy:(Math.random()-.5)*.0002}));
+function frame(){fill();const sp=+$('sp').value,m=$('mode').value;x.fillStyle=m==='warp'?'rgba(0,0,0,.35)':'#000';x.fillRect(0,0,W,H);
+  if(m==='nebula'){neb.forEach(n=>{n.x+=n.dx;n.y+=n.dy;const g=x.createRadialGradient(n.x*W,n.y*H,0,n.x*W,n.y*H,n.r*Math.max(W,H));g.addColorStop(0,`hsla(${n.h},80%,50%,.18)`);g.addColorStop(1,'transparent');x.fillStyle=g;x.fillRect(0,0,W,H)})}
+  const cx=W/2,cy=H/2;for(const s of stars){s.pz=s.z;s.z-=m==='drift'?sp*.15:sp;if(s.z<1){Object.assign(s,make(),{z:W});s.pz=s.z}
+    const k=W*.5/s.z,px=cx+s.x*k,py=cy+s.y*k;if(px<0||px>W||py<0||py>H)continue;const r=Math.max(.4,(1-s.z/W)*3*devicePixelRatio),b=Math.min(1,1.3-s.z/W);
+    if(m==='warp'&&sp>8){const pk=W*.5/s.pz;x.strokeStyle=`hsla(${s.hue},80%,${60+b*30}%,${b})`;x.lineWidth=r;x.beginPath();x.moveTo(cx+s.x*pk,cy+s.y*pk);x.lineTo(px,py);x.stroke()}
+    else{x.fillStyle=`hsla(${s.hue},70%,${70+b*25}%,${b})`;x.beginPath();x.arc(px,py,r,0,7);x.fill()}}requestAnimationFrame(frame)}
+frame();
+$('fs').onclick=()=>document.documentElement.requestFullscreen?.();
+$('music').onchange=()=>{if($('music').checked){const a=AC();a.resume();const g=a.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.06,a.currentTime+2);g.connect(a.destination);
+  const oscs=[55,82.4,110,164.8].map((f,i)=>{const o=a.createOscillator(),lfo=a.createOscillator(),lg=a.createGain();o.type=i%2?'sine':'triangle';o.frequency.value=f;lfo.frequency.value=.05+i*.03;lg.gain.value=f*.01;lfo.connect(lg);lg.connect(o.frequency);o.connect(g);o.start();lfo.start();return[o,lfo]});hum={g,oscs}}
+  else if(hum){const a=AC();hum.g.gain.linearRampToValueAtTime(0,a.currentTime+1);const h=hum;setTimeout(()=>h.oscs.flat().forEach(o=>o.stop()),1100);hum=null}};
+const wake=()=>{document.body.classList.remove('hide');clearTimeout(idle);idle=setTimeout(()=>document.body.classList.add('hide'),3000)};['mousemove','keydown','touchstart'].forEach(e=>addEventListener(e,wake));wake();
+</script></body></html>

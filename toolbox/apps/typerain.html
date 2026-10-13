@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Falling words</title><link rel="stylesheet" href="common.css">
+<style>#c{width:100%;height:min(60vh,520px);background:linear-gradient(var(--card),var(--bg))}#in{font-size:20px;width:100%;text-align:center}</style></head>
+<body data-app="typerain" data-cat="quick" data-title="Falling words"><main>
+<div class="row"><b id="score">Score 0</b><span id="lives">❤️❤️❤️</span><span class="muted" id="best" style="margin-left:auto"></span><select id="lvl"><option value="easy">Easy words</option><option value="hard">Hard words</option><option value="code">Code words</option></select><button class="b" id="start">Start</button></div>
+<div class="stage"><canvas id="c"></canvas></div>
+<input id="in" placeholder="Type here…" autocomplete="off" spellcheck="false" style="margin-top:8px">
+</main><script src="common.js"></script><script>
+const WORDS={easy:'cat sun tree milk blue frog jump cake rain star book fish moon ship bird gold sand leaf ball home rock wind kite lamp door snow corn hand bell nest king'.split(' '),
+ hard:'rhythm galaxy whisper quantum lantern blizzard paradox juggle sphinx mystery crystal labyrinth voyage oxygen zephyr bonfire nebula pharaoh syllable jigsaw avalanche'.split(' '),
+ code:'function return const array object string boolean promise async await import export class null undefined element console window document event lambda'.split(' ')};
+const c=$('c'),x=c.getContext('2d');let words=[],score=0,lives=3,run=false,last=0,spawnT=0,speed=1;
+function fit(){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}addEventListener('resize',fit);fit();
+function start(){words=[];score=0;lives=3;speed=1;run=true;$('in').value='';$('in').focus();last=performance.now();hud();requestAnimationFrame(loop)}
+function hud(){$('score').textContent='Score '+score;$('lives').textContent='❤️'.repeat(lives)+'🖤'.repeat(3-lives);$('best').textContent='Best '+load('best',0)}
+function loop(t){if(!run)return;const dt=Math.min(.05,(t-last)/1000);last=t;const W=c.clientWidth,H=c.clientHeight;spawnT-=dt;
+  if(spawnT<=0){const w=pick(WORDS[$('lvl').value]);x.font='bold 20px system-ui';words.push({w,x:10+Math.random()*(W-x.measureText(w).width-20),y:-10,v:(30+Math.random()*25)*speed});spawnT=Math.max(.5,1.8-score/400)}
+  speed=1+score/300;x.clearRect(0,0,W,H);const typed=$('in').value.trim();
+  for(const o of words){o.y+=o.v*dt;x.font='bold 20px system-ui';const hit=typed&&o.w.startsWith(typed);
+    x.fillStyle=cssVar('--ink');x.fillText(o.w,o.x,o.y);if(hit){x.fillStyle=cssVar('--accent');x.fillText(typed,o.x,o.y)}}
+  const lost=words.filter(o=>o.y>H-4);if(lost.length){lives-=lost.length;words=words.filter(o=>o.y<=H-4);tone(150,.25,'sawtooth',.1);hud();if(lives<=0)return over()}
+  x.fillStyle=cssVar('--bad');x.globalAlpha=.25;x.fillRect(0,H-4,W,4);x.globalAlpha=1;requestAnimationFrame(loop)}
+function over(){run=false;if(score>load('best',0)){save('best',score);toast('🏆 New best!')}hud();const W=c.clientWidth,H=c.clientHeight;x.fillStyle=cssVar('--ink');x.font='bold 34px system-ui';x.textAlign='center';x.fillText('Game over · '+score,W/2,H/2);x.textAlign='left'}
+$('in').oninput=()=>{const t=$('in').value.trim(),i=words.findIndex(o=>o.w===t);if(i>=0){score+=t.length*10;words.splice(i,1);$('in').value='';tone(660+t.length*40,.08,'square',.06);hud()}};
+$('start').onclick=start;hud();
+</script></body></html>

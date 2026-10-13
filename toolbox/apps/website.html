@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Personal website maker</title><link rel="stylesheet" href="common.css">
+<style>.wrap{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:14px}@media(max-width:820px){.wrap{grid-template-columns:1fr}}#prev{width:100%;height:calc(100vh - 140px);min-height:420px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.f label{display:block;font-size:13px;font-weight:600;margin-top:10px}.f input,.f textarea,.f select{width:100%}.list .it{display:grid;grid-template-columns:1fr 1fr auto;gap:4px;margin:4px 0}.list .it.p{grid-template-columns:1fr auto}</style></head>
+<body data-app="website" data-cat="bigger" data-title="Personal website maker"><main>
+<div class="wrap"><div class="f box" style="overflow:auto;max-height:calc(100vh - 140px)">
+<label>Your name</label><input id="name"><label>One-line intro</label><input id="tag"><label>About you</label><textarea id="about"></textarea>
+<label>Photo or avatar</label><input type="file" id="photo" accept="image/*"><button class="g" id="nophoto" style="margin-top:4px">Use emoji instead</button><input id="emoji" maxlength="4" style="width:70px;margin-top:4px">
+<label>Style</label><select id="theme"><option value="clean">Clean</option><option value="dark">Dark</option><option value="playful">Playful</option><option value="paper">Paper</option></select><label>Accent color</label><input type="color" id="accent">
+<label>Links <button class="g" id="addLink" style="padding:1px 8px">+</button></label><div class="list" id="links"></div>
+<label>Things I've made <button class="g" id="addProj" style="padding:1px 8px">+</button></label><div class="list" id="projs"></div>
+<div class="row" style="margin-top:14px"><button class="b" id="dl">Download index.html</button><button class="g" id="reset">Start over</button></div>
+<p class="muted" style="font-size:12px">You get one ready-to-use file. Put it on GitHub Pages, Netlify or Neocities (all free) to share it, or just open it.</p></div>
+<iframe id="prev" title="Preview" sandbox="allow-popups"></iframe></div>
+</main><script src="common.js"></script><script>
+const DEF={name:'Alex Example',tag:'I make games, websites and the occasional cake.',about:'Hi! I like building things, playing Minecraft parkour, and learning something new every week. This is my little corner of the internet.',photo:'',emoji:'🧑‍💻',theme:'clean',accent:'#2f6fde',
+ links:[{t:'GitHub',u:'https://github.com/'},{t:'Email me',u:'mailto:you@example.com'}],projs:[{t:'The ToolBox',d:'64 everyday tools plus games, all in one app.',u:''},{t:'Parkour platformer',d:'A 2D jump-and-run with ghost replays.',u:''}]};
+let S=load('s',null)||JSON.parse(JSON.stringify(DEF));
+const THEMES={clean:{bg:'#ffffff',ink:'#1d1d1f',muted:'#666',card:'#f6f6f8',font:'system-ui,sans-serif'},dark:{bg:'#0f1115',ink:'#ececf1',muted:'#9a9aa6',card:'#1a1d24',font:'system-ui,sans-serif'},
+ playful:{bg:'#fff7e6',ink:'#2b2118',muted:'#7a6a58',card:'#ffffff',font:"'Trebuchet MS',system-ui,sans-serif"},paper:{bg:'#f4efe6',ink:'#2b2b2b',muted:'#6b6458',card:'#fbf8f2',font:'Georgia,serif'}};
+const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const safeU=u=>/^(https?:|mailto:)/i.test(u.trim())?u.trim():'';
+function html(){const t=THEMES[S.theme];return`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${E(S.name)}</title>
+<style>body{margin:0;background:${t.bg};color:${t.ink};font:17px/1.6 ${t.font}}main{max-width:720px;margin:auto;padding:56px 20px}
+.hero{display:flex;gap:22px;align-items:center;flex-wrap:wrap}.av{width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid ${S.accent};display:flex;align-items:center;justify-content:center;font-size:64px;background:${t.card}}
+h1{margin:0;font-size:40px;line-height:1.1}.tag{color:${t.muted};font-size:19px;margin:6px 0 0}h2{margin:44px 0 12px;font-size:22px;border-bottom:3px solid ${S.accent};display:inline-block}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.links a{background:${S.accent};color:#fff;text-decoration:none;padding:7px 16px;border-radius:999px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{background:${t.card};border-radius:14px;padding:16px;${S.theme==='playful'?'box-shadow:4px 4px 0 '+S.accent+';border:2px solid '+t.ink:''}}
+.card b{display:block;font-size:18px}.card a{color:${S.accent}}footer{margin-top:60px;color:${t.muted};font-size:14px}</style></head>
+<body><main><div class="hero">${S.photo?`<img class="av" src="${S.photo}" alt="">`:`<div class="av">${E(S.emoji||'🙂')}</div>`}<div><h1>${E(S.name)}</h1><p class="tag">${E(S.tag)}</p></div></div>
+<div class="links">${S.links.filter(l=>l.t&&safeU(l.u)).map(l=>`<a href="${E(safeU(l.u))}" target="_blank" rel="noopener">${E(l.t)}</a>`).join('')}</div>
+${S.about.trim()?`<h2>About me</h2>${S.about.trim().split(/\n\s*\n/).map(p=>`<p>${E(p)}</p>`).join('')}`:''}
+${S.projs.some(p=>p.t)?`<h2>Things I've made</h2><div class="grid">${S.projs.filter(p=>p.t).map(p=>`<div class="card"><b>${E(p.t)}</b>${E(p.d)}${safeU(p.u||'')?`<br><a href="${E(safeU(p.u))}" target="_blank" rel="noopener">Have a look →</a>`:''}</div>`).join('')}</div>`:''}
+<footer>© ${new Date().getFullYear()} ${E(S.name)}</footer></main></body></html>`}
+function list(el,arr,fields,cls){el.innerHTML='';arr.forEach((it,i)=>{const d=document.createElement('div');d.className='it '+cls;d.innerHTML=fields.map(([k,ph])=>`<input data-k="${k}" placeholder="${ph}" value="${E(it[k]||'')}">`).join('')+'<button class="x">✕</button>';
+  d.querySelectorAll('input').forEach(inp=>inp.oninput=()=>{it[inp.dataset.k]=inp.value;upd()});d.querySelector('.x').onclick=()=>{arr.splice(i,1);fill();upd()};el.append(d)})}
+function fill(){['name','tag','about','emoji','theme','accent'].forEach(k=>$(k).value=S[k]||'');list($('links'),S.links,[['t','Label'],['u','https://…']],'');list($('projs'),S.projs,[['t','Title'],['u','Link (optional)'],['d','Short description']],'p')}
+function upd(){['name','tag','about','emoji','theme','accent'].forEach(k=>S[k]=$(k).value);try{save('s',S)}catch{toast('Photo too big to save. Try a smaller one.')}$('prev').srcdoc=html()}
+['name','tag','about','emoji','theme','accent'].forEach(k=>$(k).addEventListener('input',upd));
+$('photo').onchange=async()=>{const f=$('photo').files[0];if(!f)return;const b=await createImageBitmap(f),s=Math.min(b.width,b.height),c=document.createElement('canvas');c.width=c.height=240;c.getContext('2d').drawImage(b,(b.width-s)/2,(b.height-s)/2,s,s,0,0,240,240);S.photo=c.toDataURL('image/jpeg',.85);upd()};
+$('nophoto').onclick=()=>{S.photo='';$('photo').value='';upd()};$('addLink').onclick=()=>{S.links.push({t:'',u:''});fill()};$('addProj').onclick=()=>{S.projs.push({t:'',d:'',u:''});fill()};
+$('dl').onclick=()=>download('index.html',html(),'text/html');$('reset').onclick=()=>{if(confirm('Clear everything and start over?')){S=JSON.parse(JSON.stringify(DEF));fill();upd()}};fill();upd();
+</script></body></html>

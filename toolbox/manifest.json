@@ -1,11 +1,47 @@
 {
-  "name": "Useful Toolbox",
-  "short_name": "Toolbox",
+  "name": "The ToolBox",
+  "short_name": "ToolBox",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f6f5f2",
   "theme_color": "#2f6fde",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "id": "./",
+  "scope": "./",
+  "description": "The ToolBox: 100+ small tools, games and creative apps that work offline.",
+  "shortcuts": [
+    {
+      "name": "All tools",
+      "url": "./tools.html"
+    },
+    {
+      "name": "Games",
+      "url": "./index.html#games"
+    }
   ]
 }

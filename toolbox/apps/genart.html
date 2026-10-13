@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Generative art</title><link rel="stylesheet" href="common.css">
+<style>#c{width:min(100%,720px);aspect-ratio:1;margin:auto;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25)}.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}.gal img{width:100%;border-radius:6px;cursor:pointer}</style></head>
+<body data-app="genart" data-cat="creative" data-title="Generative art"><main>
+<div class="row"><select id="style"><option value="flow">Flow field</option><option value="circles">Circle packing</option><option value="mondrian">Mondrian</option><option value="waves">Waves</option><option value="truchet">Truchet tiles</option><option value="mountains">Mountains</option><option value="random">Surprise me</option></select>
+<input id="seed" style="width:110px" title="Seed: the same seed draws the same art"><button class="b" id="go">New art (Space)</button><button class="g" id="dl">Save PNG</button><button class="g" id="keep">♥ Keep</button></div>
+<canvas id="c" width="1200" height="1200"></canvas><h3>Kept</h3><div class="gal" id="gal"></div>
+</main><script src="common.js"></script><script>
+const c=$('c'),x=c.getContext('2d'),S=1200;let R;
+function rng(seed){let h=1779033703^seed.length;for(const ch of seed){h=Math.imul(h^ch.charCodeAt(0),3432918353);h=h<<13|h>>>19}return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return((h^=h>>>16)>>>0)/4294967296}}
+const PALS=[['#264653','#2a9d8f','#e9c46a','#f4a261','#e76f51'],['#0d1b2a','#1b263b','#415a77','#778da9','#e0e1dd'],['#ff595e','#ffca3a','#8ac926','#1982c4','#6a4c93'],['#f72585','#7209b7','#3a0ca3','#4361ee','#4cc9f0'],['#fefae0','#dda15e','#bc6c25','#606c38','#283618'],['#ffcdb2','#ffb4a2','#e5989b','#b5838d','#6d6875'],['#03071e','#6a040f','#d00000','#f48c06','#ffba08']];
+const r=(a=1,b)=>b===undefined?R()*a:a+R()*(b-a),rp=a=>a[Math.floor(R()*a.length)];
+function noise2(){const g=[...Array(256)].map(()=>r(Math.PI*2)),P=[...Array(512)].map((_,i)=>Math.floor(R()*256));return(px,py)=>{const xi=Math.floor(px),yi=Math.floor(py),xf=px-xi,yf=py-yi,f=t=>t*t*(3-2*t);
+  const d=(ix,iy)=>{const a=g[(P[(ix&255)]+iy)&255];return Math.cos(a)*(px-ix)+Math.sin(a)*(py-iy)};const u=f(xf),v=f(yf);return(d(xi,yi)*(1-u)+d(xi+1,yi)*u)*(1-v)+(d(xi,yi+1)*(1-u)+d(xi+1,yi+1)*u)*v}}
+const ART={
+ flow(p){x.fillStyle=p[0];x.fillRect(0,0,S,S);const n=noise2(),sc=r(.002,.006);x.lineWidth=r(1,3);x.globalAlpha=.5;
+  for(let i=0;i<1800;i++){let px=r(S),py=r(S);x.strokeStyle=rp(p.slice(1));x.beginPath();x.moveTo(px,py);for(let k=0;k<60;k++){const a=n(px*sc,py*sc)*Math.PI*4;px+=Math.cos(a)*4;py+=Math.sin(a)*4;x.lineTo(px,py)}x.stroke()}x.globalAlpha=1},
+ circles(p){x.fillStyle=p[0];x.fillRect(0,0,S,S);const cs=[];for(let t=0;t<9000&&cs.length<700;t++){const cx=r(S),cy=r(S);let m=Math.min(cx,cy,S-cx,S-cy,r(20,160));for(const o of cs){m=Math.min(m,Math.hypot(o.x-cx,o.y-cy)-o.r-4);if(m<4)break}if(m>=4)cs.push({x:cx,y:cy,r:m})}
+  cs.forEach(o=>{x.fillStyle=rp(p.slice(1));x.beginPath();x.arc(o.x,o.y,o.r,0,7);x.fill();if(o.r>30&&R()<.5){x.fillStyle=p[0];x.beginPath();x.arc(o.x,o.y,o.r*r(.3,.7),0,7);x.fill()}})},
+ mondrian(p){x.fillStyle='#f5f1e8';x.fillRect(0,0,S,S);const cols=['#d62828','#1d3557','#fcbf49','#f5f1e8','#f5f1e8','#f5f1e8'];
+  const split=(a,b,w,h,d)=>{if(d>5||(d>1&&R()<.25)||w<120||h<120){x.fillStyle=rp(cols);x.fillRect(a,b,w,h);x.lineWidth=14;x.strokeStyle='#111';x.strokeRect(a,b,w,h);return}
+   if(w>h?R()<.75:R()<.25){const k=r(.3,.7)*w;split(a,b,k,h,d+1);split(a+k,b,w-k,h,d+1)}else{const k=r(.3,.7)*h;split(a,b,w,k,d+1);split(a,b+k,w,h-k,d+1)}};split(0,0,S,S,0)},
+ waves(p){const g=x.createLinearGradient(0,0,0,S);g.addColorStop(0,p[0]);g.addColorStop(1,p[1]);x.fillStyle=g;x.fillRect(0,0,S,S);const n=12+Math.floor(r(14));
+  for(let i=0;i<n;i++){const y0=S*.15+i*(S*.85/n),amp=r(20,90),fr=r(.004,.012),ph=r(7);x.fillStyle=p[2+i%3];x.globalAlpha=.85;x.beginPath();x.moveTo(0,S);for(let px=0;px<=S;px+=8)x.lineTo(px,y0+Math.sin(px*fr+ph)*amp+Math.sin(px*fr*2.3+ph)*amp*.3);x.lineTo(S,S);x.fill()}x.globalAlpha=1},
+ truchet(p){const n=Math.floor(r(8,20)),s=S/n;x.fillStyle=p[0];x.fillRect(0,0,S,S);x.lineWidth=s/r(4,7);x.lineCap='round';
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.strokeStyle=rp(p.slice(1));const a=i*s,b=j*s;x.beginPath();if(R()<.5){x.arc(a,b,s/2,0,Math.PI/2);x.moveTo(a+s,b+s/2);x.arc(a+s,b+s,s/2,-Math.PI/2,Math.PI,true)}else{x.arc(a+s,b,s/2,Math.PI/2,Math.PI);x.moveTo(a+s/2,b+s);x.arc(a,b+s,s/2,-Math.PI/2,0)}x.stroke()}},
+ mountains(p){const g=x.createLinearGradient(0,0,0,S);g.addColorStop(0,p[4]);g.addColorStop(1,p[3]);x.fillStyle=g;x.fillRect(0,0,S,S);x.fillStyle='#fff8';x.beginPath();x.arc(r(200,1000),r(150,400),r(50,110),0,7);x.fill();const n=noise2();
+  for(let l=0;l<5;l++){x.fillStyle=p[3-l]||p[0];x.globalAlpha=1;const base=S*.35+l*S*.13,amp=220-l*30;x.beginPath();x.moveTo(0,S);for(let px=0;px<=S;px+=6)x.lineTo(px,base-(n(px*.003+l*10,l)+.5)*amp-Math.abs(n(px*.012,l+5))*amp*.4);x.lineTo(S,S);x.fill()}}};
+function draw(){const seed=$('seed').value||String(rnd(1e6));$('seed').value=seed;R=rng(seed+$('style').value);let st=$('style').value;if(st==='random')st=rp(Object.keys(ART));x.globalAlpha=1;x.lineCap='butt';ART[st](rp(PALS))}
+$('go').onclick=()=>{$('seed').value='';draw();$('go').blur()};$('seed').onchange=draw;$('style').onchange=()=>{draw();$('style').blur()};
+addEventListener('keydown',e=>{if(e.key===' '&&document.activeElement.tagName!=='INPUT'){e.preventDefault();$('go').click()}});
+$('dl').onclick=()=>download(`art-${$('style').value}-${$('seed').value}.png`,c.toDataURL('image/png'));
+function gal(){const k=load('kept',[]);$('gal').innerHTML=k.map((g,i)=>`<img src="${g.thumb}" title="${esc(g.style)} · seed ${esc(g.seed)}" data-i="${i}">`).join('')||'<span class="muted">Press ♥ Keep to save favorites here.</span>';
+  $('gal').querySelectorAll('img').forEach(im=>im.onclick=()=>{const g=k[im.dataset.i];$('style').value=g.style;$('seed').value=g.seed;draw()})}
+$('keep').onclick=()=>{const t=document.createElement('canvas');t.width=t.height=160;t.getContext('2d').drawImage(c,0,0,160,160);const k=load('kept',[]);k.unshift({style:$('style').value,seed:$('seed').value,thumb:t.toDataURL('image/jpeg',.7)});save('kept',k.slice(0,40));gal();toast('Kept ♥')};
+draw();gal();
+</script></body></html>

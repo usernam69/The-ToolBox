@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Focus pet</title><link rel="stylesheet" href="common.css">
+<style>#pet{font-size:110px;text-align:center;line-height:1.1;transition:transform .3s}#pet.bob{animation:bob 1.6s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-8px)}}#time{font-size:64px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}.ctr{text-align:center}</style></head>
+<body data-app="petfocus" data-cat="quick" data-title="Focus pet"><main>
+<p class="sub ctr">Your pet grows while you focus. If you leave this tab during a session, it gets sad and the session doesn't count.</p>
+<div id="pet">🥚</div><div class="ctr"><b id="name"></b> <span class="muted" id="stage"></span></div>
+<div style="background:var(--line);border-radius:6px;max-width:320px;margin:8px auto"><div id="bar" style="height:10px;background:var(--accent);border-radius:6px;width:0"></div></div>
+<div id="time">25:00</div>
+<div class="row" style="justify-content:center"><button class="g" data-m="15">15 min</button><button class="g" data-m="25">25 min</button><button class="g" data-m="45">45 min</button><button class="b" id="go">Start</button><button class="g" id="giveup" hidden>Give up</button></div>
+<p class="ctr muted" id="msg"></p><p class="ctr muted" id="stats"></p>
+</main><script src="common.js"></script><script>
+const STAGES=[[0,'🥚','Egg'],[25,'🐣','Hatchling'],[75,'🐥','Chick'],[150,'🐤','Fledgling'],[300,'🐔','Hen'],[600,'🦢','Swan'],[1000,'🦚','Peacock'],[2000,'🐉','Dragon']];
+let p=load('pet',{name:'Mochi',xp:0,sessions:0,mins:0}),mins=25,end=0,timer=null,sad=false;
+function draw(){let i=STAGES.length-1;while(STAGES[i][0]>p.xp)i--;const[, e,n]=STAGES[i],next=STAGES[i+1];
+  $('pet').textContent=sad?'😢':e;$('name').textContent=p.name;$('stage').textContent=`${n} · ${p.xp} XP`;$('bar').style.width=next?((p.xp-STAGES[i][0])/(next[0]-STAGES[i][0])*100)+'%':'100%';
+  $('stats').textContent=`${p.sessions} sessions · ${p.mins} minutes focused`+(next?` · ${next[0]-p.xp} XP until it grows`:' · fully grown!')}
+const fmt=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return pad2(Math.floor(s/60))+':'+pad2(s%60)};
+function start(){sad=false;end=Date.now()+mins*60e3;$('go').hidden=true;$('giveup').hidden=false;$('pet').classList.add('bob');$('msg').textContent='Focusing… stay on this tab.';timer=setInterval(tick,250);tick()}
+function stop(msg){clearInterval(timer);timer=null;$('go').hidden=false;$('giveup').hidden=true;$('pet').classList.remove('bob');$('time').textContent=fmt(mins*60e3);$('msg').textContent=msg;draw()}
+function tick(){const left=end-Date.now();$('time').textContent=fmt(left);document.title=fmt(left)+' · Focus pet';
+  if(left<=0){const before=p.xp;p.xp+=mins;p.sessions++;p.mins+=mins;save('pet',p);[523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.12,i*.15));
+    const grew=STAGES.findIndex(s=>s[0]>before)!==STAGES.findIndex(s=>s[0]>p.xp);stop(grew?'🎉 Your pet grew!':`+${mins} XP. Great focus!`);document.title='Focus pet'}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&timer){sad=true;stop('😢 You left the tab, so the session ended. Your pet missed you.');document.title='Focus pet'}});
+$('go').onclick=start;$('giveup').onclick=()=>{sad=true;stop('Session given up. No XP this time.')};
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{if(timer)return;mins=+b.dataset.m;$('time').textContent=fmt(mins*60e3)});
+$('name').style.cursor='pointer';$('name').title='Click to rename';$('name').onclick=()=>{const n=prompt('Pet name:',p.name);if(n&&n.trim()){p.name=n.trim().slice(0,20);save('pet',p);draw()}};
+draw();
+</script></body></html>

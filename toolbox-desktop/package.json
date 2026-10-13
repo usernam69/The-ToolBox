@@ -9,7 +9,8 @@
   "scripts": {
     "copy": "node -e \"const fs=require('fs');fs.rmSync('app',{recursive:true,force:true});fs.cpSync('../toolbox','app',{recursive:true})\"",
     "start": "npm run copy && electron .",
-    "build": "npm run copy && electron-builder --win portable --x64"
+    "build": "npm run copy && electron-builder --win portable --x64",
+    "lan": "node -e \"require('./lan-server').createLanServer(require('path').resolve('../toolbox')).start().then(i=>{console.log('ToolBox is hosting on your Wi-Fi. Open one of these in any browser:');i.ips.concat('localhost').forEach(ip=>console.log('  http://'+ip+':'+i.port+'/'))})\""
   },
   "build": {
     "appId": "local.dovi.useful-toolbox",
@@ -20,6 +21,8 @@
     },
     "files": [
       "main.js",
+      "preload.js",
+      "lan-server.js",
       "package.json",
       "app/**/*"
     ],

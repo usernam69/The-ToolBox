@@ -1,0 +1,35 @@
+/* Shared look for every app page (same tokens as the toolbox). */
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--muted:#6b6b70;--line:#e2e0da;--accent:#2f6fde;--accent-ink:#fff;--good:#1f8a4c;--bad:#c23b3b;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--card:#1e1e22;--ink:#ececef;--muted:#9a9aa2;--line:#33333a;--accent:#6b9bff;--accent-ink:#0b1020;--good:#4cc27e;--bad:#ff7a7a;--warn:#f0b851}}
+:root[data-theme="dark"]{--bg:#141416;--card:#1e1e22;--ink:#ececef;--muted:#9a9aa2;--line:#33333a;--accent:#6b9bff;--accent-ink:#0b1020;--good:#4cc27e;--bad:#ff7a7a;--warn:#f0b851}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:10}
+.topbar a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px}
+.topbar h1{font-size:18px;margin:0;flex:1}
+main{max-width:1000px;margin:auto;padding:16px}
+h2{margin:0 0 4px;font-size:18px}h3{margin:14px 0 4px;font-size:15px}
+.sub{color:var(--muted);margin:0 0 12px;font-size:14px}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;max-width:100%}
+textarea{width:100%;min-height:90px}
+button.b,a.b{font:inherit;border:0;background:var(--accent);color:var(--accent-ink);padding:7px 13px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+button.g{font:inherit;border:1px solid var(--line);background:transparent;color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.grow{flex:1;min-width:140px}
+.box{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--card)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.muted{color:var(--muted)}
+.big{font-size:32px;font-weight:600;font-variant-numeric:tabular-nums}
+ul.clean{list-style:none;padding:0;margin:8px 0}
+ul.clean li{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.x{margin-left:auto;cursor:pointer;color:var(--muted);background:none;border:0;font-size:16px}
+canvas{display:block;max-width:100%;touch-action:none}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:12px;background:var(--bg)}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:13px}
+a{color:var(--accent)}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;display:none;z-index:50;max-width:calc(100% - 32px)}
+.touchpad{display:none;gap:8px;justify-content:center;margin-top:8px;user-select:none}
+.touchpad button{font-size:22px;width:64px;height:56px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+@media (pointer:coarse){.touchpad{display:flex}}

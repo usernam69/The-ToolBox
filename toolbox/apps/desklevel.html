@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Your desk as a level</title><link rel="stylesheet" href="common.css">
+<style>#c{width:100%;height:min(62vh,560px);background:#222}</style></head>
+<body data-app="desklevel" data-cat="wild" data-title="Your desk as a level"><main>
+<p class="sub">Take a photo of your desk, room or shelf, or any picture. Dark things become solid ground, so you can run along books, jump between cups and climb your keyboard. Reach the 🏁 in the top-right area.</p>
+<div class="row"><label class="b" style="cursor:pointer">📸 Pick a photo<input type="file" id="file" accept="image/*" capture="environment" hidden></label><button class="g" id="demo">Use a demo picture</button>
+<label>What counts as solid <input type="range" id="thr" min="20" max="80" value="45"></label><label><input type="checkbox" id="edges" checked> Edges only</label><label><input type="checkbox" id="inv"> Flip light/dark</label><label><input type="checkbox" id="show"> Show solid areas</label></div>
+<div class="stage"><canvas id="c"></canvas></div><div class="touchpad" id="pad"><button data-key="arrowleft">◀</button><button data-key="arrowright">▶</button><button data-key=" ">⤒</button></div>
+<p class="muted" id="msg" style="font-size:13px">Arrow keys or A/D to move, Space to jump, R to restart. If it's too hard or too easy, move the "solid" slider.</p>
+</main><script src="common.js"></script><script src="platform.js"></script><script>
+const c=$('c');let img=null,mask=null,MW=0,MH=0,S=1,game=null,photo=null;
+function demo(){const cv=document.createElement('canvas');cv.width=1200;cv.height=700;const x=cv.getContext('2d');const g=x.createLinearGradient(0,0,0,700);g.addColorStop(0,'#f3e9dc');g.addColorStop(1,'#d8c3a5');x.fillStyle=g;x.fillRect(0,0,1200,700);
+  x.fillStyle='#5d4037';x.fillRect(0,600,1200,100);const books=[[60,470,60,130,'#1e3a5f'],[125,500,40,100,'#7b1e1e'],[170,450,50,150,'#2e5d34']];books.forEach(([a,b,w,h,cl])=>{x.fillStyle=cl;x.fillRect(a,b,w,h)});
+  x.fillStyle='#263238';x.fillRect(300,520,240,80);x.fillRect(310,505,220,15);x.fillStyle='#37474f';x.fillRect(580,380,40,220);x.beginPath();x.ellipse(600,380,60,18,0,0,7);x.fill();
+  x.fillStyle='#4e342e';x.fillRect(680,540,70,60);x.fillRect(745,555,20,25);x.fillStyle='#212121';x.fillRect(820,300,300,200);x.fillRect(950,500,40,100);x.fillStyle='#1565c0';x.fillRect(830,310,280,180);
+  x.fillStyle='#3e2723';x.fillRect(790,230,110,14);x.fillRect(660,330,80,14);x.fillRect(1000,170,180,14);x.fillStyle='#2e7d32';x.beginPath();x.arc(1120,140,30,0,7);x.fill();return cv}
+async function load2(src){photo=src;const W=src.width,H=src.height,k=Math.min(1,1400/W);S=4;MW=Math.floor(W*k/S);MH=Math.floor(H*k/S);
+  img=document.createElement('canvas');img.width=MW*S;img.height=MH*S;img.getContext('2d').drawImage(src,0,0,img.width,img.height);build()}
+function build(){if(!img)return;const t=document.createElement('canvas');t.width=MW;t.height=MH;const tx=t.getContext('2d');tx.drawImage(img,0,0,MW,MH);const d=tx.getImageData(0,0,MW,MH).data,L=new Float32Array(MW*MH);
+  for(let i=0;i<MW*MH;i++)L[i]=(.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2])/255;const thr=+$('thr').value/100,inv=$('inv').checked,ed=$('edges').checked;mask=new Uint8Array(MW*MH);
+  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){const i=y*MW+x;let on;if(ed){const gx=L[i+1]-L[i-1],gy=L[i+MW]-L[i-MW],dark=inv?L[i]>1-thr:L[i]<thr;on=Math.hypot(gx,gy)>(1-thr)*.5||dark&&L[i-MW]>=(inv?0:thr)}else on=inv?L[i]>1-thr:L[i]<thr;mask[i]=on?1:0}
+  // clean speckles: keep cells with at least 2 solid neighbours
+  const m2=mask.slice();for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){const i=y*MW+x;if(mask[i]&&mask[i-1]+mask[i+1]+mask[i-MW]+mask[i+MW]<2)m2[i]=0}mask=m2;for(let x=0;x<MW;x++)mask[(MH-1)*MW+x]=1;
+  // start: top-left-ish free spot; goal: highest standable spot on the right third
+  const free=(x,y)=>!mask[y*MW+x];let start={x:S*2,y:S*2};outer:for(let x=2;x<MW/4;x++)for(let y=2;y<MH-8;y++)if(free(x,y)&&free(x+5,y)&&free(x,y+7)&&mask[(y+8)*MW+x]){start={x:x*S,y:y*S};break outer}
+  let goal={x:(MW-6)*S,y:(MH-12)*S,w:28,h:28};outer2:for(let y=4;y<MH-2;y++)for(let x=MW-4;x>MW*.66;x--)if(mask[y*MW+x]&&free(x,y-1)&&free(x,y-8)&&free(x-3,y-8)){goal={x:x*S-14,y:(y-8)*S,w:28,h:30};break outer2}
+  if(game)game.stop();game=new Platformer(c,{start,goal,worldW:MW*S,worldH:MH*S,sound:true,zoom:Math.max(.5,Math.min(1.6,c.clientHeight/(MH*S)*1.6)),solid:(px,py)=>{const x=Math.floor(px/S),y=Math.floor(py/S);return x<0||x>=MW||y>=MH||(y>=0&&mask[y*MW+x]===1)},
+    drawWorld(x){x.drawImage(img,0,0);if($('show').checked){x.fillStyle='rgba(255,0,80,.45)';for(let i=0;i<MW*MH;i++)if(mask[i])x.fillRect(i%MW*S,Math.floor(i/MW)*S,S,S)}},
+    onDie(g){tone(120,.3,'sawtooth',.08);g.reset()},onWin(g){[523,659,784,1047].forEach((f,i)=>tone(f,.15,'triangle',.12,i*.08));$('msg').textContent=`🏁 You beat your own photo in ${g.t.toFixed(1)}s! Press R to go again, or try a new photo.`},
+    onFrame(g){}});game.play();$('msg').textContent='Arrow keys or A/D to move, Space to jump, R to restart. If it\'s too hard or too easy, move the "solid" slider.'}
+$('file').onchange=async()=>{const f=$('file').files[0];if(f)load2(await createImageBitmap(f))};$('demo').onclick=()=>load2(demo());
+['thr','edges','inv'].forEach(id=>$(id).addEventListener('change',build));addEventListener('keydown',e=>{if((e.key==='r'||e.key==='R')&&game){game.reset();game.done=false}});bindTouch($('pad'));load2(demo());
+</script></body></html>

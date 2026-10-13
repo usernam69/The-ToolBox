@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rhythm tapper</title><link rel="stylesheet" href="common.css">
+<style>#c{width:100%;max-width:520px;height:min(64vh,560px);margin:auto;background:#12101e;border-radius:12px}</style></head>
+<body data-app="rhythm" data-cat="games" data-title="Rhythm tapper"><main>
+<div class="row"><select id="song"><option value="0">Easy groove · 90 BPM</option><option value="1">Bouncy · 110 BPM</option><option value="2">Fast funk · 130 BPM</option></select><button class="b" id="go">Play</button><b id="score" style="margin-left:auto">0</b><span id="combo" class="muted"></span></div>
+<canvas id="c"></canvas>
+<p class="muted" style="font-size:13px">Notes fall in 4 lanes. Press <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (or tap the lanes) as they cross the line. The music is generated as you play, and the notes follow its beat.</p>
+</main><script src="common.js"></script><script>
+const c=$('c'),x=c.getContext('2d'),LANES=4,KEYS=['d','f','j','k'],COLS=['#ff5c8a','#ffd166','#06d6a0','#4cc9f0'];
+const SONGS=[{bpm:90,len:48,dens:.45},{bpm:110,len:64,dens:.6},{bpm:130,len:80,dens:.75}];
+let notes=[],t0=0,running=false,score=0,combo=0,maxCombo=0,flash=[0,0,0,0],judge='',judgeT=0,song;
+const SPEED=420,HITY=()=>c.clientHeight-80;
+function build(s){const beat=60/s.bpm,out=[];let seed=7;const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  for(let b=4;b<s.len;b+=.5){if((b%1===0&&r()<s.dens+.2)||(b%1&&r()<s.dens-.3)){out.push({t:b*beat,lane:Math.floor(r()*LANES),hit:false,miss:false});if(r()<s.dens-.4)out.push({t:b*beat,lane:(out.at(-1).lane+2)%LANES,hit:false,miss:false})}}return out}
+function music(s){const a=AC(),beat=60/s.bpm,start=a.currentTime+.05,chords=[[220,277,330],[196,247,294],[175,220,262],[196,247,294]];
+  for(let b=0;b<s.len+4;b++){const t=start+b*beat;const kick=a.createOscillator(),kg=a.createGain();kick.frequency.setValueAtTime(150,t);kick.frequency.exponentialRampToValueAtTime(40,t+.15);kg.gain.setValueAtTime(b%2?0:.5,t);kg.gain.exponentialRampToValueAtTime(.001,t+.2);kick.connect(kg);kg.connect(a.destination);kick.start(t);kick.stop(t+.25);
+    if(b%2){const n=a.createBufferSource(),buf=a.createBuffer(1,a.sampleRate*.1,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);n.buffer=buf;const ng=a.createGain();ng.gain.value=.15;n.connect(ng);ng.connect(a.destination);n.start(t)}
+    if(b%4===0)chords[(b/4)%4].forEach(f=>{const o=a.createOscillator(),og=a.createGain();o.type='triangle';o.frequency.value=f;og.gain.setValueAtTime(.05,t);og.gain.exponentialRampToValueAtTime(.001,t+beat*4);o.connect(og);og.connect(a.destination);o.start(t);o.stop(t+beat*4)})}
+  return start}
+function play(){song=SONGS[$('song').value];notes=build(song);score=0;combo=0;maxCombo=0;const a=AC();a.resume();t0=music(song);running=true;requestAnimationFrame(frame)}
+const now=()=>AC().currentTime-t0;
+function hit(l){if(!running)return;flash[l]=1;const t=now(),n=notes.filter(n=>n.lane===l&&!n.hit&&!n.miss).sort((a,b)=>Math.abs(a.t-t)-Math.abs(b.t-t))[0];if(!n)return;const d=Math.abs(n.t-t);
+  if(d<.06){n.hit=true;combo++;score+=300+combo*5;judge='Perfect!'}else if(d<.12){n.hit=true;combo++;score+=100+combo*2;judge='Good'}else if(d<.2){combo=0;judge='Early/Late';n.miss=true}else return;maxCombo=Math.max(maxCombo,combo);judgeT=.5}
+function frame(){const W=c.clientWidth,H=c.clientHeight,dpr=devicePixelRatio;if(c.width!==W*dpr){c.width=W*dpr;c.height=H*dpr}x.setTransform(dpr,0,0,dpr,0,0);
+  x.fillStyle='#12101e';x.fillRect(0,0,W,H);const lw=W/LANES,t=now(),hy=HITY();
+  for(let l=0;l<LANES;l++){x.fillStyle=l%2?'#17142a':'#1b1830';x.fillRect(l*lw,0,lw,H);if(flash[l]>0){x.fillStyle=COLS[l];x.globalAlpha=flash[l]*.3;x.fillRect(l*lw,0,lw,H);x.globalAlpha=1;flash[l]-=.08}
+    x.fillStyle='#fff';x.globalAlpha=.6;x.font='bold 16px system-ui';x.textAlign='center';x.fillText(KEYS[l].toUpperCase(),l*lw+lw/2,H-30);x.globalAlpha=1}
+  x.fillStyle='#fff';x.fillRect(0,hy,W,3);
+  for(const n of notes){if(n.hit)continue;const y=hy-(n.t-t)*SPEED;if(t-n.t>.2&&!n.miss){n.miss=true;combo=0;judge='Miss';judgeT=.5}if(y<-30||y>H+30)continue;
+    x.fillStyle=n.miss?'#555':COLS[n.lane];x.beginPath();x.roundRect(n.lane*lw+8,y-12,lw-16,24,10);x.fill()}
+  if(judgeT>0){judgeT-=1/60;x.fillStyle='#fff';x.globalAlpha=Math.min(1,judgeT*3);x.font='bold 30px system-ui';x.fillText(judge,W/2,H/2);x.globalAlpha=1}
+  $('score').textContent=score;$('combo').textContent=combo>2?`${combo} combo`:'';
+  const end=(song.len+2)*60/song.bpm;if(t>end){running=false;const hits=notes.filter(n=>n.hit).length,acc=Math.round(hits/notes.length*100);
+    const k='best'+$('song').value;if(score>load(k,0))save(k,score);x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 30px system-ui';x.fillText(`${acc}% · ${score}`,W/2,H/2-10);x.font='16px system-ui';x.fillText(`Max combo ${maxCombo} · best ${load(k,0)}`,W/2,H/2+20);return}
+  requestAnimationFrame(frame)}
+addEventListener('keydown',e=>{const l=KEYS.indexOf(e.key.toLowerCase());if(l>=0&&!e.repeat)hit(l)});
+c.addEventListener('pointerdown',e=>{const r=c.getBoundingClientRect();hit(Math.floor((e.clientX-r.left)/r.width*LANES))});
+$('go').onclick=()=>{$('go').blur();play()};
+(function idle(){const W=c.clientWidth,H=c.clientHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);x.fillStyle='#12101e';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 22px system-ui';x.textAlign='center';x.fillText('Press Play',W/2,H/2)})();
+</script></body></html>

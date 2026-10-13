@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lo-fi loop maker</title><link rel="stylesheet" href="common.css">
+<style>.seq{display:grid;grid-template-columns:90px repeat(16,1fr);gap:3px;align-items:center;overflow-x:auto}.seq .n{font-size:13px;font-weight:600}.cell{aspect-ratio:1;min-width:20px;border-radius:5px;border:0;background:var(--line);cursor:pointer}.cell.q{opacity:.75}.cell.on{background:var(--accent)}.cell.now{outline:2px solid var(--ink)}
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.bars select{width:100%}</style></head>
+<body data-app="lofi" data-cat="creative" data-title="Lo-fi loop maker"><main>
+<div class="row"><button class="b" id="play" style="min-width:90px">▶ Play</button><label>Tempo <input type="range" id="bpm" min="60" max="110" value="78"> <span id="bpmv"></span></label><label>Swing <input type="range" id="swing" min="0" max="40" value="18"></label>
+<label><input type="checkbox" id="vinyl" checked> Vinyl crackle</label><select id="preset"><option value="">Presets…</option><option>Chill</option><option>Rainy day</option><option>Study</option><option>Empty</option></select><button class="g" id="rec">● Record</button><button class="g" id="share">Copy pattern</button></div>
+<h3>Drums</h3><div class="seq" id="seq"></div>
+<h3>Chords (one per bar)</h3><div class="bars" id="bars"></div>
+<h3>Melody</h3><div class="seq" id="mel"></div>
+<p class="muted" style="font-size:13px">Click squares to switch them on or off. Changes play right away. Copy pattern puts the beat in your clipboard as text you can paste into the Presets box to load it.</p>
+</main><script src="common.js"></script><script>
+const DR=['Kick','Snare','Hat','Clap'],CH={'Cmaj7':[48,52,55,59],'Am7':[45,48,52,55],'Dm7':[50,53,57,60],'G7':[43,47,50,53],'Fmaj7':[41,45,48,52],'Em7':[40,43,47,50],'Bbmaj7':[46,50,53,57],'Ebmaj7':[39,43,46,50],'Abmaj7':[44,48,51,55]},SCALE=[72,74,76,79,81,84];
+const PRE={Chill:{d:['1000001010000000','0000100000001000','1010101010101010','0000000000000000'],c:['Cmaj7','Am7','Dm7','G7'],m:Array(6).fill(0).map((_,r)=>'0000000000000000')},
+ 'Rainy day':{d:['1000000110000000','0000100000001001','0010001000100010','0000000000001000'],c:['Fmaj7','Em7','Dm7','Cmaj7'],m:['0000000000000000','0000000000000000','0000000100000000','1000000000100000','0000100000000000','0000000000000001']},
+ Study:{d:['1000000010100000','0000100000001000','1011101010111010','0000000000000000'],c:['Ebmaj7','Abmaj7','Bbmaj7','Cmaj7'],m:Array(6).fill('0000000000000000')},Empty:{d:Array(4).fill('0000000000000000'),c:['Cmaj7','Cmaj7','Cmaj7','Cmaj7'],m:Array(6).fill('0000000000000000')}};
+let P=load('p',null)||JSON.parse(JSON.stringify(PRE.Chill));P.m=P.m||Array(6).fill('0000000000000000');
+let playing=false,step=0,nextT=0,bar=0,timer=null,out=null,noiseBuf=null;
+const mtof=m=>440*2**((m-69)/12);
+function ctx(){const a=AC();if(!out){out=a.createGain();out.gain.value=.8;const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=4200;out.connect(lp);lp.connect(a.destination);out.lp=lp;
+  noiseBuf=a.createBuffer(1,a.sampleRate,a.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}return a}
+function env(node,t,peak,dur){const g=AC().createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+.005);g.gain.exponentialRampToValueAtTime(.0001,t+dur);node.connect(g);g.connect(out);return g}
+function noise(t,dur,f,type,peak){const a=AC(),s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=noiseBuf;fl.type=type;fl.frequency.value=f;s.connect(fl);env(fl,t,peak,dur);s.start(t);s.stop(t+dur)}
+const DRUM=[t=>{const a=AC(),o=a.createOscillator();o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);env(o,t,.9,.35);o.start(t);o.stop(t+.4)},t=>{noise(t,.18,1800,'bandpass',.5);const o=AC().createOscillator();o.frequency.value=190;env(o,t,.25,.1);o.start(t);o.stop(t+.12)},t=>noise(t,.05,7000,'highpass',.18),t=>[0,.012,.024].forEach(k=>noise(t+k,.08,1200,'bandpass',.35))];
+function chord(t,name,dur){CH[name].forEach((m,i)=>{const a=AC(),o=a.createOscillator(),o2=a.createOscillator();o.type='triangle';o2.type='sine';o.frequency.value=mtof(m+12);o2.frequency.value=mtof(m+12)*1.004;o.detune.value=rnd(10)-5;
+  [o,o2].forEach(v=>{env(v,t+i*.012,.06,dur);v.start(t);v.stop(t+dur+.1)})})}
+function note(t,m){const a=AC(),o=a.createOscillator();o.type='sine';o.frequency.value=mtof(m);env(o,t,.12,.7);o.start(t);o.stop(t+.8)}
+function sched(){const a=AC(),spb=60/+$('bpm').value/4;while(nextT<a.currentTime+.12){const sw=step%2?spb*$('swing').value/100:0,t=nextT+sw;
+    P.d.forEach((r,i)=>{if(r[step]==='1')DRUM[i](t)});P.m.forEach((r,i)=>{if(r[step]==='1')note(t,SCALE[5-i])});if(step===0)chord(t,P.c[bar],spb*16);
+    const s=step,b=bar;setTimeout(()=>mark(s),Math.max(0,(t-a.currentTime)*1000));step=(step+1)%16;if(step===0)bar=(bar+1)%4;nextT+=spb}
+  if($('vinyl').checked&&Math.random()<.3)noise(a.currentTime+.05,.02,3000+rnd(4000),'highpass',.04+Math.random()*.05)}
+function mark(s){document.querySelectorAll('.cell.now').forEach(c=>c.classList.remove('now'));document.querySelectorAll(`.cell[data-s="${s}"]`).forEach(c=>c.classList.add('now'));document.querySelectorAll('.bars select').forEach((sel,i)=>sel.style.borderColor=i===bar?'var(--accent)':'')}
+function toggle(){if(playing){playing=false;clearInterval(timer);$('play').textContent='▶ Play';mark(-1);return}const a=ctx();a.resume();playing=true;step=0;bar=0;nextT=a.currentTime+.05;timer=setInterval(sched,25);$('play').textContent='■ Stop'}
+function grid(el,rows,names,key){el.innerHTML=rows.map((r,i)=>`<div class="n">${names[i]}</div>`+[...r].map((v,s)=>`<button class="cell ${v==='1'?'on':''} ${Math.floor(s/4)%2?'q':''}" data-r="${i}" data-s="${s}"></button>`).join('')).join('');
+  el.querySelectorAll('.cell').forEach(b=>b.onclick=()=>{const r=P[key][b.dataset.r],s=+b.dataset.s;P[key][b.dataset.r]=r.slice(0,s)+(r[s]==='1'?'0':'1')+r.slice(s+1);b.classList.toggle('on');save('p',P);
+    if(P[key][b.dataset.r][s]==='1'){const a=ctx();a.resume();key==='d'?DRUM[b.dataset.r](a.currentTime):note(a.currentTime,SCALE[5-b.dataset.r])}})}
+function drawAll(){grid($('seq'),P.d,DR,'d');grid($('mel'),P.m,['C6','A5','G5','E5','D5','C5'],'m');
+  $('bars').innerHTML=P.c.map((ch,i)=>`<select data-i="${i}">${Object.keys(CH).map(k=>`<option ${k===ch?'selected':''}>${k}</option>`).join('')}</select>`).join('');
+  $('bars').querySelectorAll('select').forEach(s=>s.onchange=()=>{P.c[s.dataset.i]=s.value;save('p',P);const a=ctx();a.resume();chord(a.currentTime,s.value,1.2)})}
+$('play').onclick=toggle;addEventListener('keydown',e=>{if(e.key===' '&&!/INPUT|SELECT/.test(document.activeElement.tagName)){e.preventDefault();toggle()}});
+$('bpmv').textContent=$('bpm').value;$('bpm').oninput=()=>$('bpmv').textContent=$('bpm').value;
+$('preset').onchange=()=>{const v=$('preset').value;if(PRE[v]){P=JSON.parse(JSON.stringify(PRE[v]));save('p',P);drawAll()}$('preset').value=''};
+$('share').onclick=()=>copy('LOFI:'+btoa(JSON.stringify({...P,bpm:$('bpm').value})));
+addEventListener('paste',e=>{const t=e.clipboardData.getData('text');if(t.startsWith('LOFI:')){try{const p=JSON.parse(atob(t.slice(5)));$('bpm').value=p.bpm||78;delete p.bpm;P=p;save('p',P);drawAll();toast('Pattern loaded')}catch{toast('Not a valid pattern')}}});
+let recorder=null;$('rec').onclick=()=>{if(recorder){recorder.stop();return}const a=ctx(),dest=a.createMediaStreamDestination();out.lp.connect(dest);const chunks=[];recorder=new MediaRecorder(dest.stream);recorder.ondataavailable=e=>chunks.push(e.data);
+  recorder.onstop=()=>{out.lp.disconnect(dest);download('lofi-loop.webm',new Blob(chunks,{type:'audio/webm'}));recorder=null;$('rec').textContent='● Record'};recorder.start();$('rec').textContent='■ Stop & save';if(!playing)toggle()};
+drawAll();
+</script></body></html>

@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pixel art editor</title><link rel="stylesheet" href="common.css">
+<style>#c{width:min(100%,560px);aspect-ratio:1;image-rendering:pixelated;cursor:crosshair;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/20px 20px;margin:auto;border-radius:6px}
+#pal{display:flex;flex-wrap:wrap;gap:4px;max-width:560px}#pal button{width:28px;height:28px;border-radius:6px;border:2px solid var(--line);cursor:pointer}#pal button.on{border-color:var(--ink);transform:scale(1.15)}.tool.on{background:var(--accent);color:var(--accent-ink)}</style></head>
+<body data-app="pixel" data-cat="creative" data-title="Pixel art editor"><main>
+<div class="row"><span id="tools"></span><label>Size <select id="size"><option>16</option><option selected>24</option><option>32</option><option>48</option></select></label><label><input type="checkbox" id="grid" checked> Grid</label><label><input type="checkbox" id="mirror"> Mirror ↔</label></div>
+<div class="row"><div id="pal"></div><input type="color" id="custom" title="Custom color"></div>
+<canvas id="c"></canvas>
+<div class="row"><button class="g" id="undo">↶ Undo</button><button class="g" id="clear">Clear</button><label>Export scale <select id="scale"><option>1</option><option>4</option><option selected>10</option><option>20</option></select></label><button class="b" id="png">Save PNG</button><label class="g" style="border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer">Open image<input type="file" id="open" accept="image/*" hidden></label></div>
+<p class="muted" style="font-size:13px">Keys: <kbd>B</kbd> pencil · <kbd>E</kbd> eraser · <kbd>F</kbd> fill · <kbd>I</kbd> eyedropper · <kbd>Ctrl+Z</kbd> undo. Right-click erases.</p>
+</main><script src="common.js"></script><script>
+const PAL=['#000000','#ffffff','#7f7f7f','#c3c3c3','#880015','#ed1c24','#ff7f27','#fff200','#22b14c','#b5e61d','#00a2e8','#99d9ea','#3f48cc','#7092be','#a349a4','#c8bfe7','#b97a57','#ffaec9','#ffc90e','#efe4b0'];
+let N=+load('n',24),px=load('px',null)||Array(N*N).fill(null),col='#000000',tool='pen',hist=[];
+const c=$('c'),x=c.getContext('2d');const TOOLS=[['pen','✏️ Pencil'],['erase','🧽 Eraser'],['fill','🪣 Fill'],['pick','💧 Eyedropper']];
+$('tools').innerHTML=TOOLS.map(([k,n])=>`<button class="g tool ${k===tool?'on':''}" data-t="${k}">${n}</button>`).join(' ');
+const setTool=t=>{tool=t;$('tools').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===t))};$('tools').querySelectorAll('button').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+function drawPal(){$('pal').innerHTML=PAL.map(p=>`<button style="background:${p}" class="${p===col?'on':''}" data-c="${p}"></button>`).join('');$('pal').querySelectorAll('button').forEach(b=>b.onclick=()=>{col=b.dataset.c;$('custom').value=col;drawPal();if(tool==='erase'||tool==='pick')setTool('pen')})}
+$('custom').oninput=()=>{col=$('custom').value;drawPal()};
+function draw(){c.width=c.height=N*20;x.clearRect(0,0,c.width,c.height);px.forEach((p,i)=>{if(p){x.fillStyle=p;x.fillRect(i%N*20,Math.floor(i/N)*20,20,20)}});
+  if($('grid').checked){x.strokeStyle='rgba(0,0,0,.12)';x.lineWidth=1;for(let i=1;i<N;i++){x.beginPath();x.moveTo(i*20+.5,0);x.lineTo(i*20+.5,N*20);x.moveTo(0,i*20+.5);x.lineTo(N*20,i*20+.5);x.stroke()}}
+  if($('mirror').checked){x.strokeStyle='rgba(255,0,0,.4)';x.beginPath();x.moveTo(N*10,0);x.lineTo(N*10,N*20);x.stroke()}save('px',px);save('n',N)}
+function snap(){hist.push(px.slice());if(hist.length>60)hist.shift()}
+function setPx(i,v){px[i]=v;if($('mirror').checked){const cx=i%N,cy=Math.floor(i/N);px[cy*N+(N-1-cx)]=v}}
+function fill(i,v){const t=px[i];if(t===v)return;const st=[i];while(st.length){const k=st.pop();if(px[k]!==t)continue;px[k]=v;const cx=k%N,cy=Math.floor(k/N);if(cx>0)st.push(k-1);if(cx<N-1)st.push(k+1);if(cy>0)st.push(k-N);if(cy<N-1)st.push(k+N)}}
+const cellAt=e=>{const r=c.getBoundingClientRect(),cx=Math.floor((e.clientX-r.left)/r.width*N),cy=Math.floor((e.clientY-r.top)/r.height*N);return cx>=0&&cy>=0&&cx<N&&cy<N?cy*N+cx:-1};
+let down=false,erasing=false;
+c.onpointerdown=e=>{e.preventDefault();c.setPointerCapture(e.pointerId);const i=cellAt(e);if(i<0)return;erasing=e.button===2;snap();
+  if(tool==='fill'&&!erasing)fill(i,col);else if(tool==='pick'){if(px[i]){col=px[i];$('custom').value=col;drawPal();setTool('pen')}hist.pop()}else{down=true;setPx(i,tool==='erase'||erasing?null:col)}draw()};
+c.onpointermove=e=>{if(!down)return;const i=cellAt(e);if(i>=0){setPx(i,tool==='erase'||erasing?null:col);draw()}};c.onpointerup=()=>down=false;c.oncontextmenu=e=>e.preventDefault();
+$('undo').onclick=()=>{if(hist.length){px=hist.pop();draw()}};$('clear').onclick=()=>{snap();px=Array(N*N).fill(null);draw()};
+$('size').value=N;$('size').onchange=()=>{const n=+$('size').value,old=px,on=N;snap();N=n;px=Array(N*N).fill(null);for(let j=0;j<Math.min(on,N);j++)for(let i=0;i<Math.min(on,N);i++)px[j*N+i]=old[j*on+i];draw()};
+$('grid').onchange=draw;$('mirror').onchange=draw;
+$('png').onclick=()=>{const s=+$('scale').value,t=document.createElement('canvas');t.width=t.height=N*s;const tx=t.getContext('2d');px.forEach((p,i)=>{if(p){tx.fillStyle=p;tx.fillRect(i%N*s,Math.floor(i/N)*s,s,s)}});download('pixel-art.png',t.toDataURL('image/png'))};
+$('open').onchange=async()=>{const f=$('open').files[0];if(!f)return;const b=await createImageBitmap(f),t=document.createElement('canvas');t.width=t.height=N;const tx=t.getContext('2d');tx.drawImage(b,0,0,N,N);const d=tx.getImageData(0,0,N,N).data;snap();
+  px=px.map((_,i)=>d[i*4+3]<100?null:'#'+[0,1,2].map(k=>d[i*4+k].toString(16).padStart(2,'0')).join(''));draw()};
+addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='z'){e.preventDefault();$('undo').click();return}const t={b:'pen',e:'erase',f:'fill',i:'pick'}[e.key.toLowerCase()];if(t&&!e.ctrlKey)setTool(t)});
+drawPal();draw();
+</script></body></html>

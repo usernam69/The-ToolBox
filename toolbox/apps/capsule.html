@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Time capsule</title><link rel="stylesheet" href="common.css">
+<style>.cap{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:8px}.cap .e{font-size:34px}.cap .n{flex:1}.letter{white-space:pre-wrap;font:18px/1.7 Georgia,serif;padding:18px;background:#fffbea;color:#3b3020;border-radius:10px;border:1px solid #e8d9a8}</style></head>
+<body data-app="capsule" data-cat="wild" data-title="Time capsule"><main>
+<p class="sub">Write a message to your future self. It's scrambled and stays locked until the date you pick, so no sneaking a look. When the day comes, it opens.</p>
+<div class="box"><input id="title" style="width:100%" placeholder="Title (e.g. To me, one year from now)"><textarea id="body" style="min-height:160px;margin-top:8px" placeholder="Dear future me…"></textarea>
+<div class="row"><label>Open on <input type="date" id="date"></label><span class="muted" id="quick"></span><button class="b" id="seal" style="margin-left:auto">🔒 Seal it</button></div></div>
+<h3>My capsules</h3><div id="list"></div><div id="open"></div>
+</main><script src="common.js"></script><script>
+// Sealed text is AES-encrypted with a key that's only derived on/after the open date, so it isn't readable early.
+// (A determined person with developer tools could still dig it out. This keeps out peeking, not hackers.)
+const enc=new TextEncoder(),dec=new TextDecoder(),b64=u=>btoa(String.fromCharCode(...u)),unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function keyFor(date,salt){const base=await crypto.subtle.importKey('raw',enc.encode('toolbox-capsule:'+date),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+const quick=[['1 month',30],['6 months',182],['1 year',365],['5 years',1826]];$('quick').innerHTML=quick.map(([n,d])=>`<button class="g" data-d="${d}">${n}</button>`).join(' ');
+$('quick').querySelectorAll('button').forEach(b=>b.onclick=()=>$('date').value=isoDay(new Date(Date.now()+b.dataset.d*DAY)));$('date').value=isoDay(new Date(Date.now()+365*DAY));
+$('seal').onclick=async()=>{const t=$('body').value.trim(),d=$('date').value;if(!t)return toast('Write something first.');if(!d||d<=isoDay())return toast('Pick a date in the future.');
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await keyFor(d,salt),enc.encode(t)));
+  const L=load('list',[]);L.push({id:uid(),title:$('title').value.trim()||'A message from the past',sealed:isoDay(),open:d,salt:b64(salt),iv:b64(iv),ct:b64(ct),e:pick(['💌','📦','🕰️','🫙','🔮'])});save('list',L);
+  $('title').value=$('body').value='';[392,523,659].forEach((f,i)=>tone(f,.25,'sine',.1,i*.12));toast('🔒 Sealed until '+new Date(d+'T12:00').toLocaleDateString());draw()};
+function draw(){const L=load('list',[]).sort((a,b)=>a.open.localeCompare(b.open)),t=isoDay();
+  $('list').innerHTML=L.map(c=>{const ready=c.open<=t,days=Math.ceil((new Date(c.open+'T00:00')-new Date(t+'T00:00'))/DAY);return`<div class="cap"><span class="e">${ready?'🎁':c.e}</span><div class="n"><b>${esc(c.title)}</b><br><span class="muted" style="font-size:13px">Sealed ${new Date(c.sealed+'T12:00').toLocaleDateString()} · ${ready?'<b style="color:var(--good)">Ready to open!</b>':`opens in ${days} day${days>1?'s':''}`}</span></div>${ready?`<button class="b" data-o="${c.id}">Open</button>`:'<span title="Locked">🔒</span>'}<button class="x" data-x="${c.id}" title="Throw away">✕</button></div>`}).join('')||'<p class="muted">No capsules yet.</p>';
+  $('list').querySelectorAll('[data-o]').forEach(b=>b.onclick=async()=>{const c=L.find(x=>x.id===b.dataset.o);try{const txt=dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb(c.iv)},await keyFor(c.open,unb(c.salt)),unb(c.ct)));
+    $('open').innerHTML=`<h3>${esc(c.title)}</h3><p class="muted">Written on ${new Date(c.sealed+'T12:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</p><div class="letter">${esc(txt)}</div>`;[523,659,784,1047].forEach((f,i)=>tone(f,.3,'triangle',.1,i*.12));$('open').scrollIntoView({behavior:'smooth'})}catch{toast('Could not open this capsule.')}});
+  $('list').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(!confirm('Throw this capsule away forever?'))return;save('list',load('list',[]).filter(x=>x.id!==b.dataset.x));draw()})}
+draw();
+</script></body></html>

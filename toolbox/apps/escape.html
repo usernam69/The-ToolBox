@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Escape room</title><link rel="stylesheet" href="common.css">
+<style>
+#room{position:relative;width:100%;max-width:860px;aspect-ratio:16/9;margin:auto;border-radius:12px;overflow:hidden;background:linear-gradient(#5d4e75 0 68%,#3e3247 68%);user-select:none}
+.o{position:absolute;transform:translate(-50%,-50%);background:none;border:0;cursor:pointer;line-height:1;transition:transform .15s,filter .15s;padding:4px}
+.o:hover{transform:translate(-50%,-50%) scale(1.08);filter:drop-shadow(0 0 8px #fff8)}
+.nav{position:absolute;top:50%;transform:translateY(-50%);font-size:28px;background:rgba(0,0,0,.35);color:#fff;border:0;border-radius:50%;width:46px;height:46px;cursor:pointer}
+#msg{min-height:3em;font-size:16px}#inv{display:flex;gap:8px;flex-wrap:wrap;min-height:54px}
+#inv button{font-size:30px;width:54px;height:54px;border-radius:10px;border:2px solid var(--line);background:var(--card);cursor:pointer}#inv button.sel{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.label{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);color:#fff;font-weight:600;background:rgba(0,0,0,.35);padding:2px 12px;border-radius:999px}
+#pad{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center}#pad.on{display:flex}#pad .box{text-align:center}
+#pad .keys{display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin-top:8px}#pad .keys button{height:48px;font-size:20px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+#disp{font:700 30px ui-monospace,monospace;letter-spacing:8px;min-height:40px}
+</style></head>
+<body data-app="escape" data-cat="games" data-title="Escape room"><main>
+<div class="row"><b id="timer">00:00</b><button class="g" id="hint">💡 Hint</button><button class="g" id="restart">Restart</button><span class="muted" id="best" style="margin-left:auto"></span></div>
+<div id="room"><div id="scene"></div><button class="nav" style="left:8px" id="L">‹</button><button class="nav" style="right:8px" id="R">›</button><div class="label" id="wall"></div>
+<div id="pad"><div class="box"><b>Safe</b><div id="disp"></div><div class="keys" id="keys"></div><button class="g" id="padClose" style="margin-top:8px">Close</button></div></div></div>
+<div class="box" style="margin-top:10px"><div id="msg"></div></div>
+<h3>Inventory <span class="muted" style="font-size:13px;font-weight:400">(click an item to hold it, then click where to use it)</span></h3><div id="inv"></div>
+</main><script src="common.js"></script><script>
+const WALLS=['The door','The bookshelf','The window','The painting'];
+let s,t0,tick;
+function reset(){s={wall:0,inv:[],sel:null,flags:{},code:''};t0=Date.now();clearInterval(tick);tick=setInterval(()=>{const e=Math.floor((Date.now()-t0)/1000);$('timer').textContent=pad2(Math.floor(e/60))+':'+pad2(e%60)},500);say('You wake up in a locked room. There must be a way out. Look around: click things, and use ‹ › to turn.');draw()}
+function say(m){$('msg').innerHTML=m}
+function give(item,name){s.inv.push(item);tone(880,.1,'triangle',.1);tone(1320,.15,'triangle',.08,.08);drawInv();return name}
+const has=i=>s.inv.includes(i),holding=i=>s.sel===i;
+const BOOKS=['#c62828','#1565c0','#c62828','#2e7d32','#f9a825','#2e7d32','#c62828','#6a1b9a','#2e7d32','#2e7d32','#f9a825'];
+function objs(){const f=s.flags;return[
+ [ // door
+  {e:f.escaped?'🌅':'🚪',x:50,y:52,sz:150,click(){if(f.escaped)return;if(holding('💳')){f.escaped=true;win();return}say(has('💳')?'Hold the keycard to use it on the door.':'The door is locked tight. There\'s a card reader next to it.')}},
+  {e:'🔲',x:68,y:45,sz:34,click(){say(holding('💳')?'Use it on the door itself.':'A card reader with a red light. It needs a keycard.')}},
+  {e:'🕰️',x:22,y:24,sz:60,click(){say('An old clock. It stopped at <b>7 o\'clock</b> exactly. Funny, it looks important.')}},
+  {e:'🧥',x:84,y:44,sz:70,click(){if(!f.coat){f.coat=1;say('You check the coat pockets… just a sweet wrapper. 🍬 Nice try.')}else say('The coat\'s pockets are empty.')}}],
+ [ // bookshelf
+  ...BOOKS.map((col,i)=>({html:`<div style="width:22px;height:${70+(i*13)%30}px;background:${col};border-radius:3px;box-shadow:inset -3px 0 rgba(0,0,0,.2)"></div>`,x:26+i*4.5,y:38,click(){say('Just a book. There seem to be a lot of different colors on this shelf…')}})),
+  {html:'<div style="width:420px;height:12px;background:#6d4c41;border-radius:3px"></div>',x:50,y:51,click(){}},
+  {e:f.drawer?'🗄️':'🗄️',x:50,y:76,sz:90,click(){if(f.drawer){say('The drawer is empty now.');return}if(holding('🗝️')){f.drawer=1;s.inv=s.inv.filter(i=>i!=='🗝️');s.sel=null;say('Click! The small key opens the drawer. Inside is a diary. '+give('📔','📔'));draw()}else say('A drawer with a tiny keyhole. It\'s locked.')}}],
+ [ // window
+  {e:'🪟',x:50,y:36,sz:130,click(){say('Through the window you can see the stars. You\'re too high up to climb out.')}},
+  {e:'🪴',x:24,y:70,sz:80,click(){if(f.plant){say('Just soil now.');return}f.plant=1;say('You dig into the soil and find… a small key! '+give('🗝️','🗝️'));draw()}},
+  {e:'🛏️',x:72,y:76,sz:110,click(){say('A neatly made bed. Nothing under the pillow.')}}],
+ [ // painting
+  f.painting?{e:'🔒',x:50,y:38,sz:80,click(){if(f.safe){say('The safe is empty.');return}$('pad').classList.add('on');s.code='';$('disp').textContent='____'}}:{e:'🖼️',x:50,y:38,sz:120,click(){f.painting=1;say('You lift the painting off the wall. There\'s a safe with a 4-digit lock behind it!');draw()}},
+  {e:f.vent?'🕳️':'🔩',x:80,y:80,sz:60,click(){if(f.vent){if(!f.card){f.card=1;say('Inside the vent: a keycard! '+give('💳','💳'));draw()}else say('An empty air vent.');return}
+    if(holding('🪛')){f.vent=1;say('You unscrew the vent cover. It falls with a clang.');tone(200,.2,'square',.08);draw()}else say('An air vent, screwed shut. Four screws.')}},
+  {e:'🪑',x:20,y:76,sz:80,click(){say('A wobbly chair.')}}]][s.wall]}
+function draw(){const sc=$('scene');sc.innerHTML='';objs().forEach(o=>{const b=document.createElement('button');b.className='o';b.style.left=o.x+'%';b.style.top=o.y+'%';
+  if(o.html)b.innerHTML=o.html;else{b.textContent=o.e;b.style.fontSize=`min(${o.sz}px,${o.sz/8.6}vw)`}b.onclick=()=>{o.click();drawInv()};sc.append(b)});$('wall').textContent=WALLS[s.wall];drawInv()}
+function drawInv(){$('inv').innerHTML=s.inv.map(i=>`<button class="${s.sel===i?'sel':''}" data-i="${i}" title="Hold / read">${i}</button>`).join('')||'<span class="muted">Empty</span>';
+  $('inv').querySelectorAll('button').forEach(b=>b.onclick=()=>{const i=b.dataset.i;if(i==='📔'){say('📔 The diary says: <i>"I always forget the safe code, so I hid it in plain sight: count the <b style=color:#e57373>red</b>, then <b style=color:#64b5f6>blue</b>, then <b style=color:#81c784>green</b> books, and finish with the hour I stopped."</i>');return}s.sel=s.sel===i?null:i;drawInv();if(s.sel)say(`You're holding ${i}. Click where to use it.`)})}
+$('keys').innerHTML=[1,2,3,4,5,6,7,8,9,'C',0,'✓'].map(k=>`<button data-k="${k}">${k}</button>`).join('');
+$('keys').querySelectorAll('button').forEach(b=>b.onclick=()=>{const k=b.dataset.k;tone(700,.04,'square',.04);if(k==='C')s.code='';else if(k==='✓'){if(s.code==='3147'){s.flags.safe=1;$('pad').classList.remove('on');say('The safe swings open! Inside is a screwdriver. '+give('🪛','🪛'));draw()}else{say('Beep-boop. Wrong code.');tone(150,.3,'sawtooth',.08);s.code=''}}else if(s.code.length<4)s.code+=k;$('disp').textContent=(s.code+'____').slice(0,4)});
+$('padClose').onclick=()=>$('pad').classList.remove('on');
+$('L').onclick=()=>{s.wall=(s.wall+3)%4;draw()};$('R').onclick=()=>{s.wall=(s.wall+1)%4;draw()};
+const HINTS=[[()=>!s.flags.plant,'Plants are nice to dig in. Try the window wall.'],[()=>!s.flags.drawer,'That little key must fit something on the bookshelf wall.'],[()=>!s.flags.painting,'Paintings sometimes hide things. Read the diary in your inventory, too.'],[()=>!s.flags.safe,'Count the book colors on the shelf (red, blue, green), then add the hour on the clock.'],[()=>!s.flags.vent,'The screwdriver could open the vent near the painting.'],[()=>!s.flags.card,'Look inside the open vent.'],[()=>true,'Hold the keycard and click the door.']];
+$('hint').onclick=()=>{s.hints=(s.hints||0)+1;say('💡 '+HINTS.find(([c])=>c())[1])};
+function win(){clearInterval(tick);const e=Math.floor((Date.now()-t0)/1000),b=load('best',null);if(b===null||e<b)save('best',e);[523,659,784,1047,1319].forEach((f,i)=>tone(f,.25,'triangle',.12,i*.12));
+  say(`🎉 <b>You escaped in ${Math.floor(e/60)}m ${e%60}s</b>${s.hints?` with ${s.hints} hint${s.hints>1?'s':''}`:' without hints'}!`);draw();showBest()}
+const showBest=()=>{const b=load('best',null);$('best').textContent=b!==null?`Best: ${Math.floor(b/60)}m ${b%60}s`:''};
+$('restart').onclick=reset;reset();showBest();
+</script></body></html>

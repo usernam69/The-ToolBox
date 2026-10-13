@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Room chat</title><link rel="stylesheet" href="common.css">
+<style>#chat{display:grid;grid-template-columns:1fr 200px;gap:12px}@media(max-width:700px){#chat{grid-template-columns:1fr}#side{display:none}}
+#msgs{height:calc(100vh - 230px);min-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:10px}
+.m{max-width:75%;padding:7px 11px;border-radius:14px;background:var(--bg);border:1px solid var(--line);word-wrap:break-word;white-space:pre-wrap}.m.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.m .who{font-size:12px;font-weight:700;opacity:.8}.m .t{font-size:11px;opacity:.6;margin-left:6px}.sys{align-self:center;font-size:12px;color:var(--muted)}</style></head>
+<body data-app="chat" data-cat="bigger" data-title="Room chat"><main>
+<div id="lanPanel"></div>
+<div id="chat" hidden><div class="box" style="padding:0;display:flex;flex-direction:column"><div class="row" style="padding:8px 12px;margin:0;border-bottom:1px solid var(--line)"><b id="roomName"></b><span id="state" class="muted" style="font-size:12px"></span></div>
+<div id="msgs"></div><div class="row" style="padding:8px;margin:0;border-top:1px solid var(--line)"><input id="text" class="grow" placeholder="Message… (Enter to send)" maxlength="1000" autocomplete="off"><button class="g" id="emo" title="Emoji">😊</button><button class="b" id="send">Send</button></div></div>
+<div class="box" id="side"><b>In this room</b><ul class="clean" id="who"></ul></div></div>
+</main><script src="common.js"></script><script src="lan.js"></script><script>
+let me=null,myName='';
+function add(html,cls){const d=document.createElement('div');d.className=cls;d.innerHTML=html;$('msgs').append(d);$('msgs').scrollTop=1e9}
+function show(m){if(m.type==='chat'){const mine=m.from===me;add(`${mine?'':`<div class="who">${esc(m.name)}</div>`}${esc(m.text).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:inherit">$1</a>')}<span class="t">${new Date(m.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>`,'m'+(mine?' me':''));
+  if(!mine&&document.hidden){tone(880,.08,'sine',.08);document.title='💬 New message · Room chat'}}}
+function start(room,name){myName=name;$('lanPanel').hidden=true;$('chat').hidden=false;$('roomName').textContent='# '+room;
+  LAN.join(room,name,m=>{if(m.type==='hello'){me=m.id;$('msgs').innerHTML='';m.history.forEach(show);add('You joined the room','sys')}
+    else if(m.type==='members'){$('who').innerHTML=m.members.map(x=>`<li>🟢 ${esc(x.name)}${x.id===me?' (you)':''}</li>`).join('');if(m.joined&&m.joined!==myName)add(`${esc(m.joined)} joined`,'sys');if(m.left)add(`${esc(m.left)} left`,'sys')}
+    else if(m.type==='typing'&&m.from!==me){$('state').textContent=`${m.name} is typing…`;clearTimeout(window._ty);window._ty=setTimeout(()=>$('state').textContent='',2500)}else show(m)},
+    s=>{$('state').textContent=s==='connected'?'':s==='reconnecting'?'Reconnecting…':'Disconnected'});$('text').focus()}
+const sendMsg=()=>{const t=$('text').value.trim();if(!t)return;LAN.send({type:'chat',text:t,name:myName,from:me});$('text').value=''};
+let lastTyping=0;$('text').oninput=()=>{if(Date.now()-lastTyping>2000){lastTyping=Date.now();LAN.send({type:'typing',name:myName,from:me})}};
+$('text').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();sendMsg()}};$('send').onclick=sendMsg;
+const EM=['😀','😂','👍','❤️','🎉','😮','😢','🔥','👀','🙏'];$('emo').onclick=()=>{$('text').value+=EM[rnd(EM.length)];$('text').focus()};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)document.title='Room chat · The ToolBox'});
+lanPanel('chat.html',start);
+</script></body></html>

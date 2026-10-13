@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI study buddy</title><link rel="stylesheet" href="common.css">
+<style>.q{font-size:19px;font-weight:600;margin:6px 0 10px}.opt{display:block;width:100%;text-align:left;font:inherit;margin:6px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}.opt:hover{border-color:var(--accent)}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 15%,transparent)}.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 15%,transparent)}.fb{padding:10px;border-radius:10px;margin-top:8px;background:var(--bg)}</style></head>
+<body data-app="buddy" data-cat="bigger" data-title="AI study buddy"><main>
+<div id="setup">
+<p class="sub">Paste your notes and get quizzed on them. With a Claude API key, Claude writes real questions (multiple choice and short answer) and marks your answers with feedback. Without a key, it still works offline using fill-in-the-blank questions.</p>
+<textarea id="notes" style="min-height:200px" placeholder="Paste class notes, a textbook page, an article…"></textarea>
+<div class="row"><label>Questions <select id="count"><option>5</option><option selected>8</option><option>12</option></select></label><select id="kind"><option value="mix">Mixed</option><option value="mc">Multiple choice</option><option value="short">Short answer</option></select>
+<select id="level"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select><button class="b" id="start">Quiz me</button><button class="g" id="offline">Quiz me offline</button></div>
+<details class="box" style="margin-top:8px"><summary><b>🔑 Claude API key</b> <span class="muted" id="keyState"></span></summary>
+<p class="sub" style="margin-top:8px">Get a key at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>. It's saved only in this app on this device and is sent only to Anthropic's API. Each quiz costs a few cents.</p>
+<div class="row"><input id="key" type="password" class="grow" placeholder="sk-ant-…" autocomplete="off"><button class="g" id="saveKey">Save</button><button class="g" id="forget">Forget key</button></div></details>
+</div>
+<div id="quiz" hidden><div class="row"><b id="prog"></b><span id="score" class="muted"></span><button class="g" id="quit" style="margin-left:auto">End quiz</button></div><div class="box" id="card"></div></div>
+<div id="done" hidden class="box" style="text-align:center"></div>
+</main>
+<script src="common.js"></script>
+<script type="module">
+import Anthropic from 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm';
+const MODEL='claude-opus-5-5';
+const keyNow=()=>loadTb('claudeKey','');
+const showKey=()=>{$('keyState').textContent=keyNow()?'· saved ✓':'· not set (offline mode only)'};
+$('notes').value=load('notes','');$('notes').oninput=()=>save('notes',$('notes').value);
+$('saveKey').onclick=()=>{const k=$('key').value.trim();if(!k.startsWith('sk-ant-'))return toast('That doesn\'t look like a Claude API key.');saveTb('claudeKey',k);$('key').value='';showKey();toast('Key saved')};
+$('forget').onclick=()=>{saveTb('claudeKey','');showKey();toast('Key forgotten')};showKey();
+const client=()=>new Anthropic({apiKey:keyNow(),dangerouslyAllowBrowser:true});
+// One structured-output call; falls back to another model automatically if this one declines.
+async function ask(system,user,schema,effort='medium'){
+  const res=await client().beta.messages.create({model:MODEL,max_tokens:16000,betas:['server-side-fallback-2026-07-01'],fallbacks:'default',
+    system,messages:[{role:'user',content:user}],output_config:{effort,format:{type:'json_schema',schema}}});
+  if(res.stop_reason==='refusal')throw new Error('Claude declined this request'+(res.stop_details?.explanation?`: ${res.stop_details.explanation}`:'.'));
+  if(res.stop_reason==='max_tokens')throw new Error('The answer was cut off. Try fewer questions.');
+  const text=res.content.filter(b=>b.type==='text').map(b=>b.text).join('');return JSON.parse(text)}
+const QSCHEMA={type:'object',additionalProperties:false,required:['questions'],properties:{questions:{type:'array',items:{type:'object',additionalProperties:false,required:['type','question','options','answer','explanation'],
+  properties:{type:{type:'string',enum:['mc','short']},question:{type:'string'},options:{type:'array',items:{type:'string'}},answer:{type:'string'},explanation:{type:'string'}}}}}};
+const GSCHEMA={type:'object',additionalProperties:false,required:['verdict','feedback'],properties:{verdict:{type:'string',enum:['correct','partly','wrong']},feedback:{type:'string'}}};
+let Q=[],i=0,pts=0,offline=false;
+const errMsg=e=>e instanceof Anthropic.AuthenticationError?'That API key was rejected. Check it in the 🔑 section.':e instanceof Anthropic.RateLimitError?'Too many requests right now. Wait a moment and try again.':e instanceof Anthropic.APIConnectionError?'Could not reach the Claude API. Are you online?':e instanceof Anthropic.APIError?`API error ${e.status}: ${e.message}`:e.message;
+$('start').onclick=async()=>{const notes=$('notes').value.trim();if(notes.length<80)return toast('Paste a bit more text first.');if(!keyNow())return toast('Add a Claude API key, or use “Quiz me offline”.');
+  $('start').disabled=true;$('start').textContent='Writing questions…';
+  try{const n=+$('count').value,kind=$('kind').value;
+    const r=await ask('You write study quizzes that check real understanding of the student\'s own notes. Every question must be answerable from the notes alone. For "mc" questions give exactly 4 plausible options and set answer to the exact text of the correct option. For "short" questions leave options empty and put a model answer in answer. Keep explanations to one or two sentences.',
+      `Write ${n} ${$('level').value} questions (${kind==='mix'?'a mix of mc and short':kind==='mc'?'all mc':'all short'}) about these notes:\n\n<notes>\n${notes}\n</notes>`,QSCHEMA);
+    Q=r.questions.slice(0,n);offline=false;begin()}catch(e){toast(errMsg(e))}finally{$('start').disabled=false;$('start').textContent='Quiz me'}};
+// Offline: fill-in-the-blank from sentences, with distractors taken from the same notes.
+$('offline').onclick=()=>{const notes=$('notes').value.trim();if(notes.length<80)return toast('Paste a bit more text first.');
+  const sents=notes.replace(/\s+/g,' ').split(/(?<=[.!?])\s+/).filter(s=>s.length>40&&s.length<260),words=[...new Set(notes.match(/\b[A-Za-z][a-z]{5,}\b|\b[A-Z][a-z]{3,}\b/g)||[])];
+  Q=sents.sort(()=>Math.random()-.5).slice(0,+$('count').value).map(s=>{const cand=(s.match(/\b[A-Za-z][a-z]{5,}\b|\b[A-Z][a-z]{3,}\b/g)||[]).sort((a,b)=>b.length-a.length);if(!cand.length)return null;const a=cand[0];
+    const opts=[a,...words.filter(w=>w!==a).sort(()=>Math.random()-.5).slice(0,3)].sort(()=>Math.random()-.5);return{type:'mc',question:s.replace(a,'_____'),options:opts,answer:a,explanation:s}}).filter(Boolean);
+  if(Q.length<2)return toast('Not enough full sentences to make questions from.');offline=true;begin()};
+function begin(){i=0;pts=0;$('setup').hidden=true;$('done').hidden=true;$('quiz').hidden=false;show()}
+function show(){const q=Q[i];$('prog').textContent=`Question ${i+1} of ${Q.length}`;$('score').textContent=`Score ${pts}`;
+  $('card').innerHTML=`<div class="q">${esc(q.question)}</div>`+(q.type==='mc'?q.options.map(o=>`<button class="opt">${esc(o)}</button>`).join(''):`<textarea id="ans" placeholder="Your answer…"></textarea><div class="row"><button class="b" id="check">Check</button><button class="g" id="skip">Show answer</button></div>`)+'<div id="fb"></div>';
+  if(q.type==='mc')$('card').querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const ok=b.textContent===q.answer;$('card').querySelectorAll('.opt').forEach(o=>{o.disabled=true;if(o.textContent===q.answer)o.classList.add('right')});if(!ok)b.classList.add('wrong');result(ok?'correct':'wrong',q.explanation)});
+  else{$('check').onclick=grade;$('skip').onclick=()=>result('wrong',`Model answer: ${q.answer}`);$('ans').focus()}}
+async function grade(){const q=Q[i],a=$('ans').value.trim();if(!a)return;$('check').disabled=true;$('check').textContent='Marking…';
+  try{const r=await ask('You are a kind, fair teacher marking one short answer. Judge meaning, not wording or spelling. Feedback: one or two encouraging sentences that say what was right and what was missing.',
+    `Question: ${q.question}\nModel answer: ${q.answer}\nStudent answer: ${a}`,GSCHEMA,'low');result(r.verdict,r.feedback+(r.verdict!=='correct'?`<br><span class="muted">Model answer: ${esc(q.answer)}</span>`:''),true)}
+  catch(e){toast(errMsg(e));$('check').disabled=false;$('check').textContent='Check'}}
+function result(v,fb,html){const gain=v==='correct'?1:v==='partly'?.5:0;pts+=gain;$('score').textContent=`Score ${pts}`;tone(gain?660:200,.15,gain?'triangle':'sawtooth',.08);
+  $('fb').innerHTML=`<div class="fb"><b>${v==='correct'?'✅ Correct!':v==='partly'?'🟡 Partly right':'❌ Not quite'}</b><br>${html?fb:esc(fb)}</div><div class="row"><button class="b" id="next">${i+1<Q.length?'Next →':'Finish'}</button></div>`;
+  $('next').onclick=()=>{i++;i<Q.length?show():finish()};$('next').focus()}
+function finish(){$('quiz').hidden=true;$('done').hidden=false;const pct=Math.round(pts/Q.length*100),h=load('history',[]);h.unshift({at:Date.now(),pct,n:Q.length,offline});save('history',h.slice(0,30));
+  $('done').innerHTML=`<div style="font-size:60px">${pct>=80?'🏆':pct>=50?'👍':'📚'}</div><div class="big">${pct}%</div><p>${pts} of ${Q.length} right${pct>=80?'. Great work!':'. Have another go!'}</p><div class="row" style="justify-content:center"><button class="b" id="again">Same notes again</button><button class="g" id="back">New notes</button></div><p class="muted" style="font-size:13px">Recent: ${h.slice(0,8).map(x=>x.pct+'%').join(' · ')}</p>`;
+  $('again').onclick=()=>offline?$('offline').click():$('start').click();$('back').onclick=()=>{$('done').hidden=true;$('setup').hidden=false}}
+$('quit').onclick=finish;
+</script></body></html>

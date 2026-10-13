@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sticky-note wall</title><link rel="stylesheet" href="common.css">
+<style>
+#wall{position:relative;height:calc(100vh - 120px);min-height:420px;overflow:auto;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px}
+.note{position:absolute;width:190px;min-height:150px;padding:28px 10px 10px;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.18);color:#222;display:flex;flex-direction:column}
+.note .bar{position:absolute;top:0;left:0;right:0;height:24px;cursor:grab;display:flex;justify-content:flex-end;gap:2px;padding:2px 4px}
+.note .bar button{background:none;border:0;cursor:pointer;font-size:13px;opacity:.6;color:#222}
+.note textarea{flex:1;background:transparent;border:0;resize:none;font:15px/1.4 'Segoe Print','Comic Sans MS',system-ui;color:#222;min-height:110px;padding:0}
+.tools{display:flex;gap:8px;padding:8px 16px;align-items:center;flex-wrap:wrap}
+.sw{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+</style></head>
+<body data-app="sticky" data-cat="quick" data-title="Sticky-note wall">
+<div class="tools"><button class="b" id="add">+ New note</button><span class="muted" style="font-size:13px">Drag a note by its top strip. Text saves as you type.</span><button class="g" id="tidy" style="margin-left:auto">Tidy up</button></div>
+<div id="wall"></div>
+<script src="common.js"></script><script>
+const COLORS=['#fff59d','#ffcc80','#a5d6a7','#90caf9','#f48fb1','#ce93d8'];
+let notes=load('notes',null)||[{id:uid(),x:30,y:30,c:0,t:'Welcome! ✨\nDrag me around by the top strip.'},{id:uid(),x:260,y:60,c:2,t:'Click + New note to add more.'}];
+const persist=()=>save('notes',notes);let z=1;
+function el(n){const d=document.createElement('div');d.className='note';d.style.cssText=`left:${n.x}px;top:${n.y}px;background:${COLORS[n.c]};z-index:${z++}`;
+  d.innerHTML=`<div class="bar"><button title="Color">🎨</button><button title="Delete">✕</button></div><textarea spellcheck="false"></textarea>`;
+  const ta=d.querySelector('textarea');ta.value=n.t;ta.oninput=()=>{n.t=ta.value;persist()};
+  const[col,del]=d.querySelectorAll('button');col.onclick=()=>{n.c=(n.c+1)%COLORS.length;d.style.background=COLORS[n.c];persist()};
+  del.onclick=()=>{if(n.t.trim()&&!confirm('Delete this note?'))return;notes=notes.filter(x=>x!==n);d.remove();persist()};
+  const bar=d.querySelector('.bar');bar.onpointerdown=e=>{if(e.target.tagName==='BUTTON')return;bar.setPointerCapture(e.pointerId);d.style.zIndex=z++;const sx=e.clientX-n.x,sy=e.clientY-n.y;
+    bar.onpointermove=m=>{n.x=Math.max(0,m.clientX-sx);n.y=Math.max(0,m.clientY-sy);d.style.left=n.x+'px';d.style.top=n.y+'px'};
+    bar.onpointerup=()=>{bar.onpointermove=null;persist()}};
+  d.onpointerdown=()=>d.style.zIndex=z++;$('wall').append(d);return d}
+notes.forEach(el);
+$('add').onclick=()=>{const w=$('wall'),n={id:uid(),x:w.scrollLeft+40+rnd(200),y:w.scrollTop+40+rnd(120),c:rnd(COLORS.length),t:''};notes.push(n);persist();el(n).querySelector('textarea').focus()};
+$('tidy').onclick=()=>{const cols=Math.max(1,Math.floor($('wall').clientWidth/210));notes.forEach((n,i)=>{n.x=20+(i%cols)*210;n.y=20+Math.floor(i/cols)*175});persist();$('wall').innerHTML='';notes.forEach(el)};
+</script></body></html>

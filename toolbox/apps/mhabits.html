@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#2f6fde"><meta name="apple-mobile-web-app-capable" content="yes"><title>Phone habit app</title><link rel="stylesheet" href="common.css">
+<style>main{max-width:520px;padding-bottom:90px}.day{display:flex;justify-content:space-between;gap:4px;margin:6px 0 14px}.day button{flex:1;border:0;background:none;color:var(--ink);border-radius:12px;padding:6px 0;font:inherit;cursor:pointer}.day button.on{background:var(--accent);color:var(--accent-ink)}.day b{display:block;font-size:18px}
+.h{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--card);border:1px solid var(--line);margin-bottom:10px;user-select:none;touch-action:pan-y;transition:transform .15s}
+.h .ic{font-size:30px;width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center}.h .tx{flex:1}.h .tx b{display:block;font-size:17px}.h .tx span{font-size:13px;color:var(--muted)}
+.chk{width:46px;height:46px;border-radius:50%;border:3px solid var(--line);background:none;font-size:22px;cursor:pointer;color:#fff}.h.done .chk{background:var(--good);border-color:var(--good)}.h.done{opacity:.8}
+.ring{width:110px;height:110px;margin:auto;display:block}.fab{position:fixed;bottom:22px;right:22px;width:62px;height:62px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:32px;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;z-index:30}.sheet.on{display:flex}.sheet .box{width:100%;max-width:520px;margin:auto auto 0;border-radius:20px 20px 0 0;padding:18px}
+.icons{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}.icons button{font-size:24px;border:2px solid transparent;background:var(--bg);border-radius:10px;padding:4px;cursor:pointer}.icons button.on{border-color:var(--accent)}</style></head>
+<body data-app="mhabits" data-cat="bigger" data-title="Phone habit app"><main>
+<div class="day" id="days"></div>
+<svg class="ring" viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="12"/><circle id="arc" cx="60" cy="60" r="50" fill="none" stroke="var(--good)" stroke-width="12" stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="314" stroke-dashoffset="314" style="transition:stroke-dashoffset .4s"/><text id="pct" x="60" y="68" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)"></text></svg>
+<p class="muted" style="text-align:center;font-size:13px">Tap ✓ to check off a habit, and press and hold one to edit it. This shares its habits with the Toolbox's Habits tab.</p>
+<div id="list"></div>
+<details class="box"><summary><b>📲 Put this on your phone</b></summary><p class="sub" style="margin-top:8px">Host the toolbox folder online (GitHub Pages works), open <code>…/apps/mhabits.html</code> on your phone, then use <b>Add to Home Screen</b> (Safari: Share ↗, Chrome: ⋮ menu). It opens full screen like a real app and works offline.</p></details>
+</main>
+<button class="fab" id="add" title="New habit">＋</button>
+<div class="sheet" id="sheet"><div class="box"><h2 id="shTitle">New habit</h2><input id="hName" style="width:100%;font-size:18px" placeholder="e.g. Drink water"><h3>Icon</h3><div class="icons" id="icons"></div>
+<div class="row"><button class="b" id="hSave" style="flex:1">Save</button><button class="g" id="hDel">Delete</button><button class="g" id="hCancel">Cancel</button></div></div></div>
+<script src="common.js"></script><script>
+const ICONS=['💧','📚','🏃','🧘','🥗','😴','🦷','💊','🎸','✍️','🧹','🌱','🚶','🍎','📵','🙏'],TINT=['#4fc3f7','#ffb74d','#81c784','#ba68c8','#aed581','#9575cd','#4dd0e1','#f06292','#ff8a65','#a1887f','#90a4ae','#66bb6a','#ffd54f','#e57373','#7986cb','#f48fb1'];
+// same storage as the Toolbox Habits tab (tb_habits), with an optional icon field
+const getH=()=>loadTb('habits',[]),setH=h=>saveTb('habits',h);let day=isoDay(),edit=null,icon=ICONS[0];
+const streak=h=>{let d=new Date(),n=0;const k=x=>h.days[isoDay(x)]||h.frozen?.[isoDay(x)];if(!k(d))d=new Date(d-DAY);while(k(d)){if(h.days[isoDay(d)])n++;d=new Date(d-DAY)}return n};
+function draw(){const H=getH(),t=isoDay();$('days').innerHTML=[...Array(7)].map((_,i)=>{const d=new Date(Date.now()-(6-i)*DAY),iso=isoDay(d);return`<button data-d="${iso}" class="${iso===day?'on':''}">${d.toLocaleDateString(undefined,{weekday:'narrow'})}<b>${d.getDate()}</b></button>`}).join('');
+  $('days').querySelectorAll('button').forEach(b=>b.onclick=()=>{day=b.dataset.d;draw()});
+  const done=H.filter(h=>h.days[day]).length,pct=H.length?done/H.length:0;$('arc').setAttribute('stroke-dashoffset',314*(1-pct));$('pct').textContent=H.length?Math.round(pct*100)+'%':'—';
+  $('list').innerHTML=H.map((h,i)=>{const ic=h.icon||ICONS[i%ICONS.length],c=TINT[ICONS.indexOf(ic)%TINT.length];return`<div class="h ${h.days[day]?'done':''}" data-i="${i}"><div class="ic" style="background:${c}33">${ic}</div><div class="tx"><b>${esc(h.name)}</b><span>🔥 ${streak(h)} day streak${day!==t?' · '+new Date(day+'T12:00').toLocaleDateString(undefined,{weekday:'long'}):''}</span></div><button class="chk">${h.days[day]?'✓':''}</button></div>`}).join('')||'<p class="muted" style="text-align:center">No habits yet. Tap ＋ to add one.</p>';
+  $('list').querySelectorAll('.h').forEach(el=>{const i=+el.dataset.i;el.querySelector('.chk').onclick=()=>{const H=getH(),h=H[i];if(h.days[day])delete h.days[day];else{h.days[day]=true;navigator.vibrate?.(30);tone(660,.08,'triangle',.08)}setH(H);draw()};
+    let hold;el.onpointerdown=e=>{if(e.target.closest('.chk'))return;el.style.transform='scale(.97)';hold=setTimeout(()=>{navigator.vibrate?.(20);openSheet(i)},550)};el.onpointerup=el.onpointerleave=el.onpointercancel=()=>{clearTimeout(hold);el.style.transform=''}})}
+function openSheet(i){edit=i;const h=i===null?null:getH()[i];icon=h?.icon||ICONS[0];$('shTitle').textContent=h?'Edit habit':'New habit';$('hName').value=h?.name||'';$('hDel').hidden=!h;drawIcons();$('sheet').classList.add('on');setTimeout(()=>$('hName').focus(),50)}
+function drawIcons(){$('icons').innerHTML=ICONS.map(e=>`<button class="${e===icon?'on':''}">${e}</button>`).join('');$('icons').querySelectorAll('button').forEach(b=>b.onclick=()=>{icon=b.textContent;drawIcons()})}
+$('add').onclick=()=>openSheet(null);$('hCancel').onclick=()=>$('sheet').classList.remove('on');$('sheet').onclick=e=>{if(e.target===$('sheet'))$('sheet').classList.remove('on')};
+$('hSave').onclick=()=>{const n=$('hName').value.trim();if(!n)return;const H=getH();if(edit===null)H.push({id:uid(),name:n,icon,days:{}});else Object.assign(H[edit],{name:n,icon});setH(H);$('sheet').classList.remove('on');draw()};
+$('hName').onkeydown=e=>e.key==='Enter'&&$('hSave').click();$('hDel').onclick=()=>{if(!confirm('Delete this habit and its history?'))return;const H=getH();H.splice(edit,1);setH(H);$('sheet').classList.remove('on');draw()};
+addEventListener('storage',draw);draw();
+</script></body></html>

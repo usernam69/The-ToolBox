@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Poem remixer</title><link rel="stylesheet" href="common.css">
+<style>#out{font:20px/1.8 Georgia,serif;white-space:pre-wrap;min-height:200px;text-align:center;padding:24px}.src label{display:inline-flex;gap:4px;margin:2px 8px 2px 0}</style></head>
+<body data-app="poem" data-cat="creative" data-title="Poem remixer"><main>
+<p class="sub">Pick some poems (all old enough to be free for anyone to use) or paste your own, then remix them into something new.</p>
+<div class="box src" id="srcs"></div>
+<details><summary>Add your own text</summary><textarea id="own" placeholder="Paste lyrics you wrote, a poem, a diary page…"></textarea></details>
+<div class="row"><select id="mode"><option value="lines">Shuffle lines</option><option value="weave">Weave poems together</option><option value="cut">Cut-up (shuffle phrases)</option><option value="haiku">Make a haiku-ish</option></select><label>Length <input type="range" id="len" min="3" max="16" value="8"></label><button class="b" id="go">Remix (Space)</button><button class="g" id="cp">Copy</button><button class="g" id="keep">♥ Keep</button></div>
+<div id="out" class="box"></div><h3>Kept</h3><div id="kept"></div>
+</main><script src="common.js"></script><script>
+const POEMS={'Emily Dickinson: "Hope" is the thing with feathers':`"Hope" is the thing with feathers
+That perches in the soul
+And sings the tune without the words
+And never stops at all
+And sweetest in the gale is heard
+And sore must be the storm
+That could abash the little bird
+That kept so many warm`,
+'William Shakespeare: Sonnet 18':`Shall I compare thee to a summer's day?
+Thou art more lovely and more temperate
+Rough winds do shake the darling buds of May
+And summer's lease hath all too short a date
+Sometime too hot the eye of heaven shines
+And often is his gold complexion dimm'd
+So long as men can breathe or eyes can see
+So long lives this, and this gives life to thee`,
+'William Blake: The Tyger':`Tyger Tyger, burning bright
+In the forests of the night
+What immortal hand or eye
+Could frame thy fearful symmetry?
+In what distant deeps or skies
+Burnt the fire of thine eyes?
+On what wings dare he aspire?
+What the hand, dare seize the fire?`,
+'Robert Frost: The Road Not Taken':`Two roads diverged in a yellow wood
+And sorry I could not travel both
+And be one traveler, long I stood
+And looked down one as far as I could
+To where it bent in the undergrowth
+I shall be telling this with a sigh
+Somewhere ages and ages hence
+And that has made all the difference`,
+'William Wordsworth: Daffodils':`I wandered lonely as a cloud
+That floats on high o'er vales and hills
+When all at once I saw a crowd
+A host, of golden daffodils
+Beside the lake, beneath the trees
+Fluttering and dancing in the breeze
+For oft, when on my couch I lie
+In vacant or in pensive mood`,
+'Christina Rossetti: Who Has Seen the Wind?':`Who has seen the wind?
+Neither I nor you
+But when the leaves hang trembling
+The wind is passing through
+Who has seen the wind?
+Neither you nor I
+But when the trees bow down their heads
+The wind is passing by`};
+const chosen=load('chosen',Object.keys(POEMS).slice(0,3));
+$('srcs').innerHTML=Object.keys(POEMS).map(k=>`<label><input type="checkbox" value="${esc(k)}" ${chosen.includes(k)?'checked':''}> ${esc(k)}</label>`).join('');
+$('srcs').onchange=()=>save('chosen',[...$('srcs').querySelectorAll(':checked')].map(c=>c.value));$('own').value=load('own','');$('own').oninput=()=>save('own',$('own').value);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+function sources(){const s=[...$('srcs').querySelectorAll(':checked')].map(c=>POEMS[c.value]);if($('own').value.trim())s.push($('own').value);return s.map(p=>p.split('\n').map(l=>l.trim()).filter(Boolean))}
+const syl=w=>Math.max(1,(w.toLowerCase().replace(/e$/,'').match(/[aeiouy]+/g)||[]).length);
+let cur='';function remix(){const src=sources(),n=+$('len').value;if(!src.length){$('out').textContent='Pick at least one poem.';return}const all=src.flat(),m=$('mode').value;let lines;
+  if(m==='lines')lines=shuffle(all).slice(0,n);
+  else if(m==='weave'){lines=[];for(let i=0;lines.length<n&&i<50;i++){const p=src[i%src.length];lines.push(p[rnd(p.length)])}}
+  else if(m==='cut'){const ph=shuffle(all.flatMap(l=>l.split(/,\s*|\s+(?=and |but |that |when |in |the )/i)).map(s=>s.trim()).filter(s=>s.length>2));lines=[];for(let i=0;i<n;i++)lines.push(ph.splice(0,1+rnd(2)).join(' '))}
+  else{const words=shuffle(all.join(' ').replace(/[^\w\s'-]/g,'').split(/\s+/).filter(Boolean));const take=t=>{let out=[],s=0;for(const w of words){if(s+syl(w)<=t&&!out.includes(w)){out.push(w);s+=syl(w)}if(s===t)break}words.push(...words.splice(0,out.length));return out.join(' ')};lines=[take(5),take(7),take(5)]}
+  cur=lines.map(l=>l.replace(/^./,ch=>ch.toUpperCase())).join('\n');cur=cur.replace(/[,;]?$/,'.');$('out').textContent=cur;tone(523+rnd(300),.15,'sine',.05)}
+function kept(){const k=load('kept',[]);$('kept').innerHTML=k.map((p,i)=>`<div class="box" style="margin:6px 0;white-space:pre-wrap;font-family:Georgia,serif;position:relative">${esc(p)}<button class="x" style="position:absolute;top:6px;right:8px" data-i="${i}">✕</button></div>`).join('')||'<span class="muted">Keep the remixes you like.</span>';
+  $('kept').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{k.splice(b.dataset.i,1);save('kept',k);kept()})}
+$('go').onclick=()=>{remix();$('go').blur()};$('cp').onclick=()=>copy(cur);$('keep').onclick=()=>{if(!cur)return;const k=load('kept',[]);k.unshift(cur);save('kept',k);kept()};
+addEventListener('keydown',e=>{if(e.key===' '&&!/TEXTAREA|INPUT|SELECT/.test(document.activeElement.tagName)){e.preventDefault();remix()}});remix();kept();
+</script></body></html>

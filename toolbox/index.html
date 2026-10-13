@@ -3,141 +3,82 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Useful Toolbox</title>
+<title>The ToolBox</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
 <meta name="theme-color" content="#2f6fde">
+<link rel="stylesheet" href="apps/common.css">
 <style>
-:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--muted:#6b6b70;--line:#e2e0da;--accent:#2f6fde;--accent-ink:#fff;--good:#1f8a4c;--bad:#c23b3b;--warn:#b7791f}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--card:#1e1e22;--ink:#ececef;--muted:#9a9aa2;--line:#33333a;--accent:#6b9bff;--accent-ink:#0b1020;--good:#4cc27e;--bad:#ff7a7a;--warn:#f0b851}}
-:root[data-theme="dark"]{--bg:#141416;--card:#1e1e22;--ink:#ececef;--muted:#9a9aa2;--line:#33333a;--accent:#6b9bff;--accent-ink:#0b1020;--good:#4cc27e;--bad:#ff7a7a;--warn:#f0b851}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
-header{padding:16px 16px 4px;max-width:1000px;margin:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-h1{margin:0;font-size:22px;margin-right:auto}
-#gsearchWrap{position:relative;flex:1;min-width:180px;max-width:340px}
-#gsearch{width:100%}
-#gresults{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--line);border-radius:8px;z-index:20;max-height:320px;overflow:auto;display:none}
-#gresults div{padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--line);font-size:14px}
-#gresults div:hover{background:var(--bg)}
-nav{display:flex;gap:6px;flex-wrap:wrap;padding:6px 16px;max-width:1000px;margin:auto}
-nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer;font:inherit;font-size:14px}
-nav button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-nav#groups button{font-weight:600}
-nav button kbd{font-size:11px;opacity:.6;margin-right:4px}
-main{max-width:1000px;margin:auto;padding:8px 16px 40px}
-section{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
-section.on{display:block}
-h2{margin:0 0 4px;font-size:18px}
-h3{margin:14px 0 4px;font-size:15px}
-.sub{color:var(--muted);margin:0 0 12px;font-size:14px}
-input,textarea,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;max-width:100%}
-textarea{width:100%;min-height:90px}
-button.b{font:inherit;border:0;background:var(--accent);color:var(--accent-ink);padding:7px 13px;border-radius:8px;cursor:pointer}
-button.g{font:inherit;border:1px solid var(--line);background:transparent;color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
-.grow{flex:1;min-width:140px}
-ul.clean{list-style:none;padding:0;margin:8px 0}
-ul.clean li{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
-.x{margin-left:auto;cursor:pointer;color:var(--muted);background:none;border:0;font-size:16px}
-.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.box{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--card)}
-pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;max-height:300px;font-size:13px;white-space:pre}
-table{border-collapse:collapse;width:100%;font-size:14px}
-td,th{border-bottom:1px solid var(--line);padding:5px;text-align:left}
-.tag{display:inline-block;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:0 8px;margin:2px 4px 2px 0;cursor:pointer}
-.tag.on{background:var(--accent);color:var(--accent-ink)}
-.card{font-size:22px;text-align:center;padding:36px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;min-height:140px}
-.muted{color:var(--muted)}
-.done{text-decoration:line-through;color:var(--muted)}
-.overdue{color:var(--bad);font-weight:600}
-.soon{color:var(--warn);font-weight:600}
-.big{font-size:32px;font-weight:600;font-variant-numeric:tabular-nums}
-video{width:100%;max-height:360px;background:#000;border-radius:8px}
-a{color:var(--accent)}
-.bar{height:10px;background:var(--accent);border-radius:4px}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cal div{border:1px solid var(--line);border-radius:6px;min-height:72px;padding:3px;font-size:12px;overflow:hidden}
-.cal .hd{min-height:0;border:0;text-align:center;color:var(--muted)}
-.cal .today{border-color:var(--accent);border-width:2px}
-.cal .other{opacity:.4}
-.badge{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px}
-.badge.locked{opacity:.4;filter:grayscale(1)}
-.badge .e{font-size:28px}
-#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;display:none;gap:10px;align-items:center;z-index:50;max-width:calc(100% - 32px)}
-#toast button{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;cursor:pointer}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:40;padding:10vh 16px}
-.modal.on{display:flex}
-.modal .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;width:100%;max-width:560px}
-#focus{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column;align-items:center;padding:40px 16px;overflow:auto}
-#focus.on{display:flex}
-.md h1,.md h2,.md h3{margin:.6em 0 .3em}
-.md code{background:var(--bg);padding:0 4px;border-radius:4px}
-.swatch{width:64px;height:64px;border-radius:10px;border:1px solid var(--line)}
-.dropzone{border:2px dashed var(--line);border-radius:10px;padding:8px}
-.dragging{opacity:.4}
-section{position:relative}
-.favBtn{position:absolute;top:10px;right:12px;background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted);line-height:1}
-.favBtn.on{color:#e0a800}
-#navFilter{padding:4px 10px;border-radius:999px;font-size:14px;width:150px}
-#saver,#kid{position:fixed;inset:0;z-index:60;display:none;background:var(--bg);color:var(--ink);overflow:auto}
-#saver{align-items:center;justify-content:center;background:#05060a;color:#e8e8ee;cursor:none}
-#saver.on{display:flex}
-#kid{padding:24px 16px}
-#kid.on{display:block}
-#lockScreen{z-index:45}
-@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
-body.compact{font-size:14px}
-body.compact section{padding:10px}
-body.compact .box{padding:8px}
-body.compact .row{margin:5px 0;gap:6px}
-body.compact ul.clean li{padding:3px 0}
-body.compact input,body.compact select,body.compact textarea{padding:4px 7px}
-body.compact button.b,body.compact button.g{padding:4px 9px}
-body.compact header{padding-top:8px}
-@media print{header,nav,#toast,.modal,#focus,.favBtn,button,input[type=file],details:not([open]){display:none!important}
- body{background:#fff;color:#000}section{border:0;padding:0}section:not(.on){display:none!important}
- .box{break-inside:avoid;border-color:#ccc}input,textarea,select{border:0;background:none;color:#000}a{color:#000}}
+header.hero{max-width:1000px;margin:auto;padding:28px 16px 8px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header.hero img{width:56px;height:56px}
+header.hero h1{margin:0;font-size:30px}
+header.hero p{margin:2px 0 0}
+#q{flex:1;min-width:200px;max-width:340px;margin-left:auto}
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.cat{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:18px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);transition:transform .12s,box-shadow .12s}
+.cat:hover,.cat:focus-visible{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12);outline:none;border-color:var(--accent)}
+.cat .e{font-size:40px;line-height:1}
+.cat h2{font-size:20px;margin:8px 0 2px}
+.cat .n{font-size:13px;color:var(--muted)}
+.cat .peek{margin-top:10px;font-size:22px;letter-spacing:4px}
+.apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.app{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;text-decoration:none;color:var(--ink);transition:border-color .12s}
+.app:hover,.app:focus-visible{border-color:var(--accent);outline:none}
+.app .e{font-size:30px;line-height:1.1}
+.app b{display:block}
+.app span{font-size:13px;color:var(--muted)}
+.back{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 14px;cursor:pointer}
+.crumb{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.crumb h2{font-size:24px;margin:0}
+#recent{margin-bottom:18px}
+#recent .row a{font-size:14px}
+.chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;text-decoration:none;color:var(--ink);background:var(--card)}
+.chip:hover{border-color:var(--accent)}
+footer{max-width:1000px;margin:auto;padding:16px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
-<header>
- <h1>Useful Toolbox</h1>
- <div id="gsearchWrap"><input id="gsearch" placeholder="Search everything…"><div id="gresults"></div></div>
- <button class="g" id="cmdBtn" title="Command bar (Ctrl+K)">⌘ Ctrl+K</button>
- <button class="g" id="focusBtn">Focus</button>
- <button class="g" id="surpriseBtn" title="Surprise me: open a tool you haven't used in a while">🎲</button>
- <button class="g" id="printBtn" title="Print this tab">🖨</button>
- <button class="g" id="themeBtn"></button>
+<header class="hero">
+ <img src="icon.svg" alt="">
+ <div><h1>The ToolBox</h1><p class="muted">Apps, games and tools, all in one place.</p></div>
+ <input id="q" placeholder="Search all apps…" autocomplete="off">
 </header>
-<nav id="groups"></nav>
-<nav id="nav"></nav>
-<main id="main"></main>
-
-<div id="toast"><span id="toastMsg"></span><button id="toastUndo">Undo</button></div>
-<div class="modal" id="cmdModal"><div class="panel">
- <div class="row" style="margin:0"><input id="cmdIn" class="grow" placeholder="Try: todo buy milk · timer 10m tea · spent 12 lunch food · go flashcards"><button class="g" id="cmdMic" title="Speak a command">🎤</button></div>
- <div id="cmdOut" class="muted" style="margin-top:8px;font-size:14px"></div>
-</div></div>
-<div id="focus"></div>
-<div class="modal" id="lockScreen"></div>
-<div id="saver"></div>
-<div id="kid"></div>
-
-<script src="js/core.js"></script>
-<script src="js/daily.js"></script>
-<script src="js/money.js"></script>
-<script src="js/study.js"></script>
-<script src="js/files.js"></script>
-<script src="js/text.js"></script>
-<script src="js/saved.js"></script>
-<script src="js/life.js"></script>
-<script src="js/more.js"></script>
-<script src="js/media.js"></script>
-<script src="js/system.js"></script>
-<script src="js/review.js"></script>
-<script src="js/fun.js"></script>
-<script src="js/start.js"></script>
+<main>
+ <div id="recent"></div>
+ <div id="home"><div class="cats" id="cats"></div></div>
+ <div id="catView" hidden><div class="crumb"><button class="back" id="backBtn">← All categories</button><h2 id="catTitle"></h2></div><p class="sub" id="catBlurb"></p><div class="apps" id="catApps"></div></div>
+ <div id="searchView" hidden><h2 style="margin-bottom:10px">Search results</h2><div class="apps" id="searchApps"></div></div>
+</main>
+<footer>Everything is saved on this device only. <span id="count"></span></footer>
+<script src="apps/registry.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+try{const t=JSON.parse(localStorage.getItem('tb_theme')||'"auto"');if(t!=='auto')document.documentElement.dataset.theme=t;
+  const a=JSON.parse(localStorage.getItem('tb_accent')||'""');if(a)document.documentElement.style.setProperty('--accent',a)}catch{}
+const card=a=>`<a class="app" href="${esc(a.href)}" data-id="${a.id}"><span class="e">${a.emoji}</span><div><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div></a>`;
+function remember(e){const a=e.target.closest('.app,.chip');if(!a||!a.dataset.id)return;
+  try{const r=JSON.parse(localStorage.getItem('menu_recent')||'[]');localStorage.setItem('menu_recent',JSON.stringify([a.dataset.id,...r.filter(x=>x!==a.dataset.id)].slice(0,8)))}catch{}}
+document.addEventListener('click',remember);
+$('cats').innerHTML=CATEGORIES.map(c=>`<button class="cat" data-cat="${c.id}"><div class="e">${c.emoji}</div><h2>${esc(c.name)}</h2><div class="n">${c.apps.length} ${c.id==='tools'?'shortcuts (64 tools inside)':'apps'}</div><p class="muted" style="margin:6px 0 0">${esc(c.blurb)}</p><div class="peek">${c.apps.slice(0,7).map(a=>a[2]).join('')}</div></button>`).join('');
+$('cats').querySelectorAll('.cat').forEach(b=>b.onclick=()=>{location.hash=b.dataset.cat});
+$('backBtn').onclick=()=>{location.hash=''};
+$('count').textContent=`${ALL_APPS.filter(a=>a.cat!=='tools').length} apps and games + 64 tools.`;
+function drawRecent(){let r=[];try{r=JSON.parse(localStorage.getItem('menu_recent')||'[]')}catch{}
+  const list=r.map(id=>ALL_APPS.find(a=>a.id===id)).filter(Boolean).slice(0,6);
+  $('recent').innerHTML=list.length&&!location.hash?`<div class="muted" style="font-size:13px">Recently opened</div><div class="row">${list.map(a=>`<a class="chip" href="${esc(a.href)}" data-id="${a.id}">${a.emoji} ${esc(a.name)}</a>`).join('')}</div>`:''}
+function route(){const id=location.hash.slice(1),c=CATEGORIES.find(c=>c.id===id);$('q').value='';$('searchView').hidden=true;
+  $('home').hidden=!!c;$('catView').hidden=!c;
+  if(c){$('catTitle').textContent=c.emoji+' '+c.name;$('catBlurb').textContent=c.blurb;$('catApps').innerHTML=c.apps.map(([id,name,emoji,desc,href])=>card({id,name,emoji,desc,href})).join('');scrollTo(0,0)}
+  drawRecent()}
+$('q').oninput=()=>{const q=$('q').value.trim().toLowerCase();if(!q){route();return}
+  const hits=ALL_APPS.filter(a=>(a.name+' '+a.desc).toLowerCase().includes(q));
+  $('home').hidden=$('catView').hidden=true;$('searchView').hidden=false;$('recent').innerHTML='';
+  $('searchApps').innerHTML=hits.map(card).join('')||'<p class="muted">Nothing matches.</p>'};
+$('q').onkeydown=e=>{if(e.key==='Enter'){const a=$('searchApps').querySelector('a');if(a)a.click()}if(e.key==='Escape'){$('q').value='';route()}};
+addEventListener('hashchange',route);route();
+addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==$('q')){e.preventDefault();$('q').focus()}});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
 </body>
 </html>

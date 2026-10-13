@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Discord bot maker</title><link rel="stylesheet" href="common.css">
+<style>.cmds{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}.cmds label{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer;background:var(--card)}.cmds small{display:block;color:var(--muted)}#code{max-height:420px}</style></head>
+<body data-app="discord" data-cat="bigger" data-title="Discord bot maker"><main>
+<p class="sub">Pick what your bot can do and download a ready-made project. It's a <a href="https://discord.js.org/" target="_blank" rel="noopener">discord.js</a> bot with slash commands. Once you've created the bot on Discord's developer site, it runs on your own computer with Node.js.</p>
+<div class="row"><input id="bname" placeholder="Bot name" value="ToolBot"><input id="color" type="color" value="#5865f2" title="Embed color"></div>
+<h3>Commands</h3><div class="cmds" id="cmds"></div>
+<h3>Your own reply commands</h3><p class="sub">One per line, like <code>rules: Be kind, no spam, have fun!</code>. Each one becomes <code>/rules</code>.</p><textarea id="custom" placeholder="rules: Be kind and have fun!&#10;discord: Join us at https://discord.gg/…"></textarea>
+<div class="row"><button class="b" id="zip">Download bot project (.zip)</button><button class="g" id="show">Show code</button></div><pre id="code" hidden></pre>
+<details class="box"><summary><b>How to run it</b></summary><ol style="line-height:1.8">
+<li>Install <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js</a> (the LTS version).</li>
+<li>Go to the <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a>, click <b>New Application</b>, then open <b>Bot</b> → <b>Reset Token</b> and copy the token.</li>
+<li>Unzip the project, rename <code>.env.example</code> to <code>.env</code>, and paste your token and the application ID (from <b>General Information</b>). Never share the token or post it online.</li>
+<li>Invite the bot: <b>OAuth2</b> → <b>URL Generator</b>, tick <code>bot</code> and <code>applications.commands</code>, open the link, and pick your server.</li>
+<li>In the project folder run <code>npm install</code>, then <code>npm start</code>. Type <code>/</code> in your server to see the commands.</li></ol></details>
+</main><script src="common.js"></script><script>
+const CMDS={ping:['🏓 ping','Checks the bot is awake and shows its speed.',`  ping: { description: 'Check that the bot is awake', run: async (i) => i.reply(\`🏓 Pong! \${Math.round(i.client.ws.ping)} ms\`) },`],
+ roll:['🎲 roll','Rolls dice, e.g. /roll 2d6.',`  roll: { description: 'Roll dice, like 2d6', options: [{ name: 'dice', description: 'e.g. 2d6 or d20', type: 3, required: false }],
+    run: async (i) => { const m = (i.options.getString('dice') || 'd6').match(/^(\\d*)d(\\d+)$/i); if (!m) return i.reply({ content: 'Use dice like 2d6', ephemeral: true });
+      const rolls = Array.from({ length: Math.min(+m[1] || 1, 50) }, () => 1 + Math.floor(Math.random() * +m[2])); i.reply(\`🎲 **\${rolls.reduce((a, b) => a + b, 0)}** (\${rolls.join(', ')})\`); } },`],
+ coin:['🪙 coinflip','Heads or tails.',`  coinflip: { description: 'Flip a coin', run: async (i) => i.reply(Math.random() < 0.5 ? '🪙 Heads!' : '🪙 Tails!') },`],
+ ball:['🎱 8ball','Answers yes/no questions mysteriously.',`  '8ball': { description: 'Ask the magic 8-ball', options: [{ name: 'question', description: 'Your question', type: 3, required: true }],
+    run: async (i) => { const a = ['Yes!', 'No.', 'Maybe…', 'Ask again later.', 'Definitely.', 'Very doubtful.', 'Signs point to yes.', 'Don\\'t count on it.']; i.reply(\`🎱 *\${i.options.getString('question')}*\\n**\${a[Math.floor(Math.random() * a.length)]}**\`); } },`],
+ joke:['😂 joke','Tells a random joke.',`  joke: { description: 'Tell a joke', run: async (i) => { const j = ['Why do programmers prefer dark mode? Because light attracts bugs.', 'I told my computer I needed a break, and it froze.', 'Why did the scarecrow win an award? He was outstanding in his field.', 'What do you call a fake noodle? An impasta.', 'Why don\\'t skeletons fight? They don\\'t have the guts.']; i.reply('😂 ' + j[Math.floor(Math.random() * j.length)]); } },`],
+ poll:['📊 poll','Makes a quick poll people vote on with reactions.',`  poll: { description: 'Start a quick poll', options: [{ name: 'question', description: 'What to vote on', type: 3, required: true }, { name: 'choices', description: 'Comma-separated choices (up to 9)', type: 3, required: false }],
+    run: async (i) => { const q = i.options.getString('question'), ch = (i.options.getString('choices') || '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 9), em = ch.length ? ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'] : ['👍', '👎'];
+      const msg = await i.reply({ embeds: [{ color: COLOR, title: '📊 ' + q, description: ch.map((c, k) => \`\${em[k]} \${c}\`).join('\\n') || 'Vote below!' }], fetchReply: true }); for (const e of em.slice(0, ch.length || 2)) await msg.react(e); } },`],
+ remind:['⏰ remind','Reminds you about something after a few minutes.',`  remind: { description: 'Remind me later', options: [{ name: 'minutes', description: 'How many minutes', type: 4, required: true, min_value: 1, max_value: 1440 }, { name: 'what', description: 'What to remind you about', type: 3, required: true }],
+    run: async (i) => { const m = i.options.getInteger('minutes'), w = i.options.getString('what'); await i.reply({ content: \`⏰ OK! I'll remind you in \${m} minute(s).\`, ephemeral: true }); setTimeout(() => i.followUp(\`⏰ <@\${i.user.id}> reminder: **\${w}**\`), m * 60000); } },`],
+ user:['👤 userinfo','Shows info about a member.',`  userinfo: { description: 'Show info about a member', options: [{ name: 'user', description: 'Who', type: 6, required: false }],
+    run: async (i) => { const u = i.options.getUser('user') || i.user; i.reply({ embeds: [{ color: COLOR, title: u.username, thumbnail: { url: u.displayAvatarURL() }, fields: [{ name: 'Joined Discord', value: \`<t:\${Math.floor(u.createdTimestamp / 1000)}:D>\` }] }] }); } },`],
+ choose:['🤔 choose','Picks between options for you.',`  choose: { description: 'Let the bot decide', options: [{ name: 'options', description: 'Comma-separated options', type: 3, required: true }],
+    run: async (i) => { const o = i.options.getString('options').split(',').map((s) => s.trim()).filter(Boolean); i.reply(o.length ? \`🤔 I choose… **\${o[Math.floor(Math.random() * o.length)]}**!\` : 'Give me some options!'); } },`]};
+const picked=load('picked',['ping','roll','coin','ball','joke','poll']);
+$('cmds').innerHTML=Object.entries(CMDS).map(([k,[n,d]])=>`<label><input type="checkbox" value="${k}" ${picked.includes(k)?'checked':''}><span><b>/${n.split(' ')[1]}</b> ${n.split(' ')[0]}<small>${d}</small></span></label>`).join('');
+$('cmds').onchange=()=>save('picked',[...$('cmds').querySelectorAll(':checked')].map(c=>c.value));$('custom').value=load('custom','');$('custom').oninput=()=>save('custom',$('custom').value);
+const js=s=>JSON.stringify(s);
+function files(){const name=($('bname').value.trim()||'ToolBot').replace(/[^\w -]/g,''),slug=name.toLowerCase().replace(/\s+/g,'-')||'toolbot',sel=[...$('cmds').querySelectorAll(':checked')].map(c=>c.value);
+  const custom=$('custom').value.split('\n').map(l=>l.match(/^\s*\/?([a-z0-9_-]{1,32})\s*:\s*(.+)$/i)).filter(Boolean);
+  const index=`// ${name}: a Discord bot made with The ToolBox. Run "npm start".
+require('dotenv').config();
+const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+
+const COLOR = 0x${$('color').value.slice(1)};
+const commands = {
+${sel.map(k=>CMDS[k][2]).join('\n')}
+${custom.map(m=>`  ${js(m[1].toLowerCase())}: { description: ${js(('Says: '+m[2]).slice(0,100))}, run: async (i) => i.reply(${js(m[2])}) },`).join('\n')}
+  help: { description: 'List my commands', run: async (i) => i.reply({ embeds: [{ color: COLOR, title: '${name.replace(/'/g,"\\'")} commands', description: Object.entries(commands).map(([n, c]) => \`**/\${n}**: \${c.description}\`).join('\\n') }] }) },
+};
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+client.once('ready', async () => {
+  // Register slash commands (can take a minute to show up the very first time)
+  const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+  const body = Object.entries(commands).map(([name, c]) => ({ name, description: c.description, options: c.options || [] }));
+  await rest.put(Routes.applicationCommands(process.env.APPLICATION_ID), { body });
+  console.log(\`✅ Logged in as \${client.user.tag} with \${body.length} commands\`);
+});
+
+client.on('interactionCreate', async (i) => {
+  if (!i.isChatInputCommand()) return;
+  const cmd = commands[i.commandName];
+  if (!cmd) return;
+  try { await cmd.run(i); } catch (err) {
+    console.error(err);
+    const reply = { content: 'Oops, something went wrong.', ephemeral: true };
+    if (i.replied || i.deferred) i.followUp(reply).catch(() => {}); else i.reply(reply).catch(() => {});
+  }
+});
+
+if (!process.env.DISCORD_TOKEN || !process.env.APPLICATION_ID) {
+  console.error('Missing DISCORD_TOKEN or APPLICATION_ID: copy .env.example to .env and fill them in.');
+  process.exit(1);
+}
+client.login(process.env.DISCORD_TOKEN);
+`;
+  return{'package.json':JSON.stringify({name:slug,version:'1.0.0',private:true,main:'index.js',scripts:{start:'node index.js'},dependencies:{'discord.js':'^14.16.3',dotenv:'^16.4.5'}},null,2)+'\n',
+    'index.js':index,'.env.example':'DISCORD_TOKEN=paste-your-bot-token-here\nAPPLICATION_ID=paste-your-application-id-here\n','.gitignore':'node_modules/\n.env\n',
+    'README.md':`# ${name}\n\nA Discord bot made with The ToolBox.\n\n1. Copy \`.env.example\` to \`.env\` and fill in your bot token and application ID.\n2. \`npm install\`\n3. \`npm start\`\n\nKeep \`.env\` secret. It's already in \`.gitignore\`.\n`}}
+// minimal ZIP writer (no compression)
+function crc32(b){let c,t=crc32.t||(crc32.t=[...Array(256)].map((_,n)=>{c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0}));let x=0xffffffff;for(const v of b)x=t[(x^v)&255]^(x>>>8);return(x^0xffffffff)>>>0}
+function zip(fs,folder){const enc=new TextEncoder(),parts=[],central=[];let off=0;
+  for(const[n,txt]of Object.entries(fs)){const name=enc.encode(folder+'/'+n),data=enc.encode(txt),crc=crc32(data),h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x800,true);h.setUint32(14,crc,true);h.setUint32(18,data.length,true);h.setUint32(22,data.length,true);h.setUint16(26,name.length,true);
+    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x800,true);c.setUint32(16,crc,true);c.setUint32(20,data.length,true);c.setUint32(24,data.length,true);c.setUint16(28,name.length,true);c.setUint32(42,off,true);
+    parts.push(h,name,data);central.push(c,name);off+=30+name.length+data.length}
+  const csize=central.reduce((s,p)=>s+p.byteLength,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,Object.keys(fs).length,true);e.setUint16(10,Object.keys(fs).length,true);e.setUint32(12,csize,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...central,e],{type:'application/zip'})}
+$('zip').onclick=()=>{const slug=($('bname').value.trim()||'toolbot').toLowerCase().replace(/[^\w-]+/g,'-');download(slug+'.zip',zip(files(),slug));toast('Downloaded! See "How to run it" below.')};
+$('show').onclick=()=>{$('code').hidden=!$('code').hidden;$('code').textContent=files()['index.js']};
+</script></body></html>

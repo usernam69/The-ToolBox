@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Boredom button</title><link rel="stylesheet" href="common.css">
+<style>
+#btn{width:220px;height:220px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#ff6b6b,#c0121d 70%);box-shadow:0 10px 0 #7d0b12,0 18px 30px rgba(0,0,0,.3);color:#fff;font:700 26px system-ui;cursor:pointer;transition:transform .08s,box-shadow .08s;margin:20px auto;display:block}
+#btn:active{transform:translateY(8px);box-shadow:0 2px 0 #7d0b12,0 6px 12px rgba(0,0,0,.3)}
+#idea{font-size:24px;text-align:center;min-height:2.6em;max-width:640px;margin:auto}
+#meta{text-align:center}
+</style></head>
+<body data-app="boredom" data-cat="quick" data-title="Boredom button"><main>
+<p class="sub" style="text-align:center">Bored? Press the button. You get one small thing to make, and most take under an hour.</p>
+<button id="btn">PRESS</button>
+<div id="idea" class="box" style="border:0;background:none"></div>
+<div id="meta" class="row" style="justify-content:center"></div>
+<div class="row" style="justify-content:center"><label>Time I have: <select id="time"><option value="">Any</option><option value="10">10 min</option><option value="30">30 min</option><option value="60">1 hour</option></select></label>
+<label>Kind: <select id="kind"><option value="">Anything</option><option>Draw</option><option>Code</option><option>Write</option><option>Build</option><option>Music</option><option>Cook</option></select></label></div>
+<h3>Things I made</h3><ul class="clean" id="done"></ul>
+</main><script src="common.js"></script><script>
+// [text, kind, minutes, optional app link]
+const IDEAS=[["Draw your room from above, like a map","Draw",20],["Design a flag for your street","Draw",15],["Make a pixel-art version of your pet or favorite animal","Draw",30,"pixel.html"],["Draw the same cup in 5 different styles","Draw",30],["Invent a new monster and give it a name and powers","Draw",20],["Make a comic about your morning in 4 panels","Draw",40,"comic.html"],["Design a logo for a company that doesn't exist","Draw",30],["Draw something with your other hand","Draw",10],
+["Make a webpage about your favorite thing","Code",60,"website.html"],["Write a program that rolls dice and draws a chart of the results","Code",45],["Make a button that changes the page color every click","Code",15],["Write a script that renames your screenshots by date","Code",30,"../tools.html#photodate"],["Build a tiny quiz about yourself for friends","Code",45],["Make a random name generator for fantasy characters","Code",30],["Recreate a 1-level version of a game you love","Code",60,"parkour.html"],
+["Write a 6-word story","Write",5],["Write a letter to yourself to open in a year","Write",20,"capsule.html"],["Write a short poem using only words from a cereal box","Write",15],["Invent a holiday and describe how people celebrate it","Write",20],["Write a review of something boring (a spoon, a door)","Write",15],["Make a choose-your-own-adventure with 3 endings","Write",60,"story.html"],["Write instructions for a game that uses only a coin","Write",20],
+["Build the tallest tower you can from paper only","Build",30],["Make a paper airplane and improve it 5 times","Build",30],["Build a marble run from cardboard tubes","Build",60],["Make a tiny city from things in your desk drawer","Build",30],["Fold an origami crane (look up the steps)","Build",20],["Make a phone stand from one sheet of cardboard","Build",20],
+["Make a beat in the loop maker and name your track","Music",20,"lofi.html"],["Write a jingle for your favorite snack","Music",15],["Record 5 everyday sounds and make them into a soundboard","Music",20,"soundboard.html"],["Turn your current mood into a melody","Music",5,"moodmusic.html"],["Make an instrument from a box and rubber bands","Music",30],
+["Make the fanciest sandwich you can with what's in the fridge","Cook",15],["Invent a new smoothie and give it a name","Cook",10],["Make a 'menu' for tonight's dinner as if it were a restaurant","Cook",20],["Bake something using a recipe scaled to half","Cook",60,"../tools.html#recipe"],
+["Make generative art and frame your favorite one","Draw",15,"genart.html"],["Build a little house in the voxel world","Build",30,"voxel.html"],["Make a color palette for your dream bedroom","Draw",10,"palette.html"],["Turn a photo of yourself into ASCII art","Code",5,"ascii.html"],["Design a level in the reverse platformer","Code",20,"reverse.html"],["Write 10 compliments for people you know and send one","Write",15],["Make a time-lapse of you drawing something","Draw",30],["Make a treasure hunt with clues around your home","Write",45],["Create a secret code and write a message in it","Code",20]];
+let cur=null,last=-1;
+function press(){const t=+$('time').value||999,k=$('kind').value;const pool=IDEAS.map((x,i)=>[x,i]).filter(([x,i])=>x[2]<=t&&(!k||x[1]===k)&&i!==last);
+  if(!pool.length){$('idea').textContent='Nothing fits. Try another filter.';return}
+  const[x,i]=pick(pool);last=i;cur=x;tone(440+rnd(400),.12,'square',.08);
+  $('idea').textContent=x[0];
+  $('meta').innerHTML=`<span class="muted">${x[1]} · about ${x[2]} min</span>${x[3]?`<a class="b" href="${x[3]}">Open the tool for this</a>`:''}<button class="g" id="did">I made it!</button>`;
+  $('did').onclick=()=>{const d=load('done',[]);d.unshift({t:cur[0],at:Date.now()});save('done',d);drawDone();toast('🎉 Nice!')}}
+function drawDone(){const d=load('done',[]);$('done').innerHTML=d.map(x=>`<li>✓ ${esc(x.t)}<span class="muted" style="margin-left:auto;font-size:12px">${new Date(x.at).toLocaleDateString()}</span></li>`).join('')||'<li class="muted">Nothing yet. Press the button!</li>'}
+$('btn').onclick=press;addEventListener('keydown',e=>{if(e.key===' '&&document.activeElement.tagName!=='SELECT'){e.preventDefault();press()}});drawDone();
+</script></body></html>

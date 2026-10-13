@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Decaying to-do list</title><link rel="stylesheet" href="common.css">
+<style>.t{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);margin-bottom:8px;transition:opacity .4s,filter .4s}.t .n{flex:1}.t small{display:block;color:var(--muted)}.bar{height:4px;border-radius:2px;background:var(--line);margin-top:6px}.bar div{height:100%;border-radius:2px}
+.grave{opacity:.55;font-size:14px}.grave li{border:0}</style></head>
+<body data-app="decay" data-cat="wild" data-title="Decaying to-do list"><main>
+<p class="sub">An honest to-do list: tasks you don't touch slowly wilt 🌷→🥀 and fade away. Tap 💧 to water a task and keep it alive. If it isn't worth watering, maybe it wasn't important.</p>
+<div class="row"><input id="txt" class="grow" placeholder="New task"><select id="life"><option value="3">Lives 3 days</option><option value="7" selected>Lives 7 days</option><option value="14">Lives 14 days</option></select><button class="b" id="add">Plant it</button></div>
+<div id="list"></div><h3>🪦 Faded away</h3><ul class="clean grave" id="grave"></ul><h3>✅ Done</h3><ul class="clean grave" id="done"></ul>
+</main><script src="common.js"></script><script>
+let T=load('t',[]);const persist=()=>save('t',T);
+const health=t=>Math.max(0,1-(Date.now()-t.watered)/(t.life*DAY));
+const STAGES=['🥀','🌾','🌼','🌷'];
+function sweep(){const now=Date.now();let died=0;T.forEach(t=>{if(!t.done&&!t.dead&&health(t)<=0){t.dead=now;died++}});if(died){persist();toast(`🥀 ${died} task${died>1?'s':''} faded away`)}}
+function draw(){sweep();const alive=T.filter(t=>!t.done&&!t.dead).sort((a,b)=>health(a)-health(b));
+  $('list').innerHTML=alive.map(t=>{const h=health(t),left=Math.ceil(h*t.life*24);return`<div class="t" style="opacity:${.35+h*.65};filter:grayscale(${Math.round((1-h)*90)}%)"><span style="font-size:26px">${STAGES[Math.min(3,Math.floor(h*4))]}</span><div class="n">${esc(t.text)}<small>${left>48?Math.ceil(left/24)+' days':left+' hours'} left${t.waters?` · watered ${t.waters}×`:''}</small><div class="bar"><div style="width:${h*100}%;background:${h>.5?'var(--good)':h>.2?'var(--warn)':'var(--bad)'}"></div></div></div>
+    <button class="g" data-w="${t.id}" title="Water: reset its life">💧</button><button class="b" data-d="${t.id}" title="Done">✓</button></div>`}).join('')||'<p class="muted">Nothing growing. Plant a task!</p>';
+  const row=(t,ic)=>`<li>${ic} ${esc(t.text)}<span class="muted" style="margin-left:auto;font-size:12px">${new Date(t.dead||t.doneAt).toLocaleDateString()}</span></li>`;
+  $('grave').innerHTML=T.filter(t=>t.dead).slice(-15).reverse().map(t=>row(t,'🥀')).join('')||'<li class="muted">Nothing yet.</li>';$('done').innerHTML=T.filter(t=>t.done).slice(-15).reverse().map(t=>row(t,'✅')).join('')||'<li class="muted">Nothing yet.</li>';
+  $('list').querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const t=T.find(x=>x.id===b.dataset.w);t.watered=Date.now();t.waters=(t.waters||0)+1;persist();tone(880,.1,'sine',.06);draw()});
+  $('list').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{const t=T.find(x=>x.id===b.dataset.d);t.done=true;t.doneAt=Date.now();persist();[523,784].forEach((f,i)=>tone(f,.12,'triangle',.08,i*.08));draw()})}
+$('add').onclick=()=>{const v=$('txt').value.trim();if(!v)return;T.push({id:uid(),text:v,life:+$('life').value,watered:Date.now(),created:Date.now()});$('txt').value='';persist();draw()};$('txt').onkeydown=e=>e.key==='Enter'&&$('add').click();
+draw();setInterval(draw,60000);
+</script></body></html>

@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Comic builder</title><link rel="stylesheet" href="common.css">
+<style>
+#page{display:grid;gap:10px;background:#fff;padding:10px;border-radius:6px;max-width:900px;margin:auto}
+.panel{position:relative;aspect-ratio:4/3;border:3px solid #111;overflow:hidden;cursor:default}.panel.sel{outline:3px solid var(--accent);outline-offset:2px}
+.it{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;touch-action:none}.it.sel{outline:2px dashed var(--accent)}
+.it.char{line-height:1}.bub{background:#fff;color:#111;border:2.5px solid #111;border-radius:50%/40%;padding:10px 14px;font:700 15px 'Comic Sans MS','Segoe Print',system-ui;text-align:center;max-width:180px;min-width:60px}
+.bub.say::after{content:'';position:absolute;left:30%;bottom:-14px;border:8px solid transparent;border-top:12px solid #111}.bub.think{border-radius:50%;border-style:dotted}
+.cap{background:#ffeb3b;color:#111;border:2px solid #111;padding:4px 8px;font:700 13px system-ui;text-transform:uppercase;max-width:220px}
+.lib{display:flex;flex-wrap:wrap;gap:4px}.lib button{font-size:24px;width:42px;height:42px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+</style></head>
+<body data-app="comic" data-cat="creative" data-title="Comic builder"><main>
+<div class="row"><select id="layout"><option value="1">1 panel</option><option value="2">2 side by side</option><option value="3">3 in a row</option><option value="4" selected>4 (2×2)</option><option value="6">6 (3×2)</option></select>
+<button class="g" id="addSay">💬 Speech</button><button class="g" id="addThink">💭 Thought</button><button class="g" id="addCap">▭ Caption</button><select id="bg"><option value="">Background…</option></select>
+<button class="g" id="bigger">＋</button><button class="g" id="smaller">－</button><button class="g" id="flip">⇋ Flip</button><button class="g" id="del">🗑 Delete</button><button class="b" id="png">Save PNG</button><button class="g" id="clear">New comic</button></div>
+<div class="lib" id="lib"></div>
+<p class="muted" style="font-size:13px">Click a panel to select it, then click a character to add it there. Drag things to move them, and double-click a bubble to edit its words.</p>
+<div id="page"></div>
+</main><script src="common.js"></script><script>
+const CHARS='😀😂😎🤔😱😡😴🥳🤖👽👻🐱🐶🦊🐸🦄🐉🧙🦸🧛🧑‍🚀👩‍🍳🧑‍🎤👮🏃💃🕺🌳🏠🏰🚗🚀☕🍕⚡💥💤❗❓❤️🌧️☀️🌙⭐'.match(/\p{Extended_Pictographic}(‍\p{Extended_Pictographic}|️)*/gu);
+const BGS={'Sky':'linear-gradient(#8ec5ff,#e0f2ff)','Sunset':'linear-gradient(#ff9a8b,#ffd59e)','Night':'linear-gradient(#0f2027,#2c5364)','Grass':'linear-gradient(#bde0fe 60%,#90be6d 60%)','Room':'linear-gradient(#f1e3d3 70%,#a47148 70%)','Space':'radial-gradient(circle at 30% 30%,#3a0ca3,#03071e)','Action':'repeating-conic-gradient(#ffd166 0 10deg,#ef476f 10deg 20deg)','White':'#fff'};
+const BGC={'Sky':['#8ec5ff','#e0f2ff'],'Sunset':['#ff9a8b','#ffd59e'],'Night':['#0f2027','#2c5364'],'Grass':['#bde0fe','#90be6d'],'Room':['#f1e3d3','#a47148'],'Space':['#3a0ca3','#03071e'],'Action':['#ffd166','#ef476f'],'White':['#fff','#fff']};
+let C=load('c',null)||{layout:4,panels:[...Array(6)].map((_,i)=>({bg:['Sky','Room','Night','Action','Grass','Sunset'][i],items:[]}))},selP=0,selI=null;
+$('lib').innerHTML=CHARS.map(e=>`<button>${e}</button>`).join('');$('bg').innerHTML+=Object.keys(BGS).map(k=>`<option>${k}</option>`).join('');
+const persist=()=>save('c',C);const cols=n=>({1:1,2:2,3:3,4:2,6:3})[n];
+function draw(){const pg=$('page');pg.style.gridTemplateColumns=`repeat(${cols(C.layout)},1fr)`;pg.innerHTML='';
+  C.panels.slice(0,C.layout).forEach((p,pi)=>{const d=document.createElement('div');d.className='panel'+(pi===selP?' sel':'');d.style.background=BGS[p.bg];d.onpointerdown=e=>{if(e.target===d){selP=pi;selI=null;draw()}};
+    p.items.forEach((it,ii)=>{const e=document.createElement('div');e.className='it '+it.type+(pi===selP&&ii===selI?' sel':'');e.style.left=it.x+'%';e.style.top=it.y+'%';
+      if(it.type==='char'){e.textContent=it.t;e.style.fontSize=it.s+'px';if(it.flip)e.style.transform='translate(-50%,-50%) scaleX(-1)'}
+      else{e.innerHTML=`<div class="${it.type==='cap'?'cap':'bub '+(it.type==='say'?'say':'think')}" style="font-size:${it.s}px">${esc(it.t)}</div>`}
+      e.onpointerdown=ev=>{ev.stopPropagation();selP=pi;selI=ii;const r=d.getBoundingClientRect();e.setPointerCapture(ev.pointerId);document.querySelectorAll('.it.sel,.panel.sel').forEach(n=>n.classList.remove('sel'));e.classList.add('sel');d.classList.add('sel');
+        e.onpointermove=m=>{it.x=Math.max(0,Math.min(100,(m.clientX-r.left)/r.width*100));it.y=Math.max(0,Math.min(100,(m.clientY-r.top)/r.height*100));e.style.left=it.x+'%';e.style.top=it.y+'%'};e.onpointerup=()=>{e.onpointermove=null;persist()}};
+      e.ondblclick=()=>{if(it.type==='char')return;const t=prompt('Text:',it.t);if(t!==null){it.t=t;persist();draw()}};d.append(e)});pg.append(d)})}
+function add(item){const p=C.panels[selP];p.items.push({x:50,y:50,...item});selI=p.items.length-1;persist();draw()}
+$('lib').querySelectorAll('button').forEach(b=>b.onclick=()=>add({type:'char',t:b.textContent,s:56,x:30+rnd(40),y:55+rnd(20)}));
+$('addSay').onclick=()=>{const t=prompt('What do they say?','Hello!');if(t)add({type:'say',t,s:15,y:22})};$('addThink').onclick=()=>{const t=prompt('What are they thinking?','Hmm…');if(t)add({type:'think',t,s:15,y:22})};
+$('addCap').onclick=()=>{const t=prompt('Caption:','Meanwhile…');if(t)add({type:'cap',t,s:13,x:28,y:8})};
+const cur=()=>selI!==null?C.panels[selP].items[selI]:null;
+$('bigger').onclick=()=>{const i=cur();if(i){i.s=Math.round(i.s*1.2);persist();draw()}};$('smaller').onclick=()=>{const i=cur();if(i){i.s=Math.max(8,Math.round(i.s/1.2));persist();draw()}};
+$('flip').onclick=()=>{const i=cur();if(i&&i.type==='char'){i.flip=!i.flip;persist();draw()}};$('del').onclick=()=>{if(cur()){C.panels[selP].items.splice(selI,1);selI=null;persist();draw()}};
+addEventListener('keydown',e=>{if(e.key==='Delete'&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName))$('del').click()});
+$('bg').onchange=()=>{if($('bg').value){C.panels[selP].bg=$('bg').value;persist();draw()}$('bg').value=''};
+$('layout').value=C.layout;$('layout').onchange=()=>{C.layout=+$('layout').value;selP=Math.min(selP,C.layout-1);persist();draw()};
+$('clear').onclick=()=>{if(confirm('Start a new comic? This one will be cleared.')){C.panels.forEach(p=>p.items=[]);persist();draw()}};
+// export: redraw everything onto a canvas
+$('png').onclick=()=>{const n=C.layout,cl=cols(n),rows=Math.ceil(n/cl),PW=640,PH=480,G=20,cv=document.createElement('canvas');cv.width=cl*PW+(cl+1)*G;cv.height=rows*PH+(rows+1)*G;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);
+  const wrap=(t,w)=>{const out=[];let line='';t.split(' ').forEach(wd=>{const test=line?line+' '+wd:wd;if(x.measureText(test).width>w&&line){out.push(line);line=wd}else line=test});out.push(line);return out};
+  C.panels.slice(0,n).forEach((p,i)=>{const ox=G+(i%cl)*(PW+G),oy=G+Math.floor(i/cl)*(PH+G),k=PW/($('page').querySelector('.panel').clientWidth||PW);x.save();x.beginPath();x.rect(ox,oy,PW,PH);x.clip();
+    const[c1,c2]=BGC[p.bg]||['#fff','#fff'],g=x.createLinearGradient(0,oy,0,oy+PH);g.addColorStop(0,c1);g.addColorStop(1,c2);x.fillStyle=g;x.fillRect(ox,oy,PW,PH);
+    p.items.forEach(it=>{const cx=ox+it.x/100*PW,cy=oy+it.y/100*PH;x.textAlign='center';x.textBaseline='middle';
+      if(it.type==='char'){x.save();x.translate(cx,cy);if(it.flip)x.scale(-1,1);x.font=`${it.s*k}px system-ui`;x.fillText(it.t,0,0);x.restore();return}
+      x.font=`700 ${it.s*k}px 'Comic Sans MS',system-ui`;const lines=wrap(it.type==='cap'?it.t.toUpperCase():it.t,170*k),lh=it.s*k*1.25,w=Math.max(...lines.map(l=>x.measureText(l).width))+30*k,h=lines.length*lh+20*k;
+      x.lineWidth=2.5*k;x.strokeStyle='#111';x.fillStyle=it.type==='cap'?'#ffeb3b':'#fff';x.beginPath();if(it.type==='cap')x.rect(cx-w/2,cy-h/2,w,h);else x.ellipse(cx,cy,w/2+8*k,h/2+6*k,0,0,7);x.fill();if(it.type==='think')x.setLineDash([3*k,4*k]);x.stroke();x.setLineDash([]);
+      if(it.type==='say'){x.beginPath();x.moveTo(cx-w*.2-8*k,cy+h/2+2*k);x.lineTo(cx-w*.2,cy+h/2+20*k);x.lineTo(cx-w*.2+8*k,cy+h/2+2*k);x.fill();x.stroke()}
+      x.fillStyle='#111';lines.forEach((l,j)=>x.fillText(l,cx,cy-h/2+10*k+lh*(j+.5)))});x.restore();x.lineWidth=6;x.strokeStyle='#111';x.strokeRect(ox,oy,PW,PH)});
+  download('my-comic.png',cv.toDataURL('image/png'))};
+draw();
+</script></body></html>

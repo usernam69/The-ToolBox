@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>One-liner journal</title><link rel="stylesheet" href="common.css">
+<style>#q{font-size:22px;font-weight:600;margin:6px 0 10px}#a{font-size:18px;width:100%}.entry{padding:10px 0;border-bottom:1px solid var(--line)}.entry .d{font-size:12px;color:var(--muted)}</style></head>
+<body data-app="journal" data-cat="quick" data-title="One-liner journal"><main>
+<div class="box"><div class="muted" id="date"></div><div id="q"></div><input id="a" maxlength="200" placeholder="One line is enough…"><div class="row"><button class="b" id="save">Save</button><span class="muted" id="cnt"></span><span id="streak" style="margin-left:auto"></span></div></div>
+<div class="row"><input id="search" class="grow" placeholder="Search past answers"><button class="g" id="onThisDay">On this day</button><button class="g" id="export">Export</button></div>
+<div id="list"></div>
+</main><script src="common.js"></script><script>
+const QS=["What made you smile today?","What's one thing you learned today?","What are you looking forward to?","Who did you talk to today, and about what?","What would you do differently today?","What's something small you're grateful for?","What did you eat that was good?","What's on your mind right now?","What was the best minute of today?","What did you make or fix today?","What's a song stuck in your head?","What surprised you today?","What did you do for someone else?","What are you worried about, in one line?","If today had a title, what would it be?","What's one thing you'd like to remember from today?","What did you procrastinate on?","What made you laugh?","What's the weather like inside your head?","What would you tell yourself from a year ago?","What's something new you tried?","What's a word that sums up today?"];
+const today=isoDay(),qFor=d=>QS[d.split('').reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,3)%QS.length];
+const all=()=>load('entries',{});
+$('date').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});$('q').textContent=qFor(today);
+$('a').value=all()[today]?.a||'';$('a').oninput=()=>$('cnt').textContent=`${$('a').value.length}/200`;
+$('save').onclick=()=>{const v=$('a').value.trim();if(!v)return;const e=all();e[today]={q:qFor(today),a:v};save('entries',e);toast('Saved ✓');draw()};
+$('a').onkeydown=e=>e.key==='Enter'&&$('save').click();
+function streak(){const e=all();let d=new Date(),n=0;if(!e[isoDay(d)])d=new Date(d-DAY);while(e[isoDay(d)]){n++;d=new Date(d-DAY)}return n}
+function draw(filter){const e=all(),q=$('search').value.toLowerCase();$('streak').textContent=streak()?`🔥 ${streak()} day${streak()>1?'s':''}`:'';
+  const keys=Object.keys(e).sort().reverse().filter(k=>(!filter||filter(k))&&(e[k].a+' '+e[k].q).toLowerCase().includes(q));
+  $('list').innerHTML=keys.map(k=>`<div class="entry"><div class="d">${new Date(k+'T12:00').toLocaleDateString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric'})} · ${esc(e[k].q)}</div><div>${esc(e[k].a)}</div></div>`).join('')||'<p class="muted">No entries yet.</p>'}
+$('search').oninput=()=>draw();
+$('onThisDay').onclick=()=>{const md=today.slice(5);draw(k=>k.slice(5)===md&&k!==today);if(!$('list').querySelector('.entry'))$('list').innerHTML='<p class="muted">Nothing from this date in earlier years yet. Check back next year!</p>'};
+$('export').onclick=()=>{const e=all();download('journal.txt',Object.keys(e).sort().map(k=>`${k} | ${e[k].q}\n${e[k].a}\n`).join('\n'))};
+draw();
+</script></body></html>

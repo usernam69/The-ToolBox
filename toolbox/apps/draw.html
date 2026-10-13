@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Draw &amp; guess</title><link rel="stylesheet" href="common.css">
+<style>#game{display:grid;grid-template-columns:1fr 260px;gap:12px}@media(max-width:820px){#game{grid-template-columns:1fr}}
+#board{width:100%;aspect-ratio:4/3;background:#fff;border-radius:10px;border:1px solid var(--line);touch-action:none;cursor:crosshair}
+#word{font:700 26px ui-monospace,monospace;letter-spacing:6px;text-align:center;min-height:1.4em}.sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);cursor:pointer}.sw.on{border-color:var(--ink);transform:scale(1.15)}
+#feed{height:260px;overflow:auto;font-size:14px}#feed div{padding:2px 0}.ok{color:var(--good);font-weight:700}#scores li{justify-content:space-between}</style></head>
+<body data-app="draw" data-cat="bigger" data-title="Draw &amp; guess"><main>
+<div id="lanPanel"></div>
+<div id="game" hidden><div><div class="row"><b id="status" class="grow"></b><b id="timer"></b></div><div id="word"></div><canvas id="board" width="800" height="600"></canvas>
+<div class="row" id="tools"><span id="swatches" class="row" style="margin:0"></span><label>Size <input type="range" id="size" min="2" max="30" value="6"></label><button class="g" id="clear">Clear</button><button class="g" id="undo">↶</button></div></div>
+<div class="box"><b>Scores</b><ul class="clean" id="scores"></ul><button class="b" id="start" style="width:100%">Start game</button>
+<h3>Guesses</h3><div id="feed"></div><div class="row"><input id="guess" class="grow" placeholder="Type your guess" autocomplete="off"><button class="g" id="gsend">↵</button></div></div></div>
+</main><script src="common.js"></script><script src="lan.js"></script><script>
+const WORDS='apple banana rocket guitar house tree cat dog fish bird snake dragon castle robot pizza cake bicycle car train boat plane moon sun star cloud rainbow umbrella shoe hat glasses phone computer book pencil clock lamp chair bed door key lock bridge mountain volcano island beach wave fire ice snowman ghost pumpkin spider butterfly bee flower cactus mushroom crown sword shield ring diamond heart ladder rabbit turtle penguin octopus whale shark lion elephant giraffe monkey owl frog duck cow pig horse unicorn mermaid pirate ninja wizard astronaut camera television headphones skateboard kite balloon tent campfire cookie donut sandwich burger popcorn ice cream'.split(' ');
+const COLS=['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#6d4c41','#ec407a'];
+const c=$('board'),x=c.getContext('2d');let col='#111111',me=null,myName='',members=[],scores={},turn=null,secret='',strokes=[],cur=null,local=false,outbox=[],tmr=null;
+$('swatches').innerHTML=COLS.map(k=>`<span class="sw ${k===col?'on':''}" style="background:${k}" data-c="${k}"></span>`).join('');$('swatches').querySelectorAll('.sw').forEach(s=>s.onclick=()=>{col=s.dataset.c;$('swatches').querySelectorAll('.sw').forEach(o=>o.classList.toggle('on',o===s))});
+const iDraw=()=>local||(turn&&turn.drawer===me);
+function feed(h,cls=''){const d=document.createElement('div');d.className=cls;d.innerHTML=h;$('feed').append(d);$('feed').scrollTop=1e9}
+function redraw(){x.fillStyle='#fff';x.fillRect(0,0,800,600);x.lineCap=x.lineJoin='round';strokes.forEach(s=>{x.strokeStyle=s.c;x.lineWidth=s.w;x.beginPath();s.p.forEach(([a,b],i)=>i?x.lineTo(a,b):x.moveTo(a,b));if(s.p.length===1)x.lineTo(s.p[0][0]+.1,s.p[0][1]);x.stroke()})}
+const P=e=>{const r=c.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*800),Math.round((e.clientY-r.top)/r.height*600)]};
+c.onpointerdown=e=>{if(!iDraw()||(turn&&turn.over))return;c.setPointerCapture(e.pointerId);cur={c:col,w:+$('size').value,p:[P(e)],id:uid()};strokes.push(cur);redraw();outbox.push({k:'new',s:{...cur,p:[...cur.p]}})};
+c.onpointermove=e=>{if(!cur)return;const p=P(e);cur.p.push(p);redraw();outbox.push({k:'pt',id:cur.id,p})};c.onpointerup=()=>cur=null;
+setInterval(()=>{if(!outbox.length||local)return;LAN.send({type:'draw',ops:outbox,from:me});outbox=[]},60);
+function applyOps(ops){ops.forEach(o=>{if(o.k==='new')strokes.push(o.s);else if(o.k==='pt'){const s=strokes.find(s=>s.id===o.id);if(s)s.p.push(o.p)}});redraw()}
+$('clear').onclick=()=>{if(!iDraw())return;strokes=[];redraw();if(!local)LAN.send({type:'clear',from:me})};$('undo').onclick=()=>{if(!iDraw())return;strokes.pop();redraw();if(!local)LAN.send({type:'undo',from:me})};
+function drawScores(){const list=local?Object.keys(scores).map(n=>({id:n,name:n})):members;$('scores').innerHTML=list.map(m=>`<li><span>${turn&&turn.drawer===m.id?'✏️ ':''}${esc(m.name)}${m.id===me?' (you)':''}</span><b>${scores[m.id]||0}</b></li>`).join('')}
+// --- a turn: the drawer picks the word, judges guesses, and hands over to the next player
+function myTurn(){secret=pick(WORDS);strokes=[];redraw();const t={type:'turn',drawer:me,name:myName,len:secret.replace(/ /g,'').length,mask:secret.replace(/[a-z]/g,'_'),ends:Date.now()+80000,guessed:[]};LAN.send(t)}
+function onTurn(t){turn=t;turn.over=false;strokes=[];redraw();clearInterval(tmr);$('start').hidden=true;
+  $('word').textContent=t.drawer===me?secret.toUpperCase():t.mask.split('').join(' ');$('status').textContent=t.drawer===me?'Your turn: draw this word!':`${t.name} is drawing…`;$('tools').style.visibility=t.drawer===me?'visible':'hidden';
+  $('guess').disabled=t.drawer===me;feed(`✏️ <b>${esc(t.name)}</b> is drawing now.`,'sys');drawScores();
+  tmr=setInterval(()=>{const left=Math.max(0,Math.ceil((t.ends-Date.now())/1000));$('timer').textContent=`⏱ ${left}s`;
+    if(t.drawer===me&&!t.over){if(left===40&&!t.hinted){t.hinted=1;const i=rnd(secret.length);if(secret[i]!==' ')LAN.send({type:'hint',mask:t.mask.split('').map((ch,k)=>k===i?secret[k]:ch).join('')})}
+      if(left<=0||(t.guessed.length&&t.guessed.length>=members.length-1))endTurn()}},250)}
+function endTurn(){turn.over=true;const ids=members.map(m=>m.id),next=ids[(ids.indexOf(me)+1)%ids.length];LAN.send({type:'turnEnd',word:secret,next,drawerBonus:turn.guessed.length*25,drawer:me})}
+function onGuess(g){if(!turn||turn.over)return;if(turn.drawer===me){const ok=g.text.trim().toLowerCase()===secret;if(ok&&!turn.guessed.includes(g.from)){turn.guessed.push(g.from);const pts=Math.max(50,Math.round((turn.ends-Date.now())/1000)*5);LAN.send({type:'correct',id:g.from,name:g.name,pts})}
+    else if(!ok)LAN.send({type:'say',name:g.name,text:g.text,close:secret.length>3&&g.text.toLowerCase().includes(secret.slice(0,Math.ceil(secret.length*.6)))})}}
+function msg(m){switch(m.type){case'hello':me=m.id;break;case'members':members=m.members;drawScores();if(m.joined)feed(`👋 ${esc(m.joined)} joined`,'sys');if(m.left)feed(`${esc(m.left)} left`,'sys');
+  if(turn&&!members.some(x=>x.id===turn.drawer)&&!turn.over){turn.over=true;if(members[0]?.id===me)setTimeout(myTurn,1000)}break;
+  case'turn':onTurn(m);break;case'draw':if(m.from!==me)applyOps(m.ops);break;case'clear':if(m.from!==me){strokes=[];redraw()}break;case'undo':if(m.from!==me){strokes.pop();redraw()}break;
+  case'guess':onGuess(m);break;case'say':feed(`<b>${esc(m.name)}:</b> ${esc(m.text)}${m.close?' <i class="muted">(close!)</i>':''}`);break;
+  case'hint':if(turn&&turn.drawer!==me){turn.mask=m.mask;$('word').textContent=m.mask.split('').join(' ')}break;
+  case'correct':scores[m.id]=(scores[m.id]||0)+m.pts;feed(`✅ <b>${esc(m.name)}</b> got it! +${m.pts}`,'ok');if(m.id===me){$('guess').disabled=true;[523,659,784].forEach((f,i)=>tone(f,.15,'triangle',.1,i*.08))}drawScores();break;
+  case'turnEnd':clearInterval(tmr);scores[m.drawer]=(scores[m.drawer]||0)+m.drawerBonus;if(turn)turn.over=true;feed(`🕑 The word was <b>${esc(m.word.toUpperCase())}</b>`,'sys');$('word').textContent=m.word.toUpperCase();drawScores();
+    $('status').textContent='Next turn starting…';if(m.next===me)setTimeout(myTurn,4000);break}}
+function sendGuess(){const t=$('guess').value.trim();if(!t)return;$('guess').value='';
+  if(local){const ok=t.toLowerCase()===secret;feed(ok?`✅ <b>${esc(t)}</b> is right!`:`❌ ${esc(t)}`,ok?'ok':'');if(ok){scores[turn.name]=(scores[turn.name]||0)+1;localEnd(true)}return}LAN.send({type:'guess',text:t,from:me,name:myName})}
+$('gsend').onclick=sendGuess;$('guess').onkeydown=e=>e.key==='Enter'&&sendGuess();
+// --- one-screen mode: players take turns drawing while the others shout or type guesses
+function localTurn(){const n=prompt("Who's drawing? (name)",turn?.name||'Player 1');if(!n)return;scores[n]=scores[n]||0;secret=pick(WORDS);turn={name:n,drawer:n,ends:Date.now()+80000,over:false};strokes=[];redraw();clearInterval(tmr);
+  $('word').textContent='👆 Drawer: hold here to see your word';$('word').onpointerdown=()=>$('word').textContent=secret.toUpperCase();$('word').onpointerup=$('word').onpointerleave=()=>{if(!turn.over)$('word').textContent='👆 Drawer: hold here to see your word'};
+  $('status').textContent=`${n} is drawing. Everyone else guesses!`;drawScores();tmr=setInterval(()=>{const l=Math.max(0,Math.ceil((turn.ends-Date.now())/1000));$('timer').textContent=`⏱ ${l}s`;if(!l)localEnd(false)},250)}
+function localEnd(ok){clearInterval(tmr);turn.over=true;$('word').textContent=secret.toUpperCase();$('word').onpointerdown=null;feed(ok?'🎉 Guessed!':`⏰ Time's up! It was <b>${secret}</b>`,'sys');$('start').hidden=false;$('start').textContent='Next turn';drawScores()}
+$('start').onclick=()=>{if(local)return localTurn();if(members.length<2)return toast('Wait for at least one more player to join.');myTurn()};
+lanPanel('draw.html',(room,name)=>{$('lanPanel').hidden=true;$('game').hidden=false;redraw();
+  if(room===null){local=true;$('status').textContent='One-screen mode: press Start, and the drawer holds the word box to peek at the word.';return}
+  myName=name;LAN.join(room,name,msg,s=>{if(s!=='connected')$('status').textContent=s==='reconnecting'?'Reconnecting…':'Disconnected'});$('status').textContent='Waiting for players. Anyone can press Start.'});
+</script></body></html>

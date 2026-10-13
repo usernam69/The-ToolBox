@@ -33,7 +33,10 @@ function showTool(id,viaGroup){const t=toolById(id)||TOOLS[0];
   try{t.show?.call(t,t.sec)}catch(e){console.error(t.id,e)}
   try{checkBadges()}catch{}}
 applyLook();resetIdle();takeSnapshot();setInterval(takeSnapshot,30*6e4);
-showTool(lockedTool(toolById(load('tab','dash'))||TOOLS[0])?'dash':load('tab','dash'));
+// tools.html#id opens that tool (links from the main menu)
+const fromHash=()=>{const id=decodeURIComponent(location.hash.slice(1));return toolById(id)?id:null};
+showTool(fromHash()||(lockedTool(toolById(load('tab','dash'))||TOOLS[0])?'dash':load('tab','dash')));
+addEventListener('hashchange',()=>{const id=fromHash();if(id)showTool(id)});
 $('surpriseBtn').onclick=surprise;$('printBtn').onclick=()=>window.print();$('cmdMic').onclick=startVoice;
 
 // ---------- theme ----------

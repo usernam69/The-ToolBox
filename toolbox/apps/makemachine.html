@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Make-something machine</title><link rel="stylesheet" href="common.css">
+<style>.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.slot{border:3px solid var(--line);border-radius:14px;padding:14px;text-align:center;background:var(--card);position:relative;overflow:hidden}
+.slot .k{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}.slot .v{font-size:20px;font-weight:700;min-height:2.6em;display:flex;align-items:center;justify-content:center}.slot.spin .v{filter:blur(2px)}.slot.locked{border-color:var(--accent)}.slot button{position:absolute;top:6px;right:6px;background:none;border:0;cursor:pointer;font-size:16px}
+#lever{font-size:22px;padding:14px 34px}#idea{font-size:20px;text-align:center}</style></head>
+<body data-app="makemachine" data-cat="wild" data-title="Make-something machine"><main>
+<p class="sub" style="text-align:center">Pull the lever and it rolls a thing to make, a theme and a twist. Lock the parts you like 🔒 and roll the rest. You'll never be stuck for an idea again.</p>
+<div class="slots" id="slots"></div>
+<div style="text-align:center"><button class="b" id="lever">🎰 PULL (Space)</button></div>
+<div class="box" style="margin-top:14px"><div id="idea"></div><div class="row" style="justify-content:center" id="acts"></div></div>
+<h3>Ideas I liked</h3><ul class="clean" id="saved"></ul>
+</main><script src="common.js"></script><script>
+const SLOTS=[['Make a…',['tiny game','website','comic','song','short story','drawing','pixel art','app','board game','poem','video','sculpture','recipe','map','robot (cardboard)','animation','quiz','soundboard','3D build','puzzle']],
+ ['About…',['space','your pet','a haunted house','the ocean','time travel','robots','your school or work','a dragon','food','the weather','dinosaurs','a secret door','your best friend','music','a tiny city','being invisible','the moon','a lost key','gravity','the future']],
+ ['With this twist',['only 3 colors','in 30 minutes','no words allowed','it must be funny','backwards','using only circles','everything is tiny','in black and white','one-button controls','it rhymes','made for a 5-year-old','from a cat\'s point of view','it\'s secretly sad','in exactly 100 words','upside down','opposite day','in slow motion','everything is made of food','it loops forever','with a surprise ending']],
+ ['Use…',['paper & pencil','the computer','stuff on your desk','only your phone','LEGO or blocks','your voice','a friend\'s help','recycling','one hour','the ToolBox apps']]];
+const LINKS={'tiny game':'parkour.html','website':'website.html','comic':'comic.html','song':'lofi.html','short story':'story.html','drawing':'genart.html','pixel art':'pixel.html','poem':'poem.html','3D build':'voxel.html','soundboard':'soundboard.html','quiz':'../tools.html#cards','map':'pixel.html','animation':'pixel.html'};
+let vals=load('vals',SLOTS.map(s=>s[1][0])),locks=SLOTS.map(()=>false);
+function draw(){$('slots').innerHTML=SLOTS.map(([k],i)=>`<div class="slot ${locks[i]?'locked':''}" id="s${i}"><div class="k">${k}</div><div class="v">${esc(vals[i])}</div><button data-l="${i}" title="Lock">${locks[i]?'🔒':'🔓'}</button></div>`).join('');
+  $('slots').querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{locks[b.dataset.l]=!locks[b.dataset.l];draw()});
+  const idea=`Make a ${vals[0]} about ${vals[1]}, ${/^(only|in|no|using|from|with|made|upside|opposite|everything|it)/.test(vals[2])?vals[2]:'with '+vals[2]}, using ${vals[3]}.`;$('idea').textContent=idea;
+  $('acts').innerHTML=`${LINKS[vals[0]]?`<a class="b" href="${LINKS[vals[0]]}">Open a tool for this</a>`:''}<button class="g" id="keep">♥ Save idea</button><button class="g" id="cp">Copy</button>`;
+  $('keep').onclick=()=>{const s=load('saved',[]);if(!s.includes(idea))s.unshift(idea);save('saved',s.slice(0,50));drawSaved()};$('cp').onclick=()=>copy(idea)}
+function drawSaved(){const s=load('saved',[]);$('saved').innerHTML=s.map((t,i)=>`<li>${esc(t)}<button class="x" data-i="${i}">✕</button></li>`).join('')||'<li class="muted">Nothing saved yet.</li>';$('saved').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{s.splice(b.dataset.i,1);save('saved',s);drawSaved()})}
+let spinning=false;function pull(){if(spinning)return;spinning=true;const order=SLOTS.map((_,i)=>i).filter(i=>!locks[i]);if(!order.length){spinning=false;return toast('Everything is locked!')}
+  order.forEach(i=>$('s'+i).classList.add('spin'));let n=0;const iv=setInterval(()=>{order.forEach(i=>{if(!$('s'+i).classList.contains('spin'))return;$('s'+i).querySelector('.v').textContent=pick(SLOTS[i][1])});tone(600+rnd(400),.03,'square',.03);n++;
+    order.forEach((i,k)=>{if(n===8+k*5){vals[i]=pick(SLOTS[i][1]);$('s'+i).classList.remove('spin');$('s'+i).querySelector('.v').textContent=vals[i];tone(880,.08,'triangle',.08)}});
+    if(n>=8+order.length*5){clearInterval(iv);spinning=false;save('vals',vals);draw();[523,659,784].forEach((f,i)=>tone(f,.12,'triangle',.1,i*.07))}},60)}
+$('lever').onclick=pull;addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();pull()}});draw();drawSaved();
+</script></body></html>

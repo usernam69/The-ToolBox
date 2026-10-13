@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Interactive story</title><link rel="stylesheet" href="common.css">
+<style>#page{max-width:640px;margin:auto;font:19px/1.7 Georgia,serif;min-height:220px}#page p{margin:0 0 14px;white-space:pre-wrap}.choice{display:block;width:100%;text-align:left;font:17px system-ui;margin:8px 0;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}.choice:hover{border-color:var(--accent)}
+#src{font:14px/1.5 ui-monospace,monospace;min-height:380px}.end{text-align:center;font-size:22px;margin:16px 0}</style></head>
+<body data-app="story" data-cat="creative" data-title="Interactive story"><main>
+<div class="row"><select id="which"></select><button class="g" id="restart">↺ Restart</button><button class="g" id="back">← Back</button><button class="g" id="editBtn">✎ Write my own</button><span class="muted" id="ends" style="margin-left:auto"></span></div>
+<div id="play" class="box"><div id="page"></div></div>
+<div id="edit" hidden><p class="sub">Write a story in this simple format. <code># name</code> starts a page, plain lines are the text, and <code>* choice text -&gt; page name</code> adds a choice. A page with no choices is an ending; add <code>[good]</code> or <code>[bad]</code> to its text to mark it. The first page is where the story starts.</p>
+<div class="row"><input id="title" class="grow" placeholder="Story title"><button class="b" id="saveS">Save &amp; play</button><button class="g" id="delS">Delete</button><button class="g" id="closeEd">Close</button></div><textarea id="src"></textarea><div id="err" style="color:var(--bad)"></div></div>
+</main><script src="common.js"></script><script>
+const BUILTIN={title:'The Lighthouse Keeper',src:`# start
+The storm hits just as you reach the old lighthouse. The door creaks open on its own. Inside, a lantern flickers at the bottom of a spiral staircase, and a trapdoor in the floor is slightly open.
+* Climb the stairs -> stairs
+* Open the trapdoor -> cellar
+
+# stairs
+Halfway up, you find a logbook. The last entry reads: "The light must never go out. They are coming." Above, the great lamp is dark.
+* Keep climbing to the lamp -> lamp
+* Read more of the logbook -> logbook
+
+# logbook
+Older entries describe ships that vanished on nights when the lamp was dark... and one ship that came back, empty, with its lanterns still burning.
+* Hurry up to the lamp -> lamp
+* Run back outside -> outside
+
+# cellar
+The cellar smells of salt. Barrels of lamp oil line the walls, and a small boat rests on a rail that leads to a sea gate.
+* Take a barrel of oil upstairs -> oil
+* Climb into the boat -> boat
+
+# oil
+You haul the oil up a hundred steps. Your arms burn, but the lamp drinks it greedily.
+* Light the lamp -> goodend
+
+# lamp
+The lamp's tank is empty. Through the glass you see lights on the water, moving toward the rocks. They don't look like ship lights.
+* Go down for oil -> oil
+* Wave your lantern at them -> signal
+
+# signal
+The lights stop. Then, one by one, they turn toward the lighthouse. Faster now.
+* Hide -> hide
+* Keep waving -> waveend
+
+# hide
+You crouch below the window. Something bumps softly against the rocks below, again and again, until dawn. In the morning there is nothing there but a single, still-burning ship's lantern on the beach.
+[good] You survived the night, though you'll never know what came calling.
+
+# waveend
+The lights reach the shore and climb the cliff like fireflies. When the morning ferry arrives, the lighthouse is lit, and you're the new keeper. You don't remember agreeing to that.
+[bad] The lighthouse keeps its keepers.
+
+# boat
+You open the sea gate and row into the storm. The lighthouse goes dark behind you, and lights gather on the water around your little boat, curious.
+[bad] Never leave the light.
+
+# outside
+You run into the storm. Behind you the lighthouse stays dark, and out at sea a ship's horn sounds, very close to the rocks.
+* Go back inside -> stairs
+
+# goodend
+The beam sweeps out across the waves. The strange lights on the water scatter like startled fish, and a fishing boat you hadn't even seen turns safely away from the rocks. Its horn sounds twice: thank you.
+[good] You kept the light. The best ending!`};
+function parse(src){const pages={},order=[];let cur=null;src.split('\n').forEach((l,n)=>{const h=l.match(/^#\s*(.+)/),c=l.match(/^\*\s*(.+?)\s*->\s*(.+)$/);
+  if(h){cur={id:h[1].trim().toLowerCase(),text:[],choices:[],end:null};pages[cur.id]=cur;order.push(cur.id)}else if(!cur){if(l.trim())throw`Line ${n+1}: start with a "# page" line first.`}
+  else if(c)cur.choices.push({t:c[1],to:c[2].trim().toLowerCase(),line:n+1});else{const e=l.match(/^\[(good|bad)\]\s*(.*)/);if(e){cur.end=e[1];cur.text.push(e[2])}else cur.text.push(l)}});
+  if(!order.length)throw'The story is empty.';for(const p of Object.values(pages))for(const c of p.choices)if(!pages[c.to])throw`Line ${c.line}: there is no page called "${c.to}".`;return{pages,start:order[0]}}
+const stories=()=>[BUILTIN,...load('mine',[])];let S,story,hist=[];
+function fillWhich(){$('which').innerHTML=stories().map((s,i)=>`<option value="${i}">${esc(s.title)}${i?'':' (built in)'}</option>`).join('');$('which').value=load('which',0)<stories().length?load('which',0):0}
+function begin(){S=stories()[+$('which').value];try{story=parse(S.src)}catch(e){$('page').innerHTML=`<p style="color:var(--bad)">${esc(e)}</p>`;return}hist=[];go(story.start)}
+function go(id){hist.push(id);const p=story.pages[id];tone(330+rnd(200),.05,'sine',.04);
+  let html=p.text.join('\n').trim().split(/\n\s*\n/).map(t=>`<p>${esc(t)}</p>`).join('');
+  if(!p.choices.length){const seen=load('ends',{}),k=S.title+'|'+id;seen[k]=p.end||'end';save('ends',seen);html+=`<div class="end">${p.end==='good'?'🌟 A good ending':p.end==='bad'?'💀 A bad ending':'— The End —'}</div><button class="choice" id="again">↺ Play again</button>`}
+  else html+=p.choices.map((c,i)=>`<button class="choice" data-to="${esc(c.to)}">${i+1}. ${esc(c.t)}</button>`).join('');
+  $('page').innerHTML=html;$('page').querySelectorAll('[data-to]').forEach(b=>b.onclick=()=>go(b.dataset.to));if($('again'))$('again').onclick=begin;
+  const total=Object.values(story.pages).filter(p=>!p.choices.length).length,found=Object.keys(load('ends',{})).filter(k=>k.startsWith(S.title+'|')).length;$('ends').textContent=`Endings found: ${found}/${total}`}
+addEventListener('keydown',e=>{if(document.activeElement.tagName==='TEXTAREA'||document.activeElement.tagName==='INPUT')return;const b=$('page').querySelectorAll('.choice')[+e.key-1];if(b)b.click()});
+$('back').onclick=()=>{if(hist.length>1){hist.pop();go(hist.pop())}};$('restart').onclick=begin;$('which').onchange=()=>{save('which',+$('which').value);begin()};
+let editing=-1;$('editBtn').onclick=()=>{const i=+$('which').value;editing=i>0?i-1:-1;const s=i>0?stories()[i]:{title:'My story',src:'# start\nYou find a mysterious door.\n* Open it -> inside\n* Walk away -> away\n\n# inside\nIt was a cupboard full of cake.\n[good] Delicious ending.\n\n# away\nYou will always wonder.\n[bad] Curiosity unsatisfied.'};
+  $('title').value=s.title;$('src').value=s.src;$('edit').hidden=false;$('play').hidden=true;$('err').textContent=''};
+$('closeEd').onclick=()=>{$('edit').hidden=true;$('play').hidden=false};
+$('saveS').onclick=()=>{try{parse($('src').value)}catch(e){$('err').textContent=e;return}const m=load('mine',[]),s={title:$('title').value.trim()||'Untitled',src:$('src').value};
+  if(editing>=0)m[editing]=s;else{m.push(s);editing=m.length-1}save('mine',m);save('which',editing+1);fillWhich();$('closeEd').click();begin()};
+$('delS').onclick=()=>{if(editing<0)return $('closeEd').click();if(!confirm('Delete this story?'))return;const m=load('mine',[]);m.splice(editing,1);save('mine',m);save('which',0);fillWhich();$('closeEd').click();begin()};
+fillWhich();begin();
+</script></body></html>

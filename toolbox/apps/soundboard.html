@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Soundboard</title><link rel="stylesheet" href="common.css">
+<style>.pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.pad{position:relative;aspect-ratio:1;border-radius:16px;border:0;font:600 15px system-ui;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 5px 0 rgba(0,0,0,.25);transition:transform .05s}.pad:active,.pad.hit{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.25)}.pad .e{font-size:34px}.pad kbd{position:absolute;top:6px;left:8px;background:rgba(0,0,0,.25);border:0;color:#fff}.pad .del{position:absolute;top:4px;right:6px;background:none;border:0;color:#fff;cursor:pointer;opacity:.7}</style></head>
+<body data-app="soundboard" data-cat="quick" data-title="Soundboard"><main>
+<p class="sub">Click a pad or press its key. Record your own sounds with the microphone (up to 8 seconds) or add an audio file.</p>
+<div class="pads" id="pads"></div>
+<div class="row"><input id="nm" placeholder="Name for new sound" style="width:180px"><button class="b" id="rec">● Record</button><label class="g" style="border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer">Add file<input type="file" id="file" accept="audio/*" hidden></label><span id="msg" class="muted"></span></div>
+</main><script src="common.js"></script><script>
+const KEYS='1234567890qwertyuiopasdfghjkl'.split('');
+function noise(dur,filt=1000,vol=.3){const a=AC(),b=a.createBuffer(1,a.sampleRate*dur,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();f.frequency.value=filt;g.gain.value=vol;s.buffer=b;s.connect(f);f.connect(g);g.connect(a.destination);s.start()}
+function sweep(f0,f1,dur,type='sine',vol=.2){const a=AC(),o=a.createOscillator(),g=a.createGain(),t=a.currentTime;o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(a.destination);o.start();o.stop(t+dur)}
+const BUILTIN=[['Air horn','📯','#e53935',()=>{[0,.35].forEach(w=>[233,311,349].forEach(f=>tone(f,.3,'sawtooth',.08,w)))}],['Drum','🥁','#8e24aa',()=>{sweep(160,40,.4,'sine',.6);noise(.1,3000,.2)}],['Boing','🦘','#43a047',()=>sweep(150,700,.5,'sine',.3)],
+ ['Laser','🔫','#1e88e5',()=>sweep(1800,120,.35,'square',.08)],['Applause','👏','#fb8c00',()=>noise(2,2500,.25)],['Bell','🔔','#fdd835',()=>[880,1320,1760].forEach((f,i)=>tone(f,1.5,'sine',.12/(i+1)))],
+ ['Sad trombone','🎺','#6d4c41',()=>[392,370,349,330].forEach((f,i)=>tone(f,i===3?1:.4,'sawtooth',.08,i*.45))],['Coin','🪙','#f9a825',()=>{tone(988,.08,'square',.08);tone(1319,.3,'square',.08,.08)}],['Ta-da','🎉','#d81b60',()=>[523,659,784,1047].forEach((f,i)=>tone(f,.25+(i===3?.5:0),'triangle',.15,i*.1))],
+ ['Whoosh','💨','#00897b',()=>noise(.6,800,.4)],['Ding dong','🚪','#5e35b1',()=>{tone(659,.6,'sine',.2);tone(523,.9,'sine',.2,.5)}],['Cricket','🦗','#546e7a',()=>[0,.15,.3].forEach(w=>tone(4200,.06,'square',.03,w))]];
+let custom=load('custom',[]);const audioCache={};
+function play(i){if(i<BUILTIN.length)BUILTIN[i][3]();else{const c=custom[i-BUILTIN.length];const a=audioCache[c.id]||(audioCache[c.id]=new Audio(c.data));a.currentTime=0;a.play()}
+  const p=$('pads').children[i];if(p){p.classList.add('hit');setTimeout(()=>p.classList.remove('hit'),120)}}
+function draw(){const all=[...BUILTIN.map(b=>({n:b[0],e:b[1],c:b[2]})),...custom.map(c=>({n:c.name,e:'🎙️',c:'#37474f',id:c.id}))];
+  $('pads').innerHTML=all.map((p,i)=>`<button class="pad" data-i="${i}" style="background:${p.c}">${KEYS[i]?`<kbd>${KEYS[i]}</kbd>`:''}${p.id?`<span class="del" data-del="${p.id}" title="Delete">✕</span>`:''}<span class="e">${p.e}</span>${esc(p.n)}</button>`).join('');
+  $('pads').querySelectorAll('.pad').forEach(b=>b.onclick=e=>{if(e.target.dataset.del){custom=custom.filter(c=>c.id!==e.target.dataset.del);save('custom',custom);draw();return}play(+b.dataset.i)})}
+addEventListener('keydown',e=>{if(document.activeElement.tagName==='INPUT')return;const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<BUILTIN.length+custom.length)play(i)});
+function addCustom(data){const name=$('nm').value.trim()||'Sound '+(custom.length+1);custom.push({id:uid(),name,data});try{save('custom',custom);if(!localStorage.getItem('app_soundboard_custom'))throw 0}catch{custom.pop();toast('Too big to save. Try a shorter sound.');return}$('nm').value='';draw();toast('Added '+name)}
+const toData=blob=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob)});
+$('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;if(f.size>1.5e6)return toast('That file is over 1.5 MB. Trim it first.');addCustom(await toData(f));$('file').value=''};
+let rec=null;$('rec').onclick=async()=>{if(rec){rec.stop();return}
+  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const chunks=[];rec=new MediaRecorder(st);rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=async()=>{st.getTracks().forEach(t=>t.stop());rec=null;$('rec').textContent='● Record';$('msg').textContent='';addCustom(await toData(new Blob(chunks,{type:chunks[0]?.type||'audio/webm'})))};
+    rec.start();$('rec').textContent='■ Stop';$('msg').textContent='Recording…';setTimeout(()=>rec&&rec.stop(),8000)}catch{toast('Microphone not available or blocked.')}};
+draw();
+</script></body></html>

@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Physics sandbox</title><link rel="stylesheet" href="common.css">
+<style>#c{width:100%;height:min(66vh,600px);background:var(--card);cursor:crosshair}.tool.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}</style></head>
+<body data-app="physics" data-cat="games" data-title="Physics sandbox"><main>
+<div class="row" id="tools"></div>
+<div class="stage"><canvas id="c"></canvas></div>
+<div class="row"><label><input type="checkbox" id="grav" checked> Gravity</label><label>Bounciness <input type="range" id="bounce" min="0" max="95" value="40"></label><button class="g" id="clear">Clear</button><button class="g" id="demo">Demo scene</button><span class="muted" id="count" style="margin-left:auto"></span></div>
+<p class="muted" style="font-size:13px">Click to drop the chosen thing. For a rope, press where it hangs from, then drag to where it ends. Use Grab to throw things, Pin to nail a point in place, and Erase to remove things.</p>
+</main><script src="common.js"></script><script>
+const c=$('c'),x=c.getContext('2d');let P=[],S=[],tool='ball',drag=null,ropeStart=null,mouse={x:0,y:0};
+const TOOLS=[['ball','⚪ Ball'],['big','🔵 Big ball'],['box','📦 Box'],['rope','🪢 Rope'],['grab','✋ Grab'],['pin','📌 Pin'],['erase','🧽 Erase']];
+$('tools').innerHTML=TOOLS.map(([k,n])=>`<button class="g tool ${k===tool?'on':''}" data-t="${k}">${n}</button>`).join('');
+$('tools').querySelectorAll('button').forEach(b=>b.onclick=()=>{tool=b.dataset.t;$('tools').querySelectorAll('button').forEach(o=>o.classList.toggle('on',o===b))});
+const COL=['#ef5350','#ffa726','#66bb6a','#42a5f5','#ab47bc','#26c6da','#ffee58'];
+const pt=(px,py,r,col,obj)=>{const p={x:px,y:py,ox:px,oy:py,r,col,pin:false,obj};P.push(p);return p};
+const stick=(a,b,show=true)=>S.push({a,b,len:Math.hypot(a.x-b.x,a.y-b.y),show,obj:a.obj});
+function ball(px,py,r){pt(px,py,r,pick(COL),uid())}
+function box(px,py,s=40){const o=uid(),col=pick(COL),q=[pt(px-s/2,py-s/2,4,col,o),pt(px+s/2,py-s/2,4,col,o),pt(px+s/2,py+s/2,4,col,o),pt(px-s/2,py+s/2,4,col,o)];
+  for(let i=0;i<4;i++)stick(q[i],q[(i+1)%4]);stick(q[0],q[2],false);stick(q[1],q[3],false);q[0].poly=q}
+function rope(ax,ay,bx,by){const o=uid(),n=Math.max(4,Math.round(Math.hypot(bx-ax,by-ay)/14));let prev=null;for(let i=0;i<=n;i++){const p=pt(ax+(bx-ax)*i/n,ay+(by-ay)*i/n,3,'#8d6e63',o);if(i===0)p.pin=true;if(prev)stick(prev,p);prev=p}}
+function size(){const dpr=devicePixelRatio;c.width=c.clientWidth*dpr;c.height=c.clientHeight*dpr;x.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',size);size();
+function step(){const W=c.clientWidth,H=c.clientHeight,g=$('grav').checked?.5:0,bo=$('bounce').value/100;
+  for(const p of P){if(p.pin)continue;const vx=(p.x-p.ox)*.995,vy=(p.y-p.oy)*.995;p.ox=p.x;p.oy=p.y;p.x+=vx;p.y+=vy+g}
+  if(drag){drag.x=mouse.x;drag.y=mouse.y}
+  for(let it=0;it<6;it++){for(const s of S){const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y,d=Math.hypot(dx,dy)||1,f=(d-s.len)/d/2;if(!s.a.pin&&s.a!==drag){s.a.x+=dx*f;s.a.y+=dy*f}if(!s.b.pin&&s.b!==drag){s.b.x-=dx*f;s.b.y-=dy*f}}
+    for(let i=0;i<P.length;i++){const a=P[i];for(let j=i+1;j<P.length;j++){const b=P[j];if(a.obj===b.obj)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),m=a.r+b.r;if(d>0&&d<m){const k=(m-d)/d/2;const wa=a.pin?0:1,wb=b.pin?0:1;if(!wa&&!wb)continue;const s=1/(wa+wb);a.x-=dx*k*wa*s*2;a.y-=dy*k*wa*s*2;b.x+=dx*k*wb*s*2;b.y+=dy*k*wb*s*2}}}
+    for(const p of P){if(p.pin)continue;const vx=p.x-p.ox,vy=p.y-p.oy;if(p.y>H-p.r){p.y=H-p.r;p.oy=p.y+vy*bo;p.ox=p.x-vx*.9}if(p.y<p.r){p.y=p.r;p.oy=p.y+vy*bo}if(p.x<p.r){p.x=p.r;p.ox=p.x+vx*bo}if(p.x>W-p.r){p.x=W-p.r;p.ox=p.x+vx*bo}}}}
+function draw(){const W=c.clientWidth,H=c.clientHeight;x.clearRect(0,0,W,H);x.lineCap='round';
+  for(const s of S){if(!s.show)continue;x.strokeStyle=s.a.col;x.lineWidth=s.a.r>3?6:4;x.beginPath();x.moveTo(s.a.x,s.a.y);x.lineTo(s.b.x,s.b.y);x.stroke()}
+  for(const p of P){if(p.poly){x.fillStyle=p.col;x.globalAlpha=.6;x.beginPath();p.poly.forEach((q,i)=>i?x.lineTo(q.x,q.y):x.moveTo(q.x,q.y));x.fill();x.globalAlpha=1;continue}if(p.r>4){x.fillStyle=p.col;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()}if(p.pin){x.fillStyle='#e53935';x.beginPath();x.arc(p.x,p.y,4,0,7);x.fill()}}
+  if(ropeStart){x.strokeStyle=cssVar('--muted');x.setLineDash([5,5]);x.beginPath();x.moveTo(ropeStart.x,ropeStart.y);x.lineTo(mouse.x,mouse.y);x.stroke();x.setLineDash([])}
+  $('count').textContent=`${new Set(P.map(p=>p.obj)).size} objects`}
+(function loop(){step();draw();requestAnimationFrame(loop)})();
+const pos=e=>{const r=c.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};const near=m=>P.reduce((b,p)=>{const d=Math.hypot(p.x-m.x,p.y-m.y);return d<Math.max(p.r,12)+6&&(!b||d<b.d)?{p,d}:b},null)?.p;
+c.onpointerdown=e=>{c.setPointerCapture(e.pointerId);const m=pos(e);mouse=m;
+  if(tool==='ball')ball(m.x,m.y,10+rnd(8));else if(tool==='big')ball(m.x,m.y,30+rnd(15));else if(tool==='box')box(m.x,m.y,30+rnd(30));else if(tool==='rope')ropeStart=m;
+  else if(tool==='grab')drag=near(m)||null;else if(tool==='pin'){const p=near(m);if(p){p.pin=!p.pin;p.ox=p.x;p.oy=p.y}}else if(tool==='erase'){const p=near(m);if(p){P=P.filter(q=>q.obj!==p.obj);S=S.filter(s=>s.obj!==p.obj)}}};
+c.onpointermove=e=>{mouse=pos(e);if(tool==='erase'&&e.buttons){const p=near(mouse);if(p){P=P.filter(q=>q.obj!==p.obj);S=S.filter(s=>s.obj!==p.obj)}}};
+c.onpointerup=()=>{if(ropeStart){rope(ropeStart.x,ropeStart.y,mouse.x,mouse.y);ropeStart=null}drag=null};
+$('clear').onclick=()=>{P=[];S=[]};
+$('demo').onclick=()=>{P=[];S=[];const W=c.clientWidth;rope(W*.3,20,W*.3,200);rope(W*.7,20,W*.55,180);for(let i=0;i<6;i++)box(W*.45+i*8,60-i*60,40);for(let i=0;i<14;i++)ball(80+rnd(W-160),-rnd(400),8+rnd(14));ball(W*.3,230,26)};$('demo').click();
+</script></body></html>

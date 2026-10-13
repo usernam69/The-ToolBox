@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Compliment machine</title><link rel="stylesheet" href="common.css">
+<style>#out{font-size:clamp(20px,4vw,30px);text-align:center;min-height:4em;display:flex;align-items:center;justify-content:center;padding:20px}</style></head>
+<body data-app="compliments" data-cat="quick" data-title="Compliment machine"><main>
+<div class="row" style="justify-content:center"><input id="who" placeholder="Their name (optional)"><button class="b" id="go">Compliment me</button><button class="g" id="cp">Copy</button><button class="g" id="fav">♥</button></div>
+<div class="box" id="out"></div><h3>Favorites</h3><ul class="clean" id="favs"></ul>
+</main><script src="common.js"></script><script>
+const A=['Your taste in snacks','The way you hold a mug','Your handwriting','Your sense of timing','Your laugh','The way you explain things','Your playlist','Your ability to find the TV remote','Your sock choices','The way you say "hmm"','Your patience with slow Wi-Fi','Your parallel parking','Your houseplant care','The way you name your files','Your emoji game','Your sandwich assembly technique','Your loyalty to your favorite pen'];
+const B=['could calm a thunderstorm','deserves its own museum','is legally a renewable energy source','would win a medal if it were a sport','makes golden retrievers jealous','should be studied by scientists','is the reason the sun gets up in the morning','is basically a cheat code for life','has main-character energy','could make a Monday feel like a Friday','is in the top 0.1% worldwide, probably','would get five stars from a very picky cat','belongs on a motivational poster','deserves a theme song'];
+const C=['Honestly.','No notes.','I said what I said.','Science agrees.','Frame this.','Tell your friends.','',''];
+let cur='';function go(){const n=$('who').value.trim();cur=`${n?n+', ':''}${pick(A).toLowerCase().replace(/^your/,n?'your':'Your')} ${pick(B)}. ${pick(C)}`.trim();cur=cur[0].toUpperCase()+cur.slice(1);$('out').textContent=cur;tone(880,.1,'sine',.08);tone(1320,.15,'sine',.06,.08)}
+function favs(){const f=load('favs',[]);$('favs').innerHTML=f.map((t,i)=>`<li>${esc(t)}<button class="x" data-i="${i}">✕</button></li>`).join('')||'<li class="muted">Tap ♥ to keep the good ones.</li>';
+  $('favs').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{f.splice(b.dataset.i,1);save('favs',f);favs()})}
+$('go').onclick=go;$('cp').onclick=()=>copy(cur);$('fav').onclick=()=>{if(!cur)return;const f=load('favs',[]);if(!f.includes(cur))f.unshift(cur);save('favs',f);favs()};
+$('who').onkeydown=e=>e.key==='Enter'&&go();go();favs();
+</script></body></html>

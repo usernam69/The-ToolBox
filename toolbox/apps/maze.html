@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Maze maker</title><link rel="stylesheet" href="common.css">
+<style>#c{width:min(100%,640px);aspect-ratio:1;margin:auto;background:var(--card);border-radius:12px}</style></head>
+<body data-app="maze" data-cat="games" data-title="Maze maker"><main>
+<div class="row"><label>Size <select id="size"><option>10</option><option selected>20</option><option>30</option><option>45</option></select></label><select id="algo"><option value="dfs">Long winding paths</option><option value="prim">Lots of short branches</option></select>
+<label>Speed <input type="range" id="speed" min="1" max="200" value="40"></label><button class="b" id="gen">Build maze</button><button class="g" id="solve">Solve it</button><button class="g" id="play">I'll solve it myself</button><span id="info" class="muted"></span></div>
+<canvas id="c" width="640" height="640"></canvas>
+<div class="touchpad" id="pad"><button data-d="0,-1">▲</button><button data-d="-1,0">◀</button><button data-d="1,0">▶</button><button data-d="0,1">▼</button></div>
+</main><script src="common.js"></script><script>
+const c=$('c'),x=c.getContext('2d');let N,cells,anim=null,me=null,path=null,visited=null,t0,frontierSet;
+// walls: bit 1=N 2=E 4=S 8=W
+const DIRS=[[0,-1,1,4],[1,0,2,8],[0,1,4,1],[-1,0,8,2]];
+function stopAnim(){if(anim){cancelAnimationFrame(anim);anim=null}}
+function gen(){stopAnim();N=+$('size').value;cells=[...Array(N*N)].map(()=>15);visited=new Set();path=null;me=null;frontierSet=new Set();$('info').textContent='Building…';
+  const steps=$('algo').value==='dfs'?dfs():prim();const run=()=>{for(let i=0;i<+$('speed').value;i++){if(steps.next().done){anim=null;draw();$('info').textContent='Maze ready!';return}}draw();anim=requestAnimationFrame(run)};run()}
+function*dfs(){const st=[0],seen=new Set([0]);while(st.length){const cur=st.at(-1),cx=cur%N,cy=Math.floor(cur/N);visited=seen;frontierSet=new Set([cur]);
+  const nb=DIRS.map(d=>[cx+d[0],cy+d[1],d]).filter(([a,b])=>a>=0&&b>=0&&a<N&&b<N&&!seen.has(b*N+a));
+  if(!nb.length){st.pop();yield;continue}const[a,b,d]=pick(nb),n=b*N+a;cells[cur]&=~d[2];cells[n]&=~d[3];seen.add(n);st.push(n);yield}}
+function*prim(){const seen=new Set([0]),fr=new Set();const addF=i=>{const cx=i%N,cy=Math.floor(i/N);DIRS.forEach(d=>{const a=cx+d[0],b=cy+d[1];if(a>=0&&b>=0&&a<N&&b<N&&!seen.has(b*N+a))fr.add(b*N+a)})};addF(0);
+  while(fr.size){const f=pick([...fr]);fr.delete(f);const cx=f%N,cy=Math.floor(f/N);const nb=DIRS.map(d=>[cx+d[0],cy+d[1],d]).filter(([a,b])=>a>=0&&b>=0&&a<N&&b<N&&seen.has(b*N+a));
+    const[a,b,d]=pick(nb);cells[f]&=~d[2];cells[b*N+a]&=~d[3];seen.add(f);addF(f);visited=seen;frontierSet=fr;yield}}
+function*bfs(){const prev=new Map([[0,-1]]),q=[0],seen=new Set([0]);while(q.length){const cur=q.shift();visited=seen;if(cur===N*N-1)break;const cx=cur%N,cy=Math.floor(cur/N);
+  DIRS.forEach(d=>{if(cells[cur]&d[2])return;const n=(cy+d[1])*N+cx+d[0];if(!seen.has(n)){seen.add(n);prev.set(n,cur);q.push(n)}});yield}
+  path=[];for(let c=N*N-1;c!==-1;c=prev.get(c))path.push(c);path.reverse()}
+function solve(){if(!cells||anim)return;me=null;visited=new Set();path=null;frontierSet=new Set();const st=bfs(),run=()=>{for(let i=0;i<+$('speed').value;i++)if(st.next().done){anim=null;draw();$('info').textContent=`Solved: ${path.length} steps, ${visited.size} squares explored.`;return}draw();anim=requestAnimationFrame(run)};run()}
+function draw(){const s=640/N;x.clearRect(0,0,640,640);
+  if(visited){x.fillStyle=cssVar('--accent');x.globalAlpha=.13;visited.forEach(i=>x.fillRect(i%N*s,Math.floor(i/N)*s,s,s));x.globalAlpha=1}
+  if(frontierSet&&anim){x.fillStyle=cssVar('--warn');frontierSet.forEach(i=>x.fillRect(i%N*s+s*.25,Math.floor(i/N)*s+s*.25,s*.5,s*.5))}
+  x.fillStyle='#4caf50';x.fillRect(2,2,s-4,s-4);x.fillStyle='#e53935';x.fillRect((N-1)*s+2,(N-1)*s+2,s-4,s-4);
+  if(path){x.strokeStyle=cssVar('--accent');x.lineWidth=Math.max(2,s/3);x.lineCap=x.lineJoin='round';x.beginPath();path.forEach((i,k)=>{const px=i%N*s+s/2,py=Math.floor(i/N)*s+s/2;k?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}
+  if(me){x.strokeStyle='#ffb300';x.lineWidth=Math.max(2,s/4);x.beginPath();me.trail.forEach((i,k)=>{const px=i%N*s+s/2,py=Math.floor(i/N)*s+s/2;k?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();x.fillStyle='#ffb300';x.beginPath();x.arc(me.i%N*s+s/2,Math.floor(me.i/N)*s+s/2,s/3,0,7);x.fill()}
+  x.strokeStyle=cssVar('--ink');x.lineWidth=Math.max(1.5,s/10);x.lineCap='square';x.beginPath();
+  cells.forEach((w,i)=>{const px=i%N*s,py=Math.floor(i/N)*s;if(w&1){x.moveTo(px,py);x.lineTo(px+s,py)}if(w&2){x.moveTo(px+s,py);x.lineTo(px+s,py+s)}if(w&4){x.moveTo(px,py+s);x.lineTo(px+s,py+s)}if(w&8){x.moveTo(px,py);x.lineTo(px,py+s)}});x.stroke()}
+function walk(dx,dy){if(!me||anim)return;const d=DIRS.find(d=>d[0]===dx&&d[1]===dy);if(cells[me.i]&d[2])return;me.i+=dy*N+dx;
+  const k=me.trail.indexOf(me.i);if(k>=0)me.trail=me.trail.slice(0,k+1);else me.trail.push(me.i);me.moves++;
+  if(me.i===N*N-1){const t=((Date.now()-t0)/1000).toFixed(1);$('info').textContent=`🎉 Solved in ${t}s and ${me.moves} moves!`;[523,659,784].forEach((f,i)=>tone(f,.2,'triangle',.1,i*.1));me.done=true}draw()}
+$('play').onclick=()=>{if(!cells||anim)return;path=null;visited=null;me={i:0,trail:[0],moves:0};t0=Date.now();$('info').textContent='Use the arrow keys to get from 🟩 to 🟥!';draw();$('play').blur()};
+addEventListener('keydown',e=>{const m={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]}[e.key.toLowerCase()];if(m&&me&&!me.done){e.preventDefault();walk(...m)}});
+$('pad').querySelectorAll('button').forEach(b=>b.onclick=()=>walk(...b.dataset.d.split(',').map(Number)));
+$('gen').onclick=gen;$('solve').onclick=solve;gen();
+</script></body></html>

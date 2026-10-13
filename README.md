@@ -1,14 +1,16 @@
 # The ToolBox
 
-64 small everyday tools in one window: to-dos, habits, notes, timers, budgets, flashcards, file clean-up scripts, converters, media tools, and more. Everything is saved on your own computer. There are no accounts and nothing is sent to a server.
+A main menu with six categories: Quick wins, Games, Useful tools, Creative & art, Bigger projects and Wild ideas. Inside are 64 everyday tools plus 43 apps and games. Everything is saved on your own device. There are no accounts and nothing is sent to a server.
 
 ## Use it
 
-- **Windows app:** download [`release/UsefulToolbox.exe`](release/UsefulToolbox.exe) and double-click it. No install needed. Windows may show "Windows protected your PC" because the file isn't signed. Click *More info* → *Run anyway*.
-- **In a browser:** open `toolbox/index.html` in Chrome or Edge.
-- **As an installable web app (works offline):** serve the `toolbox` folder from any web host, for example GitHub Pages or `npx serve toolbox`, then click the install icon in the address bar.
+- **Online / Chromebook:** open **https://usernam69.github.io/The-ToolBox/** in Chrome. To install it, click the install icon at the right end of the address bar. After that it opens from the launcher and works offline.
+- **Windows app:** download [](release/UsefulToolbox.exe) and double-click it. No install needed. Windows may show "Windows protected your PC" because the file isn't signed. Click *More info* → *Run anyway*.
+- **From the files:** open  in Chrome or Edge.
 
-## What's inside
+**Room chat** and **Draw & guess** play over home Wi-Fi. Someone on Windows presses **Host** in the desktop app, or runs  in . Everyone else, Chromebooks included, opens the address it shows. Draw & guess also has a one-screen mode.
+
+## The 64 tools (Useful tools)
 
 | Group | Tools |
 |---|---|

@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Infinite museum</title><link rel="stylesheet" href="common.css">
+<style>body{overflow:hidden}#c{position:fixed;left:0;right:0;top:49px;bottom:0;width:100%;height:calc(100vh - 49px)}#hud{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;padding:6px 14px;border-radius:999px;font-size:14px}</style></head>
+<body data-app="museum" data-cat="wild" data-title="Infinite museum"><canvas id="c"></canvas><div id="hud">← → or A/D to walk · hold Shift to hurry · click a painting to save it</div>
+<script src="common.js"></script><script>
+const c=$('c'),x=c.getContext('2d');let W,H,camX=load('x',0),walker=load('x',0)+400,face=1,cache=new Map(),t=0;
+function size(){W=c.width=c.clientWidth*devicePixelRatio;H=c.height=c.clientHeight*devicePixelRatio}addEventListener('resize',size);size();
+const ROOM=1400,ART=[260,660,1060];
+function R(seed){let s=seed>>>0||1;return()=>((s=Math.imul(s^s>>>15,1|s)+0x6D2B79F5|0)>>>0)/4294967296}
+const ADJ='Quiet Electric Forgotten Golden Restless Silent Hidden Endless Broken Gentle Burning Frozen Velvet Lonely Distant Hollow Radiant'.split(' '),NOUN='Harbor Orchard Machine Garden Signal Mirror Tide Cathedral Lantern Meadow Spiral Window Engine Comet Archive Echo'.split(' ');
+const FIRST='Ana Bruno Clara Dmitri Elif Farah Goran Hana Ivo Juno Kofi Lena Mateo Noor Oskar Priya Ravi Sana Tomas Yuki'.split(' '),LAST='Varga Moreau Okafor Lindqvist Rossi Tanaka Haddad Novak Silva Bauer Kowalski Mendes Ito Larsen Petrov'.split(' ');
+const ROOMS=['Hall of Color','Gallery of Shapes','The Blue Room','Wing of Waves','Corridor of Circles','The Quiet Gallery','Room of Grids','Sunset Hall'];
+function painting(id){if(cache.has(id))return cache.get(id);const r=R(id*2654435761),w=220+Math.floor(r()*100),h=170+Math.floor(r()*120),cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');
+  const hue=r()*360,pal=[0,30,60,180,210].map(d=>`hsl(${(hue+d*r()*2)%360},${50+r()*40}%,${30+r()*45}%)`),style=Math.floor(r()*5);g.fillStyle=pal[0];g.fillRect(0,0,w,h);
+  if(style===0)for(let i=0;i<40;i++){g.fillStyle=pal[1+Math.floor(r()*4)];g.globalAlpha=.7;g.beginPath();g.arc(r()*w,r()*h,5+r()*50,0,7);g.fill()}
+  else if(style===1){const sp=(a,b,cw,ch,d)=>{if(d>4||cw<30||ch<30||(d>1&&r()<.3)){g.fillStyle=pal[Math.floor(r()*5)];g.fillRect(a,b,cw,ch);g.strokeStyle='#111';g.lineWidth=4;g.strokeRect(a,b,cw,ch);return}if(cw>ch){const k=cw*(.3+r()*.4);sp(a,b,k,ch,d+1);sp(a+k,b,cw-k,ch,d+1)}else{const k=ch*(.3+r()*.4);sp(a,b,cw,k,d+1);sp(a,b+k,cw,ch-k,d+1)}};sp(0,0,w,h,0)}
+  else if(style===2)for(let i=0;i<9;i++){g.fillStyle=pal[i%5];g.globalAlpha=.8;g.beginPath();g.moveTo(0,h);for(let px=0;px<=w;px+=6)g.lineTo(px,h*(.2+i*.09)+Math.sin(px*.03*(1+r())+i)*12);g.lineTo(w,h);g.fill()}
+  else if(style===3){g.lineWidth=2+r()*5;for(let i=0;i<14;i++){g.strokeStyle=pal[1+i%4];g.beginPath();g.arc(w/2,h/2,(14-i)*Math.min(w,h)/30,0,7);g.stroke()}}
+  else{const n=5+Math.floor(r()*8),s=w/n;for(let i=0;i<n;i++)for(let j=0;j<Math.ceil(h/s);j++){g.fillStyle=pal[Math.floor(r()*5)];g.fillRect(i*s+2,j*s+2,s-4,s-4)}}
+  g.globalAlpha=1;const r2=R(id*7919);const p={cv,w,h,title:`${ADJ[Math.floor(r2()*ADJ.length)]} ${NOUN[Math.floor(r2()*NOUN.length)]}${r2()<.3?' No. '+(1+Math.floor(r2()*9)):''}`,artist:`${FIRST[Math.floor(r2()*FIRST.length)]} ${LAST[Math.floor(r2()*LAST.length)]}`,year:1890+Math.floor(r2()*135)};cache.set(id,p);if(cache.size>60)cache.delete(cache.keys().next().value);return p}
+function frame(){t++;const sp=(keys.has('shift')?14:6)*devicePixelRatio,dir=(keys.has('arrowright')||keys.has('d')?1:0)-(keys.has('arrowleft')||keys.has('a')?1:0);if(dir){walker+=dir*sp/devicePixelRatio;face=dir}
+  camX+=(walker-400-camX)*.08;const k=H/700,floorY=H*.78;x.setTransform(1,0,0,1,0,0);
+  const room=Math.floor(camX/ROOM);x.fillStyle=`hsl(${(room*47)%360},18%,88%)`;x.fillRect(0,0,W,H);x.fillStyle='#6d5a4a';x.fillRect(0,floorY,W,H-floorY);x.fillStyle='rgba(0,0,0,.08)';for(let i=-1;i<W/(60*k)+1;i++)x.fillRect(((i*60-camX%60)*k),floorY,2,H-floorY);
+  x.fillStyle='#d9cfc2';x.fillRect(0,floorY-14*k,W,14*k);
+  for(let rm=room-1;rm<=room+2;rm++){const rx=(rm*ROOM-camX)*k;x.fillStyle='rgba(0,0,0,.18)';x.fillRect(rx-6*k,H*.05,12*k,floorY-H*.05);
+    x.fillStyle='#333';x.font=`${16*k}px Georgia`;x.textAlign='left';x.fillText(`Room ${rm+1} · ${ROOMS[((rm%ROOMS.length)+ROOMS.length)%ROOMS.length]}`,rx+20*k,H*.1);
+    ART.forEach((ax,ai)=>{const id=rm*3+ai+100000,p=painting(id),sc=k*Math.min(1,300/p.h),pw=p.w*sc,ph=p.h*sc,px=rx+ax*k-pw/2,py=H*.42-ph/2;
+      const lg=x.createRadialGradient(px+pw/2,py-40*k,0,px+pw/2,py+ph/2,pw);lg.addColorStop(0,'rgba(255,240,200,.35)');lg.addColorStop(1,'rgba(255,240,200,0)');x.fillStyle=lg;x.fillRect(px-pw,py-80*k,pw*3,ph+200*k);
+      x.fillStyle='#5d4037';x.fillRect(px-14*k,py-14*k,pw+28*k,ph+28*k);x.fillStyle='#c9a227';x.fillRect(px-8*k,py-8*k,pw+16*k,ph+16*k);x.drawImage(p.cv,px,py,pw,ph);
+      x.fillStyle='#f5f0e6';x.fillRect(px+pw/2-80*k,py+ph+34*k,160*k,48*k);x.fillStyle='#222';x.textAlign='center';x.font=`italic ${12*k}px Georgia`;x.fillText(p.title,px+pw/2,py+ph+54*k);x.font=`${10*k}px Georgia`;x.fillText(`${p.artist}, ${p.year}`,px+pw/2,py+ph+72*k);p.hit=[px,py,pw,ph,id]})}
+  const vx=(walker-camX)*k,bob=dir?Math.sin(t*.3)*3*k:0;x.textAlign='center';x.font=`${70*k}px system-ui`;x.save();x.translate(vx,floorY-4*k+bob);if(face<0)x.scale(-1,1);x.fillText('🚶',0,0);x.restore();
+  if(t%60===0)save('x',camX);requestAnimationFrame(frame)}
+c.onclick=e=>{const mx=e.offsetX*devicePixelRatio,my=e.offsetY*devicePixelRatio;for(const p of cache.values()){if(!p.hit)continue;const[px,py,pw,ph]=p.hit;if(mx>px&&mx<px+pw&&my>py&&my<py+ph){download(`${p.title.replace(/\W+/g,'-')}.png`,p.cv.toDataURL('image/png'));toast(`Saved “${p.title}” by ${p.artist}`);return}}};
+let touchDir=0;c.addEventListener('touchstart',e=>{touchDir=e.touches[0].clientX<innerWidth/2?-1:1;keys.add(touchDir<0?'a':'d')},{passive:true});c.addEventListener('touchend',()=>{keys.delete('a');keys.delete('d')});
+frame();
+</script></body></html>

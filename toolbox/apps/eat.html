@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>What should I eat?</title><link rel="stylesheet" href="common.css">
+<style>.wrap{position:relative;max-width:440px;margin:auto}#wheel{width:100%;aspect-ratio:1}.ptr{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:34px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}#res{text-align:center;font-size:26px;font-weight:700;min-height:1.5em;margin:10px 0}</style></head>
+<body data-app="eat" data-cat="quick" data-title="What should I eat?"><main>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))">
+<div><div class="wrap"><div class="ptr">▼</div><canvas id="wheel" width="600" height="600"></canvas></div><div id="res"></div><div class="row" style="justify-content:center"><button class="b" id="spin" style="font-size:18px;padding:10px 26px">SPIN</button></div></div>
+<div class="box"><b>Options</b><div class="row"><select id="preset"><option value="">Load a list…</option><option>Dinner</option><option>Takeout</option><option>Breakfast</option><option>Snacks</option></select></div>
+<textarea id="opts" style="min-height:240px" placeholder="One per line"></textarea><div class="muted" style="font-size:13px">Put a number after an option to make it more likely, e.g. <code>Pizza 3</code>.</div></div></div>
+</main><script src="common.js"></script><script>
+const PRESETS={Dinner:'Pasta\nTacos\nStir fry\nCurry\nSoup\nBurgers\nSalad\nPizza\nOmelette\nRice bowl',Takeout:'Pizza\nSushi\nChinese\nIndian\nThai\nBurgers\nMexican\nShawarma',Breakfast:'Pancakes\nOatmeal\nEggs on toast\nYogurt & fruit\nSmoothie\nCereal\nFrench toast',Snacks:'Popcorn\nFruit\nNuts\nCheese & crackers\nChips & dip\nChocolate\nVeggie sticks'};
+const COL=['#ef5350','#ffa726','#ffee58','#66bb6a','#29b6f6','#5c6bc0','#ab47bc','#ec407a','#26a69a','#8d6e63'];
+$('opts').value=load('opts',PRESETS.Dinner);let ang=0,spinning=false;
+const items=()=>$('opts').value.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>{const m=s.match(/^(.*?)\s+(\d+)$/);return m?{n:m[1],w:+m[2]}:{n:s,w:1}});
+function draw(){const c=$('wheel'),x=c.getContext('2d'),it=items(),tot=it.reduce((a,b)=>a+b.w,0)||1;x.clearRect(0,0,600,600);let a=ang;
+  it.forEach((o,i)=>{const sl=o.w/tot*Math.PI*2;x.beginPath();x.moveTo(300,300);x.arc(300,300,290,a,a+sl);x.fillStyle=COL[i%COL.length];x.fill();x.strokeStyle='#fff';x.lineWidth=3;x.stroke();
+    x.save();x.translate(300,300);x.rotate(a+sl/2);x.fillStyle='#222';x.font=`bold ${it.length>12?16:22}px system-ui`;x.textAlign='right';x.fillText(o.n.slice(0,18),270,8);x.restore();a+=sl});
+  x.beginPath();x.arc(300,300,30,0,7);x.fillStyle='#fff';x.fill()}
+function result(){const it=items(),tot=it.reduce((a,b)=>a+b.w,0);let p=((-Math.PI/2-ang)%(Math.PI*2)+Math.PI*4)%(Math.PI*2),acc=0;for(const o of it){acc+=o.w/tot*Math.PI*2;if(p<acc)return o.n}}
+$('spin').onclick=()=>{if(spinning||items().length<2)return;spinning=true;$('res').textContent='';const start=ang,total=Math.PI*2*(5+Math.random()*3),t0=performance.now(),D=4000;let lastTick=0;
+  const step=t=>{const k=Math.min(1,(t-t0)/D),e=1-(1-k)**3;ang=start+total*e;draw();const seg=Math.floor(ang*items().length/(Math.PI*2));if(seg!==lastTick){lastTick=seg;tone(1200,.02,'square',.04)}
+    if(k<1)requestAnimationFrame(step);else{spinning=false;$('res').textContent='🍽️ '+result()+'!';[523,659,784].forEach((f,i)=>tone(f,.2,'triangle',.12,i*.1))}};requestAnimationFrame(step)};
+$('opts').oninput=()=>{save('opts',$('opts').value);draw()};$('preset').onchange=()=>{if(PRESETS[$('preset').value]){$('opts').value=PRESETS[$('preset').value];save('opts',$('opts').value);draw()}$('preset').value=''};draw();
+</script></body></html>

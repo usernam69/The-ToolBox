@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Big countdown</title><link rel="stylesheet" href="common.css">
+<style>#stage{min-height:calc(100vh - 160px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:16px;color:#fff;padding:20px;transition:background 1s}
+#emoji{font-size:clamp(50px,12vw,110px)}#title{font-size:clamp(22px,4vw,40px);font-weight:700;margin:6px 0 18px}.units{display:flex;gap:clamp(8px,3vw,28px);flex-wrap:wrap;justify-content:center}.u{min-width:90px}.u b{display:block;font-size:clamp(40px,10vw,96px);font-variant-numeric:tabular-nums;line-height:1}.u span{opacity:.8;text-transform:uppercase;font-size:13px;letter-spacing:2px}
+#when{opacity:.8;margin-top:16px}#stage:fullscreen{border-radius:0}</style></head>
+<body data-app="countdown" data-cat="quick" data-title="Big countdown"><main>
+<div class="row"><input id="ename" style="width:60px" maxlength="4" title="Emoji"><input id="name" class="grow" placeholder="Countdown to…"><input id="date" type="datetime-local"><select id="bg"><option value="sunset">Sunset</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="night">Night</option><option value="candy">Candy</option></select><button class="g" id="fs">⛶ Full screen</button></div>
+<div id="stage"><div id="emoji"></div><div id="title"></div><div class="units" id="units"></div><div id="when"></div></div>
+<div class="row"><span class="muted" style="font-size:13px">Saved countdowns:</span><span id="list"></span><button class="g" id="new">+ New</button></div>
+</main><script src="common.js"></script><script>
+const BG={sunset:'linear-gradient(135deg,#ff7e5f,#feb47b)',ocean:'linear-gradient(135deg,#2193b0,#6dd5ed)',forest:'linear-gradient(135deg,#134e5e,#71b280)',night:'linear-gradient(135deg,#0f2027,#2c5364)',candy:'linear-gradient(135deg,#d53369,#daae51)'};
+let list=load('list',null);if(!list){const ny=new Date(new Date().getFullYear()+1,0,1);list=[{id:uid(),e:'🎆',n:'New Year',d:ny.toISOString().slice(0,16),bg:'night'}]}let cur=load('cur',list[0].id);
+const item=()=>list.find(x=>x.id===cur)||list[0];const persist=()=>{save('list',list);save('cur',cur)};
+function fill(){const it=item();$('ename').value=it.e;$('name').value=it.n;$('date').value=it.d;$('bg').value=it.bg;$('stage').style.background=BG[it.bg];
+  $('list').innerHTML=list.map(x=>`<button class="g" data-id="${x.id}" style="${x.id===it.id?'border-color:var(--accent)':''}">${esc(x.e)} ${esc(x.n||'Untitled')}</button>`).join(' ');
+  $('list').querySelectorAll('button').forEach(b=>{b.onclick=()=>{cur=b.dataset.id;persist();fill()};b.oncontextmenu=e=>{e.preventDefault();if(list.length>1&&confirm('Delete this countdown?')){list=list.filter(x=>x.id!==b.dataset.id);cur=list[0].id;persist();fill()}}});tick()}
+let rang=false;function tick(){const it=item(),t=new Date(it.d),ms=t-Date.now();$('emoji').textContent=it.e||'⏳';$('title').textContent=it.n||'Pick a date';
+  if(isNaN(ms)){$('units').innerHTML='';$('when').textContent='';return}
+  if(ms<=0){$('units').innerHTML='<div class="u"><b>🎉</b><span>It\'s here!</span></div>';if(!rang&&ms>-2000){rang=true;[523,659,784,1047].forEach((f,i)=>tone(f,.4,'triangle',.15,i*.15))}}
+  else{rang=false;const s=Math.floor(ms/1000),u=[['days',Math.floor(s/86400)],['hours',Math.floor(s%86400/3600)],['minutes',Math.floor(s%3600/60)],['seconds',s%60]];$('units').innerHTML=u.map(([n,v])=>`<div class="u"><b>${n==='days'?v:pad2(v)}</b><span>${n}</span></div>`).join('')}
+  $('when').textContent=t.toLocaleString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+['ename','name','date','bg'].forEach(id=>$(id).addEventListener('input',()=>{const it=item();it.e=$('ename').value;it.n=$('name').value;it.d=$('date').value;it.bg=$('bg').value;persist();fill()}));
+$('new').onclick=()=>{const d=new Date(Date.now()+7*DAY);const n={id:uid(),e:'🎉',n:'',d:d.toISOString().slice(0,16),bg:pick(Object.keys(BG))};list.push(n);cur=n.id;persist();fill();$('name').focus()};
+$('fs').onclick=()=>$('stage').requestFullscreen?.();setInterval(tick,1000);fill();
+</script></body></html>

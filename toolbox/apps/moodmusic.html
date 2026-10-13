@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mood to music</title><link rel="stylesheet" href="common.css">
+<style>#viz{width:100%;height:180px;border-radius:12px;background:#0d0f17}.meter{display:flex;gap:16px;flex-wrap:wrap}.meter div{flex:1;min-width:140px}.meter .bar{height:8px;border-radius:4px;background:var(--line)}.meter .bar i{display:block;height:100%;border-radius:4px;background:var(--accent)}</style></head>
+<body data-app="moodmusic" data-cat="wild" data-title="Mood to music"><main>
+<p class="sub">Type how you feel in your own words. The words decide the key, speed and instruments, and every melody is new.</p>
+<textarea id="t" placeholder="e.g. Tired but kind of happy, the sun is out and I finished my project" style="min-height:80px"></textarea>
+<div class="row"><button class="b" id="play">▶ Turn it into music</button><button class="g" id="stop">■ Stop</button><button class="g" id="again">🎲 Another take</button><label>Length <select id="bars"><option value="8">Short</option><option value="16" selected>Medium</option><option value="32">Long</option></select></label></div>
+<div class="box"><div class="meter"><div>Mood <b id="vl"></b><div class="bar"><i id="vb"></i></div></div><div>Energy <b id="el"></b><div class="bar"><i id="eb"></i></div></div></div><p id="desc" style="margin:10px 0 0"></p></div>
+<canvas id="viz"></canvas>
+</main><script src="common.js"></script><script>
+const POS='happy joy glad great good love excited sunny sun fun proud calm peaceful grateful relaxed hopeful bright amazing awesome nice warm cozy free finished win won laugh smile friends party yay chill'.split(' '),NEG='sad tired angry upset bad lonely worried anxious stressed scared sick bored rain grey gray lost hurt cry crying miss hate annoyed nervous dark cold empty broke failed'.split(' ');
+const HIGH='excited angry party energy energetic fast hyped running dance jump crazy wild stressed anxious busy rush awesome yay win'.split(' '),LOW='tired calm sleepy slow relaxed peaceful chill lazy quiet sleepy bored cozy soft rain sleep'.split(' ');
+function analyze(s){const w=s.toLowerCase().match(/[a-z']+/g)||[],has=l=>w.filter(x=>l.some(k=>x.startsWith(k))).length;let v=has(POS)-has(NEG),e=has(HIGH)-has(LOW);
+  if(/\bnot\s+(happy|good|great|ok)/.test(s.toLowerCase()))v-=2;e+=(s.match(/!/g)||[]).length*.5;v=Math.tanh(v/2.5);e=Math.tanh(e/2.5);return{v,e}}
+const SCALES={major:[0,2,4,5,7,9,11],lydian:[0,2,4,6,7,9,11],dorian:[0,2,3,5,7,9,10],minor:[0,2,3,5,7,8,10],penta:[0,2,4,7,9],blues:[0,3,5,6,7,10]};
+let nodes=[],an=null,raf;
+function stop(){nodes.forEach(n=>{try{n.stop()}catch{}});nodes=[];cancelAnimationFrame(raf)}
+function play(){stop();const a=AC();a.resume();const{v,e}=analyze($('t').value||'okay');
+  const scale=v>.5?(e>.3?'major':'lydian'):v>.1?'penta':v>-.3?'dorian':e>.3?'blues':'minor',bpm=Math.round(72+e*45+(v>0?6:0)),root=57+Math.round(v*3),beat=60/bpm,bars=+$('bars').value;
+  const wave=e>.4?'square':e>-.2?'triangle':'sine',sc=SCALES[scale];
+  $('vl').textContent=v>.3?'bright':v<-.3?'dark':'in between';$('el').textContent=e>.3?'high':e<-.3?'low':'medium';$('vb').style.width=(v+1)*50+'%';$('eb').style.width=(e+1)*50+'%';
+  $('desc').textContent=`${scale[0].toUpperCase()+scale.slice(1)} scale · ${bpm} BPM · ${wave==='square'?'punchy chiptune':wave==='triangle'?'soft flute-like':'gentle sine'} lead${e>0?' with drums':''}.`;
+  const out=a.createGain();out.gain.value=.7;an=a.createAnalyser();an.fftSize=256;out.connect(an);an.connect(a.destination);const t0=a.currentTime+.1;
+  const note=(m,t,d,type,vol)=>{const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=440*2**((m-69)/12);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.05);nodes.push(o)};
+  const deg=i=>root+sc[((i%sc.length)+sc.length)%sc.length]+12*Math.floor(i/sc.length);const prog=v>0?[0,4,5,3]:[0,5,3,4];let pos=Math.floor(sc.length*1.5);
+  for(let b=0;b<bars;b++){const ch=prog[b%4];[0,2,4].forEach(k=>note(deg(ch+k)-12,t0+b*4*beat,4*beat,'sine',.05));note(deg(ch)-24,t0+b*4*beat,2*beat,'triangle',.12);note(deg(ch)-24,t0+(b*4+2)*beat,2*beat,'triangle',.1);
+    let t=0;while(t<4){const len=pick(e>.3?[.5,.5,.25,1]:[1,1,.5,2]);if(Math.random()>.18){pos+=pick([-2,-1,-1,0,1,1,2,v>0?2:-2]);pos=Math.max(sc.length,Math.min(sc.length*3,pos));note(deg(pos),t0+(b*4+t)*beat,len*beat*1.4,wave,wave==='square'?.05:.12)}t+=len}
+    if(e>0)for(let k=0;k<4;k++){const tt=t0+(b*4+k)*beat,o=a.createOscillator(),g=a.createGain();o.frequency.setValueAtTime(k%2?200:120,tt);o.frequency.exponentialRampToValueAtTime(40,tt+.1);g.gain.setValueAtTime(k%2?.15:.4,tt);g.gain.exponentialRampToValueAtTime(.001,tt+.15);o.connect(g);g.connect(out);o.start(tt);o.stop(tt+.2);nodes.push(o)}}
+  viz(v)}
+function viz(v){const c=$('viz'),x=c.getContext('2d'),d=new Uint8Array(128);c.width=c.clientWidth*devicePixelRatio;c.height=180*devicePixelRatio;
+  const loop=()=>{an.getByteFrequencyData(d);x.fillStyle='rgba(13,15,23,.3)';x.fillRect(0,0,c.width,c.height);const w=c.width/64;
+    for(let i=0;i<64;i++){const h=d[i]/255*c.height;x.fillStyle=`hsl(${(v>0?40:220)+i*2},80%,${45+d[i]/8}%)`;x.fillRect(i*w,c.height-h,w-2,h)}raf=requestAnimationFrame(loop)};loop()}
+$('play').onclick=play;$('again').onclick=play;$('stop').onclick=stop;$('t').value=load('t','');$('t').oninput=()=>save('t',$('t').value);
+</script></body></html>

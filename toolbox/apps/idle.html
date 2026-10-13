@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Idle clicker</title><link rel="stylesheet" href="common.css">
+<style>#cookie{font-size:140px;background:none;border:0;cursor:pointer;transition:transform .06s;display:block;margin:10px auto;line-height:1;user-select:none}#cookie:active{transform:scale(.92)}
+.up{display:flex;gap:10px;align-items:center;width:100%;text-align:left;font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:10px;background:var(--card);padding:8px 10px;cursor:pointer;margin-bottom:6px}.up:disabled{opacity:.45;cursor:default}.up .e{font-size:28px}.up .n{flex:1}.up b{display:block}
+.pop{position:fixed;pointer-events:none;font-weight:700;color:var(--accent);animation:up 1s forwards}@keyframes up{to{transform:translateY(-60px);opacity:0}}</style></head>
+<body data-app="idle" data-cat="games" data-title="Idle clicker"><main>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))">
+<div style="text-align:center"><div class="big" id="n">0</div><div class="muted" id="ps"></div><button id="cookie">🍪</button><div class="muted" id="click"></div><div class="row" style="justify-content:center"><button class="g" id="prest" title="Start over with a permanent bonus">✨ Prestige</button></div><div class="muted" id="ach" style="font-size:13px"></div></div>
+<div><h3>Helpers</h3><div id="helpers"></div><h3>Upgrades</h3><div id="ups"></div></div></div>
+</main><script src="common.js"></script><script>
+const H=[['Grandma','👵',15,.1],['Oven','🔥',100,1],['Farm','🌾',1100,8],['Factory','🏭',12000,47],['Bank','🏦',130000,260],['Rocket','🚀',1.4e6,1400],['Portal','🌀',2e7,7800],['Time machine','⏰',3.3e8,44000]];
+const U=[['Strong fingers','👆',100,'click',2],['Golden rolling pin','🥖',500,'h0',2],['Double ovens','♨️',1000,'h1',2],['Iron fingers','✊',5000,'click',3],['Fertilizer','💩',11000,'h2',2],['Robot arms','🦾',120000,'h3',2],['Diamond fingers','💎',5e5,'click',5],['Compound interest','📈',1.3e6,'h4',2],['Warp drive','🛸',1.4e7,'h5',2]];
+let g=load('g',null)||{n:0,total:0,own:H.map(()=>0),ups:[],prestige:0,clicks:0,last:Date.now()};
+const fmt=v=>v<1e3?(v<10?v.toFixed(1):Math.floor(v)).toString():(['K','M','B','T','Qa','Qi'].reduce((s,u,i)=>v>=10**(3*(i+1))?(v/10**(3*(i+1))).toFixed(2)+' '+u:s,''));
+const mult=k=>g.ups.filter(i=>U[i][3]===k).reduce((m,i)=>m*U[i][4],1);const pBonus=()=>1+g.prestige*.1;
+const perSec=()=>H.reduce((s,h,i)=>s+h[3]*g.own[i]*mult('h'+i),0)*pBonus(),perClick=()=>(1+perSec()*.01)*mult('click')*pBonus();
+const cost=i=>Math.ceil(H[i][2]*1.15**g.own[i]);
+function add(v){g.n+=v;g.total+=v}
+// offline progress (up to 8 hours, at half speed)
+{const away=Math.min(8*3600,(Date.now()-g.last)/1000);if(away>30){const earned=perSec()*away*.5;add(earned);setTimeout(()=>toast(`While you were away: +${fmt(earned)} 🍪`),300)}}
+$('cookie').onclick=e=>{const v=perClick();add(v);g.clicks++;const p=document.createElement('div');p.className='pop';p.textContent='+'+fmt(v);p.style.left=e.clientX+'px';p.style.top=e.clientY+'px';document.body.append(p);setTimeout(()=>p.remove(),1000);tone(500+rnd(200),.04,'triangle',.05);draw()};
+function draw(){$('n').textContent=fmt(g.n)+' cookies';$('ps').textContent=`${fmt(perSec())} per second`+(g.prestige?` · ✨ +${g.prestige*10}% bonus`:'');$('click').textContent=`${fmt(perClick())} per click`;
+  $('helpers').innerHTML=H.map((h,i)=>{const shown=i===0||g.own[i-1]>0||g.total>=h[2]*.5;return shown?`<button class="up" data-h="${i}" ${g.n<cost(i)?'disabled':''}><span class="e">${h[1]}</span><span class="n"><b>${h[0]}</b><span class="muted" style="font-size:13px">${fmt(h[3]*mult('h'+i)*pBonus())}/s each</span></span><span>🍪 ${fmt(cost(i))}<br><b style="text-align:right">${g.own[i]}</b></span></button>`:`<div class="up" style="opacity:.3"><span class="e">❓</span><span class="n">???</span></div>`}).join('');
+  $('ups').innerHTML=U.map((u,i)=>g.ups.includes(i)||g.total<u[2]*.3?'':`<button class="up" data-u="${i}" ${g.n<u[2]?'disabled':''}><span class="e">${u[1]}</span><span class="n"><b>${u[0]}</b><span class="muted" style="font-size:13px">${u[3]==='click'?'Clicks':H[+u[3].slice(1)][0]+'s'} ×${u[4]}</span></span><span>🍪 ${fmt(u[2])}</span></button>`).join('')||'<span class="muted">Keep baking to unlock upgrades.</span>';
+  $('helpers').querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{const i=+b.dataset.h;if(g.n>=cost(i)){g.n-=cost(i);g.own[i]++;tone(880,.08,'square',.05);draw()}});
+  $('ups').querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{const i=+b.dataset.u;if(g.n>=U[i][2]){g.n-=U[i][2];g.ups.push(i);tone(1046,.15,'triangle',.08);draw()}});
+  const pr=Math.floor(Math.sqrt(g.total/1e6));$('prest').disabled=pr<=g.prestige;$('prest').textContent=`✨ Prestige${pr>g.prestige?` (+${(pr-g.prestige)*10}% forever)`:' (needs 1M baked)'}`;
+  $('ach').textContent=`${fmt(g.total)} baked all time · ${g.clicks} clicks`}
+$('prest').onclick=()=>{const pr=Math.floor(Math.sqrt(g.total/1e6));if(pr<=g.prestige||!confirm('Start over with a permanent bonus? You keep the bonus, but lose your cookies and helpers.'))return;g={n:0,total:0,own:H.map(()=>0),ups:[],prestige:pr,clicks:g.clicks,last:Date.now()};draw()};
+let acc=0,lastT=performance.now();(function loop(t){const dt=(t-lastT)/1000;lastT=t;add(perSec()*dt);acc+=dt;if(acc>.25){acc=0;draw()}requestAnimationFrame(loop)})(lastT);
+setInterval(()=>{g.last=Date.now();save('g',g)},3000);addEventListener('beforeunload',()=>{g.last=Date.now();save('g',g)});draw();
+</script></body></html>

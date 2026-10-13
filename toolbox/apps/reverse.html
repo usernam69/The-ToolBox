@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Reverse platformer</title><link rel="stylesheet" href="common.css">
+<style>#c{width:100%;height:min(56vh,480px);background:linear-gradient(#ffe0b2,#fff3e0);cursor:crosshair}.tool.on{background:var(--accent);color:var(--accent-ink)}</style></head>
+<body data-app="reverse" data-cat="wild" data-title="Reverse platformer"><main>
+<p class="sub">This time you're the level designer. The runner is a little robot that runs right and jumps over things it can see coming. Place spikes, pits and walls to stop it reaching 🏁, then press Run. Every piece costs money, so stop it as cheaply as you can!</p>
+<div class="row"><span id="tools"></span><b id="budget" style="margin-left:auto"></b><button class="b" id="run">▶ Run</button><button class="g" id="reset">Clear</button></div>
+<div class="stage"><canvas id="c"></canvas></div>
+<p id="msg" class="muted" style="text-align:center;min-height:1.5em"></p><p class="muted" style="font-size:13px" id="best"></p>
+</main><script src="common.js"></script><script src="platform.js"></script><script>
+const T=32,COLS=40,ROWS=12,c=$('c');const TOOLS=[['spike','🔺 Spike',3],['pit','🕳️ Pit',4],['block','🧱 Block',2],['erase','🧽 Erase',0]];const BUDGET=30;
+let grid=load('grid',null)||Array.from({length:ROWS},(_,y)=>y>=10?'#'.repeat(COLS):'.'.repeat(COLS)).map(r=>r.split(''));let tool='spike',game=null,running=false;
+const cost=()=>grid.flat().reduce((s,ch)=>s+(ch==='^'?3:ch==='B'?2:0),0)+[...Array(COLS).keys()].filter(x=>grid[10][x]==='.').length*4;
+$('tools').innerHTML=TOOLS.map(([k,n,p])=>`<button class="g tool ${k===tool?'on':''}" data-t="${k}">${n}${p?` <span class="muted">$${p}</span>`:''}</button>`).join(' ');
+$('tools').querySelectorAll('button').forEach(b=>b.onclick=()=>{tool=b.dataset.t;$('tools').querySelectorAll('button').forEach(o=>o.classList.toggle('on',o===b))});
+function hud(){const s=cost();$('budget').textContent=`Spent $${s} / $${BUDGET}`;$('budget').style.color=s>BUDGET?'var(--bad)':'';const b=load('best',null);$('best').textContent=b!==null?`🏆 Your cheapest win so far: $${b}`:''}
+const at=(x,y)=>(grid[Math.floor(y/T)]||[])[Math.floor(x/T)]||'.';
+// the runner "AI": keep running right, jump when a hazard or wall is just ahead
+function brain(p){const ahead=p.x+18+26,feet=p.y+26;const danger=at(ahead,feet-4)==='^'||at(ahead,feet+8)==='.'||at(ahead,feet+8)==='^'||at(ahead,p.y+4)==='#'||at(ahead,p.y+4)==='B'||at(ahead,feet-4)==='B';return{right:true,left:false,jump:danger}}
+function build(){if(game)game.stop();game=new Platformer(c,{start:{x:10,y:10*T-30},goal:{x:(COLS-2)*T,y:9*T,w:T,h:T},worldW:COLS*T,worldH:ROWS*T,zoom:Math.min(1,c.clientWidth/(COLS*T))*1.6,color:'#ff7043',
+  solid:(x,y)=>x<0||x>=COLS*T||at(x,y)==='#'||at(x,y)==='B',hazard:(x,y)=>at(x,y)==='^'&&y%T>T*.4,input:running?brain:()=>({}),
+  drawWorld(x){for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){const ch=grid[ty][tx];if(ch==='#'){x.fillStyle=grid[ty-1]?.[tx]==='#'?'#8d6e63':'#66bb6a';x.fillRect(tx*T,ty*T,T,T)}
+    else if(ch==='B'){x.fillStyle='#b0503a';x.fillRect(tx*T,ty*T,T,T);x.strokeStyle='#7a3424';x.strokeRect(tx*T+.5,ty*T+.5,T-1,T-1)}else if(ch==='^'){x.fillStyle='#e53935';for(let k=0;k<4;k++){x.beginPath();x.moveTo(tx*T+k*8,ty*T+T);x.lineTo(tx*T+k*8+4,ty*T+T*.4);x.lineTo(tx*T+k*8+8,ty*T+T);x.fill()}}}
+    if(!running){x.strokeStyle='rgba(0,0,0,.06)';for(let i=0;i<=COLS;i++){x.beginPath();x.moveTo(i*T,0);x.lineTo(i*T,ROWS*T);x.stroke()}}},
+  onDie(g){g.stop();running=false;const s=cost();if(s<=BUDGET){$('msg').innerHTML=`💥 <b>You stopped it!</b> It cost $${s}.`;const b=load('best',null);if(b===null||s<b)save('best',s);[523,659,784].forEach((f,i)=>tone(f,.15,'triangle',.1,i*.1))}else $('msg').textContent=`💥 Stopped, but you went over budget ($${s} of $${BUDGET}). Try cheaper!`;hud()},
+  onWin(g){g.stop();running=false;$('msg').textContent='🤖 The robot made it to the flag! Add more traps.';tone(200,.3,'sawtooth',.08)},
+  onFrame(g){if(running&&g.t>25){g.stop();running=false;$('msg').textContent='🤖 The robot got stuck. That counts as a win!';const s=cost();if(s<=BUDGET){const b=load('best',null);if(b===null||s<b)save('best',s)}hud()}}});game.render();if(running)game.play()}
+c.onpointerdown=e=>{if(running)return;const r=c.getBoundingClientRect(),z=game.zoom,wx=(e.clientX-r.left)/z+game.cam.x,wy=(e.clientY-r.top)/z+game.cam.y,tx=Math.floor(wx/T),ty=Math.floor(wy/T);if(tx<3||tx>=COLS-2||ty<0||ty>=ROWS)return toast('Leave the start and the flag clear!');
+  if(tool==='pit'){if(ty>=10){grid[10][tx]=grid[10][tx]==='.'?'#':'.';grid[11][tx]=grid[10][tx]}}else if(tool==='erase'){if(ty<10)grid[ty][tx]='.';else{grid[10][tx]='#';grid[11][tx]='#'}}
+  else if(ty<10){const want=tool==='spike'?'^':'B';grid[ty][tx]=grid[ty][tx]===want?'.':want}save('grid',grid);hud();game.render()};
+$('run').onclick=()=>{running=true;$('msg').textContent='';build()};$('reset').onclick=()=>{grid=Array.from({length:ROWS},(_,y)=>(y>=10?'#':'.').repeat(COLS).split(''));save('grid',grid);running=false;$('msg').textContent='';build();hud()};
+addEventListener('resize',()=>game&&game.render());build();hud();
+</script></body></html>
