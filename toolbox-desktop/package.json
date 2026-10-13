@@ -1,0 +1,38 @@
+{
+  "name": "useful-toolbox",
+  "productName": "Useful Toolbox",
+  "version": "1.0.0",
+  "description": "64 small everyday tools in one window",
+  "author": "Dovi",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "copy": "node -e \"const fs=require('fs');fs.rmSync('app',{recursive:true,force:true});fs.cpSync('../toolbox','app',{recursive:true})\"",
+    "start": "npm run copy && electron .",
+    "build": "npm run copy && electron-builder --win portable --x64"
+  },
+  "build": {
+    "appId": "local.dovi.useful-toolbox",
+    "productName": "Useful Toolbox",
+    "electronVersion": "44.7.0",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "app/**/*"
+    ],
+    "win": {
+      "icon": "icon.png",
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "UsefulToolbox.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  }
+}
