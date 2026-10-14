@@ -1,5 +1,15 @@
 // System: backup & sync, share with a friend, achievements, plugins, help.
 
+// ---------- spreadsheets: every saved list of records can be downloaded as CSV ----------
+const CSV_NAMES={todos:'To-dos',habits:'Habits',expenses:'Expenses',bills:'Bills',savings:'Savings goals',subs:'Subscriptions',shopping:'Shopping list',goals:'Goals',
+  birthdays:'Birthdays',countdowns:'Countdowns',cards:'Flashcards',links:'Saved links',notes:'Notes',mood:'Mood journal',events:'Imported events',gradeRows:'Grades',meals:'Meal plan',health:'Water & sleep'};
+function toCsv(rows){const cols=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(c=>c!=='id'),cell=v=>{v=v==null?'':typeof v==='object'?JSON.stringify(v):String(v);
+    if(/^[=+\-@]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};// a leading ' stops spreadsheets running text as a formula
+  return '﻿'+[cols.join(','),...rows.map(r=>cols.map(c=>cell(r[c])).join(','))].join('\r\n')}
+function drawCsvList(){const el=$('csvList');if(!el)return;const lists=Object.keys(allData()).filter(k=>{const v=load(k,null);return Array.isArray(v)&&v.length&&v.every(x=>x&&typeof x==='object'&&!Array.isArray(x))});
+  el.innerHTML=lists.map(k=>`<button class="g" data-csv="${esc(k)}">⬇ ${esc(CSV_NAMES[k]||k)} (${load(k,[]).length})</button>`).join('')||'<span class="muted">No lists yet.</span>';
+  el.querySelectorAll('[data-csv]').forEach(b=>b.onclick=()=>download(`toolbox-${b.dataset.csv}-${isoDay()}.csv`,toCsv(load(b.dataset.csv,[])),'text/csv'))}
+
 // ---------- backup ----------
 const PRIVATE_KEYS=['gistToken','claudeKey','ghToken'];// never leaves this browser
 function allData(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PREFIX)&&!PRIVATE_KEYS.includes(k.slice(PREFIX.length)))o[k.slice(PREFIX.length)]=JSON.parse(localStorage.getItem(k))}return o}
@@ -48,7 +58,8 @@ tool({id:'backup',name:'Backup & sync',group:'System',html:`
  <div class="row"><input id="gId" class="grow" placeholder="Gist ID (filled in after first upload; paste it on your other device)"></div>
  <div class="row"><button class="b" id="gUp">Upload</button><button class="g" id="gDown">Download &amp; replace</button></div><div id="gMsg" class="muted"></div></div>
 <div class="box"><b>Auto-backup to a folder</b><p class="muted" style="font-size:13px">Pick a folder and The ToolBox keeps <code>toolbox-backup.json</code> there up to date once a day. On a Chromebook, pick <b>Google Drive</b> in the Files app and your backup is in the cloud. On Windows, a Google Drive, OneDrive or Dropbox folder works the same way, so two devices can share one backup.</p>
- <div class="row"><button class="b" id="fdPick">Choose folder</button><button class="g" id="fdNow">Back up now</button><button class="g" id="fdLoad">Restore from folder</button><button class="x" id="fdOff" title="Stop">✕</button></div><div id="fdMsg" class="muted" style="font-size:13px"></div></div></div>`,
+ <div class="row"><button class="b" id="fdPick">Choose folder</button><button class="g" id="fdNow">Back up now</button><button class="g" id="fdLoad">Restore from folder</button><button class="x" id="fdOff" title="Stop">✕</button></div><div id="fdMsg" class="muted" style="font-size:13px"></div></div></div>
+<div class="box" style="margin-top:12px"><b>Spreadsheets</b><p class="muted" style="font-size:13px">Download any list as a CSV file for Excel, Google Sheets or Numbers.</p><div class="row" id="csvList"></div></div>`,
 init(){const me=this;
   $('fdPick').onclick=async()=>{try{const d=await showDirectoryPicker({id:'toolbox-backup',mode:'readwrite'});await FOLDER.set(d);await FOLDER.write(d,true);bump('backups');toast('Saved to '+d.name)}catch(e){if(e.name!=='AbortError')toast(e.message)}me.fdInfo()};
   $('fdNow').onclick=async()=>{const d=await FOLDER.get();try{if(await FOLDER.write(d,true)){bump('backups');toast('Backed up ✓')}else toast('Permission was not given.')}catch(e){toast(e.message)}me.fdInfo()};
@@ -71,7 +82,7 @@ init(){const me=this;
       if(confirm(`Replace everything here with the copy saved ${new Date(j.saved).toLocaleString()}?`)){restoreData(j.data);restoreExtra(j.apps);location.reload()}else $('gMsg').textContent=''}catch(e){$('gMsg').textContent=e.message}}},
 async fdInfo(){const d=await FOLDER.get(),t=load('folderBackup',0);$('fdMsg').textContent=!window.showDirectoryPicker?'This browser can’t save to folders. Use Chrome or Edge, or the desktop app.':d?`Folder: ${d.name}. ${t?'Last saved '+new Date(t).toLocaleString()+'.':'Not saved yet.'}`:'No folder chosen.';
   ['fdNow','fdLoad','fdOff'].forEach(id=>$(id).hidden=!d);$('fdPick').hidden=!window.showDirectoryPicker},
-show(){this.fdInfo();const n=Object.keys(allData()).length+Object.keys(extraData()).length,lb=load('lastBackup',0);$('bkInfo').textContent=`${n} kinds of data stored. `+(lb?`Last backup ${new Date(lb).toLocaleString()}.`:'Never backed up.')}});
+show(){this.fdInfo();drawCsvList();const n=Object.keys(allData()).length+Object.keys(extraData()).length,lb=load('lastBackup',0);$('bkInfo').textContent=`${n} kinds of data stored. `+(lb?`Last backup ${new Date(lb).toLocaleString()}.`:'Never backed up.')}});
 
 // ---------- share with a friend ----------
 const toB64=s=>btoa(String.fromCharCode(...new TextEncoder().encode(s)));
@@ -128,12 +139,24 @@ const BADGES=[
   ['journal-30','📓','Dear diary','Write 30 one-liner journal entries',()=>Object.keys(appData('journal','entries',{})).length>=30],
   ['story-ends','📖','Every ending','Find all 4 endings of the built-in story',()=>Object.keys(appData('story','ends',{})).filter(k=>k.startsWith('The Lighthouse Keeper|')).length>=4],
   ['pet-dragon','🐉','Dragon keeper','Grow your focus pet into a dragon',()=>appData('petfocus','pet',{xp:0}).xp>=2000],
-  ['explorer','🧭','Explorer','Open 20 different apps from the menu',()=>{try{return JSON.parse(localStorage.getItem('menu_visited')||'[]').length>=20}catch{return false}}]];
+  ['explorer','🧭','Explorer','Open 20 different apps from the menu',()=>{try{return JSON.parse(localStorage.getItem('menu_visited')||'[]').length>=20}catch{return false}}],
+  ['bug-hunter','🐞','Bug hunter','Report a bug (Help → Copy a bug report)',()=>stat('bugReports')>=1],
+  ['speedrunner','⏱️','Speedrunner','Finish a ToolBox speedrun',()=>!!appData('speedrun','best',0)],
+  ['gardener','🌻','Gardener','Grow a habit plant to full bloom (a 21-day streak)',()=>load('habits',[]).some(h=>{let n=0;for(let d=new Date();(h.days||{})[isoDay(d)];d.setDate(d.getDate()-1))n++;return n>=21})],
+  ['pixel-wall','🧱','Wall artist','Place 10 pixels on the shared pixel wall',()=>appData('pixelwall','placed',0)>=10],
+  ['secret','🕹️','Secret finder','Find the secret app',()=>!!appData('secret','found',0)]];
 function appData(app,k,d){try{const v=localStorage.getItem('app_'+app+'_'+k);return v?JSON.parse(v):d}catch{return d}}
 function checkBadges(){const got=load('badges',{});let changed=false;
   BADGES.forEach(([id,e,name,,test])=>{if(!got[id]){let ok=false;try{ok=test()}catch{}if(ok){got[id]=Date.now();changed=true;toast(`${e} Achievement unlocked: ${name}!`)}}});
   if(changed)save('badges',got)}
-tool({id:'badges',name:'Achievements',group:'System',html:`<h2>Achievements</h2><p class="sub" id="bgSum"></p><div class="grid3" id="bgGrid"></div>`,
+tool({id:'badges',name:'Achievements',group:'System',html:`<h2>Achievements</h2><div class="row"><p class="sub grow" id="bgSum" style="margin:0"></p><button class="g" id="bgPrint">🖨 Sticker sheet</button></div><div class="grid3" id="bgGrid"></div>`,
+// print the unlocked achievements as round stickers (print on sticker paper, or plain paper and cut them out)
+init(){$('bgPrint').onclick=()=>{const got=load('badges',{}),list=BADGES.filter(([id])=>got[id]);if(!list.length)return toast('Unlock an achievement first!');
+  const fr=document.createElement('iframe');fr.style.cssText='position:fixed;width:0;height:0;border:0';document.body.append(fr);const w=fr.contentWindow;setTimeout(()=>fr.remove(),60000);
+  w.document.write(`<!doctype html><title>My ToolBox stickers</title><style>body{font-family:system-ui,sans-serif;margin:12mm}h1{font-size:16pt}.g{display:grid;grid-template-columns:repeat(4,45mm);gap:6mm}
+   .s{width:45mm;height:45mm;border-radius:50%;border:2px dashed #999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:9pt;padding:4mm;box-sizing:border-box}.s b{font-size:28pt;line-height:1.1}@media print{h1,p{display:none}}</style>
+   <h1>My ToolBox achievements</h1><p>Print on sticker paper, or on plain paper and cut along the dashed circles.</p><div class="g">${list.map(([id,e,name])=>`<div class="s"><b>${e}</b>${esc(name)}<small>${new Date(got[id]).toLocaleDateString()}</small></div>`).join('')}</div>`);
+  w.document.close();w.focus();setTimeout(()=>w.print(),300)}},
 show(){checkBadges();const got=load('badges',{});$('bgSum').textContent=`${Object.keys(got).length} of ${BADGES.length} unlocked.`;
   $('bgGrid').innerHTML=BADGES.map(([id,e,name,how])=>`<div class="badge ${got[id]?'':'locked'}"><span class="e">${e}</span><div><b>${name}</b><br><span class="muted" style="font-size:13px">${how}${got[id]?' · '+new Date(got[id]).toLocaleDateString():''}</span></div></div>`).join('')}});
 
@@ -192,8 +215,21 @@ init(){let editing=null;const plugins=()=>load('plugins',[]);
     save('tab','plugin_'+(editing||a[a.length-1].id));location.reload()};draw()}});
 
 // ---------- help ----------
-tool({id:'help',name:'Help & install',group:'System',html:`
+// ---------- trash: deleted to-dos, notes, expenses… stay 30 days ----------
+tool({id:'trash',name:'Trash',group:'System',html:`
+<h2>Trash</h2><p class="sub">Things you delete stay here for 30 days, so you can put them back.</p>
+<div class="row"><span class="grow muted" id="trInfo"></span><button class="x" id="trEmpty">Empty trash</button></div><ul class="clean" id="trList"></ul>`,
+init(){$('trEmpty').onclick=()=>{const n=load('trash',[]).length;if(!n||!confirm(`Delete these ${n} items for good?`))return;save('trash',[]);this.show()}},
+show(){const now=Date.now(),list=load('trash',[]).filter(x=>now-x.t<30*DAY);save('trash',list);
+  const what=x=>x.item.t||x.item.name||x.item.title||x.item.q||x.item.note||x.item.text||x.item.url||x.item.cat||'(item)';
+  $('trInfo').textContent=list.length?`${list.length} item${list.length>1?'s':''}`:'The trash is empty.';$('trList').innerHTML='';
+  list.forEach(x=>{const li=document.createElement('li');li.innerHTML=`<span class="tag">${esc(CSV_NAMES[x.key]||x.key)}</span><span class="grow">${esc(String(what(x)).slice(0,120))}</span><span class="muted" style="font-size:12px">${new Date(x.t).toLocaleDateString()}</span><button class="g">Put back</button>`;
+    li.querySelector('button').onclick=()=>{const arr=load(x.key,[]);if(Array.isArray(arr)&&!arr.some(o=>o&&o.id===x.item.id)){arr.push(x.item);save(x.key,arr)}
+      save('trash',load('trash',[]).filter(y=>y.t!==x.t));toast('Put back in '+(CSV_NAMES[x.key]||x.key));this.show()};$('trList').append(li)})}});
+
+tool({id:'help',name:'Help & install',group:'System',show(){const v=$('helpVer');if(v)v.textContent=window.TB_VERSION||''},html:`
 <h2>Help</h2>
+<div class="box"><b>Found a bug?</b> <span class="muted">Version <span id="helpVer"></span></span><p class="muted" style="font-size:13px;margin:4px 0">This copies the version, your browser and the last few errors on this device (nothing else), ready to paste into a GitHub issue.</p><button class="g" onclick="copyBugReport(TB_VERSION)">🐞 Copy a bug report</button></div>
 <h3>Keyboard</h3><table>
 <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>Command bar (add to-dos, timers, expenses… by typing)</td></tr>
 <tr><td><kbd>/</kbd></td><td>Search everything</td></tr>

@@ -19,5 +19,7 @@ function worldBoard(el,id,{lower=false,unit='',title='🌍 World top 10',getScor
    <p class="muted" style="font-size:12px;margin:4px 0 0">Only your nickname and score are shared. Don’t use your real name.</p></details>`;
   const draw=list=>{el.querySelector('.wl').innerHTML=list.length?list.map((e,i)=>`<li>${['🥇','🥈','🥉'][i]||(i+1)+'.'} <b>${esc(e.n)}</b> ${fmt(e.s)} <span class="muted" style="font-size:12px">${esc(e.d)}</span></li>`).join(''):'<li class="muted">No scores yet. Be the first!</li>'};
   el.querySelector('details').addEventListener('toggle',function f(){if(!this.open)return;this.removeEventListener('toggle',f);WORLD.watch(id,draw).catch(()=>{el.querySelector('.wl').innerHTML='<li class="muted">Couldn’t reach the score board (offline?).</li>'})});
-  el.querySelector('.wp').onclick=async()=>{const n=el.querySelector('.wn').value.trim(),s=getScore();if(!n)return toast('Pick a nickname first.');if(s==null||!(lower?s>0:s>0))return toast('Play a round first!');
+  el.querySelector('.wp').onclick=async()=>{const n=el.querySelector('.wn').value.trim(),s=getScore();if(!n)return toast('Pick a nickname first.');
+    // two capitalised words looks like a real full name: check before it goes on a public board
+    if(/^\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+$/u.test(n)&&loadTb('worldName','')!==n&&!confirm(`"${n}" looks like a real name. The board is public. Post it anyway?`))return;if(s==null||!(lower?s>0:s>0))return toast('Play a round first!');
     saveTb('worldName',n);try{const r=await WORLD.post(id,n,s,lower);toast(r?`You’re #${r} in the world!`:'Not in the top 10 this time. Keep going!')}catch{toast('Couldn’t reach the score board.')}}}

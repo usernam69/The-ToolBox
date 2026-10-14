@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tiny roguelike</title><link rel="stylesheet" href="common.css">
 <style>#c{width:100%;max-width:960px;aspect-ratio:48/26;background:#0b0d12;border-radius:12px;margin:auto;image-rendering:pixelated}#log{height:84px;overflow:auto;font-size:14px;margin-top:6px}#log div:first-child{font-weight:600}.hud{display:flex;gap:14px;flex-wrap:wrap;font-weight:600}</style></head>
 <body data-app="rogue" data-cat="games" data-title="Tiny roguelike"><main>
-<div class="hud"><span id="hp"></span><span id="st"></span><span id="dp"></span><span id="gd"></span><span class="muted" id="best" style="margin-left:auto"></span><button class="g" id="new">New run</button></div>
+<div class="hud"><span id="hp"></span><span id="st"></span><span id="dp"></span><span id="gd"></span><span class="muted" id="best" style="margin-left:auto"></span><button class="g" id="new">New run</button><button class="g" id="weekly" title="Same dungeon for everyone this week">🏆 Weekly</button><button class="g" id="todoRun" title="Your open to-dos become the monsters">📋 To-do dungeon</button></div>
 <canvas id="c" width="960" height="520"></canvas>
 <div class="touchpad" id="pad"><button data-m="-1,0">◀</button><button data-m="0,-1">▲</button><button data-m="0,1">▼</button><button data-m="1,0">▶</button><button data-m="0,0" title="Wait">⏳</button></div>
 <div id="log" class="box"></div>
@@ -13,8 +13,15 @@ function log(m){g.log.unshift(m);$('log').innerHTML=g.log.slice(0,30).map(l=>`<d
 // real-life loot: every to-do you finish in the Toolbox becomes gear for your next run (up to 10 per run)
 const doneTodos=()=>{try{return (JSON.parse(localStorage.getItem('tb_stats')||'{}').todosDone)||0}catch{return 0}};
 function loot(){const total=doneTodos();let claimed=load('claimed',null);if(claimed===null){claimed=total;save('claimed',total)}return Math.max(0,total-claimed)}
-function newRun(){g={depth:0,hp:20,max:20,atk:3,def:0,gold:0,log:[],dead:false};level();log('You step into the dungeon. Good luck!');
-  const n=Math.min(10,loot());if(n){g.max+=n*2;g.hp=g.max;g.atk+=Math.floor(n/3);g.def+=Math.floor(n/5);save('claimed',load('claimed',0)+n);
+// weekly challenge: the same dungeon for everyone this week (no to-do loot), with its own world board
+const WEEK=(()=>{const d=new Date(),j=new Date(d.getFullYear(),0,1);return d.getFullYear()+'-w'+String(Math.ceil(((d-j)/864e5+j.getDay()+1)/7)).padStart(2,'0')})();
+const realRandom=Math.random,seeded=a=>()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+// today's dungeon: your open to-dos become the monsters, and the map is the same all day
+function openTodos(){try{return JSON.parse(localStorage.getItem('tb_todos')||'[]').filter(t=>!t.d).map(t=>String(t.t).slice(0,24))}catch{return[]}}
+function newRun(weekly=false,todo=false){const seedOf=s=>{let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h};
+  const names=todo?openTodos():[];Math.random=weekly?seeded(seedOf(WEEK)):todo?seeded(seedOf(isoDay()+names.join('|'))):realRandom;
+  g={depth:0,hp:20,max:20,atk:3,def:0,gold:0,log:[],dead:false,weekly,todo:names};level();if(todo)log(names.length?`📋 Today’s dungeon: your ${names.length} open to-do${names.length>1?'s are':' is'} lurking down here.`:'📋 No open to-dos, so the dungeon is quiet today. Add some in the Toolbox!');else log(weekly?`🏆 Weekly challenge ${WEEK}: everyone gets this same dungeon. Good luck!`:'You step into the dungeon. Good luck!');wb();
+  const n=weekly?0:Math.min(10,loot());if(n){g.max+=n*2;g.hp=g.max;g.atk+=Math.floor(n/3);g.def+=Math.floor(n/5);save('claimed',load('claimed',0)+n);
     log(`🎒 You finished ${n} to-do${n>1?'s':''} in real life! Max HP +${n*2}${n>=3?', attack +'+Math.floor(n/3):''}${n>=5?', defence +'+Math.floor(n/5):''}.`);tone(660,.1,'triangle',.1);tone(990,.15,'triangle',.1,.1)}
   const w=loot();$('lootTip').innerHTML=w?`🎒 ${w} more finished to-do${w>1?'s':''} waiting as loot for your next run.`:'🎒 Finish to-dos in the <a href="../tools.html#dash">Toolbox</a> to earn gear for your next run.'}
 function level(){g.depth++;const m=[...Array(H)].map(()=>Array(W).fill('#')),rooms=[];
@@ -23,7 +30,7 @@ function level(){g.depth++;const m=[...Array(H)].map(()=>Array(W).fill('#')),roo
   const ctr=r=>[r.x+(r.w>>1),r.y+(r.h>>1)];for(let i=1;i<rooms.length;i++){let[ax,ay]=ctr(rooms[i-1]);const[bx,by]=ctr(rooms[i]);while(ax!==bx){m[ay][ax]='.';ax+=Math.sign(bx-ax)}while(ay!==by){m[ay][ax]='.';ay+=Math.sign(by-ay)}}
   g.map=m;g.seen=[...Array(H)].map(()=>Array(W).fill(false));const free=()=>{let p;do{const r=pick(rooms);p=[r.x+rnd(r.w),r.y+rnd(r.h)]}while(g.ents?.some(e=>e.x===p[0]&&e.y===p[1])||(g.px===p[0]&&g.py===p[1]));return p};
   g.ents=[];[g.px,g.py]=ctr(rooms[0]);const st=free();g.stairs={x:st[0],y:st[1]};
-  const pool=MON.filter(mm=>mm.d<=g.depth+1);for(let i=0;i<3+g.depth*1.5;i++){const t=pick(pool),[ex,ey]=free();g.ents.push({...t,x:ex,y:ey,mon:true,hp:t.hp+g.depth})}
+  const pool=MON.filter(mm=>mm.d<=g.depth+1);for(let i=0;i<3+g.depth*1.5;i++){const t=pick(pool),[ex,ey]=free();g.ents.push({...t,x:ex,y:ey,mon:true,hp:t.hp+g.depth,...(g.todo&&g.todo.length?{n:'“'+g.todo[i%g.todo.length]+'” '+t.n}:{})})}
   for(let i=0;i<2+rnd(3);i++){const[ex,ey]=free();g.ents.push({x:ex,y:ey,item:pick(['potion','potion','gold','gold','sword','shield'])})}
   look();draw();if(g.depth>1)log(`You go down to depth ${g.depth}.`)}
 function look(){for(let j=-6;j<=6;j++)for(let i=-6;i<=6;i++){if(i*i+j*j>38)continue;const tx=g.px+i,ty=g.py+j;if(tx<0||ty<0||tx>=W||ty>=H)continue;
@@ -41,7 +48,7 @@ function turn(dx,dy){if(g.dead)return;g.seen.forEach(r=>r.forEach((v,i)=>{if(v==
   for(const m of g.ents.filter(e=>e.mon)){const dist=Math.abs(m.x-g.px)+Math.abs(m.y-g.py);if(dist===1){const d=Math.max(0,m.atk+rnd(3)-1-g.def);g.hp-=d;log(d?`The ${m.n} hits you for ${d}.`:`The ${m.n} misses.`);if(d)tone(140,.08,'sawtooth',.06)}
     else if(dist<9&&vis(m.x,m.y)){const opts=[[Math.sign(g.px-m.x),0],[0,Math.sign(g.py-m.y)]].filter(([a,b])=>(a||b)&&g.map[m.y+b][m.x+a]!=='#'&&!g.ents.some(o=>o.x===m.x+a&&o.y===m.y+b)&&!(m.x+a===g.px&&m.y+b===g.py));
       if(opts.length){const[a,b]=opts[Math.abs(g.px-m.x)>Math.abs(g.py-m.y)?0:opts.length-1];m.x+=a;m.y+=b}}}
-  if(g.hp<=0){g.dead=true;g.hp=0;const sc=g.depth*100+g.gold,b=load('best',0);if(sc>b)save('best',sc);log(`☠️ You died at depth ${g.depth} with ${g.gold} gold. Score ${sc}. Press New run.`);tone(100,.6,'sawtooth',.1)}
+  if(g.hp<=0){g.dead=true;g.hp=0;const sc=g.depth*100+g.gold,b=load('best',0);if(sc>b)save('best',sc);if(g.weekly&&sc>load('week_'+WEEK,0))save('week_'+WEEK,sc);log(`☠️ You died at depth ${g.depth} with ${g.gold} gold. Score ${sc}. Press New run.`);tone(100,.6,'sawtooth',.1)}
   look();draw()}
 function draw(){x.fillStyle='#0b0d12';x.fillRect(0,0,960,520);x.textAlign='center';x.textBaseline='middle';x.font='15px system-ui';
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){const s=g.seen[j][i];if(!s)continue;x.globalAlpha=s===2?1:.35;x.fillStyle=g.map[j][i]==='#'?'#3a3f4b':'#1c2029';x.fillRect(i*TS,j*TS,TS,TS);if(g.map[j][i]==='.'){x.fillStyle='#2a303c';x.fillRect(i*TS+9,j*TS+9,2,2)}}
@@ -51,7 +58,8 @@ function draw(){x.fillStyle='#0b0d12';x.fillRect(0,0,960,520);x.textAlign='cente
   $('hp').innerHTML=`❤️ ${g.hp}/${g.max}`;$('st').textContent=`🗡️ ${g.atk}  🛡️ ${g.def}`;$('dp').textContent=`Depth ${g.depth}`;$('gd').textContent=`💰 ${g.gold}`;$('best').textContent=`Best score ${load('best',0)}`}
 const KM={arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0],arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],'.':[0,0]};
 addEventListener('keydown',e=>{const m=KM[e.key.toLowerCase()];if(m){e.preventDefault();turn(...m)}});
-$('pad').querySelectorAll('button').forEach(b=>b.onclick=()=>turn(...b.dataset.m.split(',').map(Number)));$('new').onclick=()=>{newRun();$('new').blur()};newRun();
+$('pad').querySelectorAll('button').forEach(b=>b.onclick=()=>turn(...b.dataset.m.split(',').map(Number)));$('new').onclick=()=>{newRun();$('new').blur()};$('weekly').onclick=()=>{newRun(true);$('weekly').blur()};$('todoRun').onclick=()=>{newRun(false,true);$('todoRun').blur()};
 
-worldBoard($('world'),'rogue',{unit:' pts',getScore:()=>load('best',0)});
+function wb(){const w=g&&g.weekly;worldBoard($('world'),w?'rogue-'+WEEK:'rogue',{unit:' pts',title:w?'🌍 Weekly top 10 ('+WEEK+')':'🌍 World top 10',getScore:()=>w?load('week_'+WEEK,0):load('best',0)})}
+newRun();
 </script></body></html>

@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pixel wall</title><link rel="stylesheet" href="common.css">
+<style>#wall{width:min(100%,640px);aspect-ratio:1;image-rendering:pixelated;border:1px solid var(--line);border-radius:8px;cursor:crosshair;display:block;margin:auto;background:#fff;touch-action:none}
+.pal{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:10px 0}.pal button{width:30px;height:30px;border-radius:6px;border:2px solid var(--line);cursor:pointer}.pal button.on{border-color:var(--ink);transform:scale(1.15)}</style></head>
+<body data-app="pixelwall" data-cat="creative" data-title="Pixel wall"><main>
+<p class="sub">One shared 32×32 wall for everyone using The ToolBox. Pick a color and place one pixel a minute. Paint over others, or help finish their picture. <span class="muted">(online, public: only the pixels are shared)</span></p>
+<div class="pal" id="pal"></div><canvas id="wall" width="32" height="32"></canvas>
+<p style="text-align:center" id="msg" class="muted">Connecting…</p>
+</main><script src="common.js"></script><script src="scores.js"></script><script>
+// each pixel is a retained message (topic …/wall/x-y, payload a palette index), so newcomers get the whole wall at once
+const N=32,TOPIC='the-toolbox/v1/wall/',COLORS=['#ffffff','#e4e4e4','#888888','#222222','#ffa7d1','#e50000','#e59500','#a06a42','#e5d900','#94e044','#02be01','#00d3dd','#0083c7','#0000ea','#cf6ee4','#820080'];
+const x=$('wall').getContext('2d');let color=3,client=null;const cells=new Uint8Array(N*N);
+$('pal').innerHTML=COLORS.map((c,i)=>`<button style="background:${c}" data-c="${i}" title="Color ${i+1}" class="${i===color?'on':''}"></button>`).join('');
+$('pal').onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;color=+b.dataset.c;$('pal').querySelectorAll('button').forEach(z=>z.classList.toggle('on',z===b))};
+const paint=(i,c)=>{cells[i]=c;x.fillStyle=COLORS[c];x.fillRect(i%N,i/N|0,1,1)};x.fillStyle='#fff';x.fillRect(0,0,N,N);
+const wait=()=>Math.max(0,60000-(Date.now()-load('last',0)));
+function msg(){const w=wait();$('msg').textContent=!client?'Couldn’t reach the wall (offline?).':w?`Next pixel in ${Math.ceil(w/1000)}s`:'Tap the wall to place a pixel.'}
+WORLD.connect().then(c=>{client=c;c.on('message',(t,buf)=>{if(!t.startsWith(TOPIC))return;const m=t.slice(TOPIC.length).match(/^(\d+)-(\d+)$/),v=+new TextDecoder().decode(buf);
+  if(m&&+m[1]<N&&+m[2]<N&&v>=0&&v<COLORS.length)paint(+m[2]*N+ +m[1],v)});c.subscribe(TOPIC+'+');msg()}).catch(msg);
+$('wall').onpointerdown=e=>{if(!client)return toast('Not connected.');if(wait())return toast(`Wait ${Math.ceil(wait()/1000)}s for your next pixel.`);
+  const r=$('wall').getBoundingClientRect(),px=Math.floor((e.clientX-r.left)/r.width*N),py=Math.floor((e.clientY-r.top)/r.height*N);if(px<0||py<0||px>=N||py>=N)return;
+  paint(py*N+px,color);client.publish(TOPIC+px+"-"+py,String(color),{retain:true,qos:1});save('last',Date.now());save('placed',load('placed',0)+1);tone(700,.06,'square',.05);msg()};
+setInterval(msg,1000);
+</script></body></html>

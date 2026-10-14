@@ -5,7 +5,7 @@
 .m .who{font-size:12px;font-weight:700;opacity:.8}.m .t{font-size:11px;opacity:.6;margin-left:6px}.sys{align-self:center;font-size:12px;color:var(--muted)}</style></head>
 <body data-app="chat" data-cat="bigger" data-title="Room chat"><main>
 <div id="lanPanel"></div>
-<div id="chat" hidden><div class="box" style="padding:0;display:flex;flex-direction:column"><div class="row" style="padding:8px 12px;margin:0;border-bottom:1px solid var(--line)"><b id="roomName"></b><span id="state" class="muted" style="font-size:12px"></span></div>
+<div id="chat" hidden><div class="box" style="padding:0;display:flex;flex-direction:column"><div class="row" style="padding:8px 12px;margin:0;border-bottom:1px solid var(--line)"><b id="roomName"></b><span id="state" class="muted" style="font-size:12px"></span><button class="g" id="voice" style="margin-left:auto" title="Talk with everyone in voice">🎙 Voice</button><span id="vcount" class="muted" style="font-size:12px"></span></div>
 <div id="msgs"></div><div class="row" style="padding:8px;margin:0;border-top:1px solid var(--line)"><input id="text" class="grow" placeholder="Message… (Enter to send)" maxlength="1000" autocomplete="off"><button class="g" id="emo" title="Emoji">😊</button><button class="b" id="send">Send</button></div></div>
 <div class="box" id="side"><b>In this room</b><ul class="clean" id="who"></ul></div></div>
 </main><script src="common.js"></script><script src="lan.js"></script><script>
@@ -16,12 +16,34 @@ function show(m){if(m.type==='chat'){const mine=m.from===me;add(`${mine?'':`<div
 function start(room,name){myName=name;$('lanPanel').hidden=true;$('chat').hidden=false;$('roomName').textContent='# '+room;
   LAN.join(room,name,m=>{if(m.type==='hello'){me=m.id;$('msgs').innerHTML='';m.history.forEach(show);add('You joined the room','sys')}
     else if(m.type==='members'){$('who').innerHTML=m.members.map(x=>`<li>🟢 ${esc(x.name)}${x.id===me?' (you)':''}</li>`).join('');if(m.joined&&m.joined!==myName)add(`${esc(m.joined)} joined`,'sys');if(m.left)add(`${esc(m.left)} left`,'sys')}
-    else if(m.type==='typing'&&m.from!==me){$('state').textContent=`${m.name} is typing…`;clearTimeout(window._ty);window._ty=setTimeout(()=>$('state').textContent='',2500)}else show(m)},
+    else if(m.type==='rtc')VOICE.handle(m);else if(m.type==='typing'&&m.from!==me){$('state').textContent=`${m.name} is typing…`;clearTimeout(window._ty);window._ty=setTimeout(()=>$('state').textContent='',2500)}else show(m)},
     s=>{$('state').textContent=s==='connected'?'':s==='reconnecting'?'Reconnecting…':'Disconnected'});$('text').focus()}
 const sendMsg=()=>{const t=$('text').value.trim();if(!t)return;LAN.send({type:'chat',text:t,name:myName,from:me});$('text').value=''};
 let lastTyping=0;$('text').oninput=()=>{if(Date.now()-lastTyping>2000){lastTyping=Date.now();LAN.send({type:'typing',name:myName,from:me})}};
 $('text').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();sendMsg()}};$('send').onclick=sendMsg;
 const EM=['😀','😂','👍','❤️','🎉','😮','😢','🔥','👀','🙏'];$('emo').onclick=()=>{$('text').value+=EM[rnd(EM.length)];$('text').focus()};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)document.title='Room chat · The ToolBox'});
+// voice: everyone who presses 🎙 talks directly to each other (WebRTC, so the sound doesn't go through the chat relay);
+// the room only carries the short, encrypted connection setup messages
+const VOICE={on:false,stream:null,peers:new Map(),
+  async toggle(){if(VOICE.on)return VOICE.stop();try{VOICE.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch{return toast('The microphone isn’t allowed.')}
+    VOICE.on=true;$('voice').textContent='🔇 Leave voice';LAN.send({type:'rtc',kind:'join',from:me});VOICE.count()},
+  stop(){VOICE.on=false;if(VOICE.stream)VOICE.stream.getTracks().forEach(t=>t.stop());VOICE.peers.forEach(p=>{p.pc.close();p.el.srcObject=null});VOICE.peers.clear();
+    $('voice').textContent='🎙 Voice';LAN.send({type:'rtc',kind:'leave',from:me});VOICE.count()},
+  count(){const n=[...VOICE.peers.values()].filter(p=>p.pc.connectionState==='connected').length;$('vcount').textContent=VOICE.on?(n?`talking with ${n}`:'waiting for others to join voice…'):''},
+  peer(id){let p=VOICE.peers.get(id);if(p)return p;const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}),el=new Audio();el.autoplay=true;
+    VOICE.stream.getTracks().forEach(t=>pc.addTrack(t,VOICE.stream));pc.ontrack=e=>{el.srcObject=e.streams[0];el.play().catch(()=>{})};
+    pc.onicecandidate=e=>{if(e.candidate)LAN.send({type:'rtc',kind:'ice',from:me,to:id,c:e.candidate})};pc.onconnectionstatechange=VOICE.count;
+    p={pc,el,q:[]};VOICE.peers.set(id,p);return p},
+  async remote(p,sdp){await p.pc.setRemoteDescription(sdp);for(const c of p.q.splice(0))try{await p.pc.addIceCandidate(c)}catch{}},
+  async handle(m){if(!VOICE.on||m.from===me||(m.to&&m.to!==me))return;try{
+    // whoever is already in voice calls the newcomer, so two people never call each other at once
+    if(m.kind==='join'){const p=VOICE.peer(m.from);await p.pc.setLocalDescription(await p.pc.createOffer());LAN.send({type:'rtc',kind:'offer',from:me,to:m.from,sdp:p.pc.localDescription})}
+    else if(m.kind==='offer'){const p=VOICE.peer(m.from);await VOICE.remote(p,m.sdp);await p.pc.setLocalDescription(await p.pc.createAnswer());LAN.send({type:'rtc',kind:'answer',from:me,to:m.from,sdp:p.pc.localDescription})}
+    else if(m.kind==='answer'){const p=VOICE.peers.get(m.from);if(p)await VOICE.remote(p,m.sdp)}
+    else if(m.kind==='ice'){const p=VOICE.peers.get(m.from);if(p){if(p.pc.remoteDescription)await p.pc.addIceCandidate(m.c);else p.q.push(m.c)}}
+    else if(m.kind==='leave'){const p=VOICE.peers.get(m.from);if(p){p.pc.close();p.el.srcObject=null;VOICE.peers.delete(m.from)}}}catch(e){console.warn('voice',e)}VOICE.count()}};
+$('voice').onclick=()=>VOICE.toggle();addEventListener('pagehide',()=>VOICE.on&&VOICE.stop());
+if(!window.RTCPeerConnection||!navigator.mediaDevices)$('voice').hidden=true;
 lanPanel('chat.html',start);
 </script></body></html>

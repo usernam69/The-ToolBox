@@ -9,7 +9,11 @@ class Platformer{
   play(){if(!this.running){this.running=true;this.last=performance.now();requestAnimationFrame(this._loop)}}
   stop(){this.running=false}
   hit(x,y,w,h,test){for(let i=0;i<=w;i+=Math.min(6,w))for(let j=0;j<=h;j+=Math.min(6,h))if(test(x+Math.min(i,w),y+Math.min(j,h)))return true;return false}
-  step(dt){const p=this.p,inp=this.input(p,this),ACC=2400,MAX=270,G=1900,JUMP=640;
+  step(dt){const p=this.p;
+    // replay: the runner follows a recorded run instead of the keys
+    if(this.replay){const r=this.replay[this.rec.length];if(!r){this.done=true;if(this.onReplayEnd)this.onReplayEnd(this);return}
+      if(r[0]!==p.x)p.face=r[0]>p.x?1:-1;p.x=r[0];p.y=r[1];this.t+=dt;this.rec.push(r);return}
+    const inp=this.input(p,this),ACC=2400,MAX=270,G=1900,JUMP=640;
     const dir=(inp.right?1:0)-(inp.left?1:0);if(dir){p.vx+=dir*ACC*dt;p.face=dir}else p.vx*=Math.pow(p.ground?.0005:.15,dt);p.vx=Math.max(-MAX,Math.min(MAX,p.vx));
     if(inp.jump&&!this.jumpHeld)p.buffer=.12;this.jumpHeld=inp.jump;p.buffer-=dt;p.coyote-=dt;
     if(p.buffer>0&&p.coyote>0){p.vy=-JUMP;p.buffer=0;p.coyote=0;p.ground=false;if(this.sound)tone(520,.06,'square',.04)}

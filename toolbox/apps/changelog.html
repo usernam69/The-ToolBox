@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>What's changed</title><link rel="stylesheet" href="common.css">
+<style>.ver{border-left:3px solid var(--accent);padding:4px 0 4px 14px;margin:0 0 18px}.ver h3{margin:0}.ver.now h3::after{content:' · you have this';font-size:13px;color:var(--muted);font-weight:400}
+.ver ul{margin:6px 0 0;padding-left:20px}.dl{font-size:13px}</style></head>
+<body data-app="changelog" data-cat="tools" data-title="What's changed"><main>
+<p class="sub">Every version of The ToolBox and what it brought. Older versions can still be opened from their release page.</p>
+<div id="list"></div><p class="muted" id="gh"></p>
+</main><script src="common.js"></script><script>
+// the list ships with the app (errors.js) so it works offline; online, GitHub adds download links
+const split=t=>t.split(/,\s+|\.\s+/).map(s=>s.replace(/\.$/,'').trim()).filter(Boolean);
+function draw(rel={}){$('list').innerHTML=TB_NEWS.map(([v,t])=>{const r=rel[v];
+  return`<div class="ver ${v===TB_VERSION?'now':''}"><h3>${esc(v)}</h3><ul>${split(t).map(s=>`<li>${esc(s[0].toUpperCase()+s.slice(1))}</li>`).join('')}</ul>
+   ${r?`<div class="dl"><a href="${esc(r.url)}" target="_blank" rel="noopener">Release page and downloads</a>${v!==TB_VERSION?` · <a href="https://raw.githack.com/usernam69/The-ToolBox/v${esc(v)}/toolbox/index.html" target="_blank" rel="noopener" title="Opens that version in a new tab. It keeps its own separate data.">▶ Try this version</a>`:''} · ${new Date(r.date).toLocaleDateString()}</div>`:''}</div>`}).join('')}
+(function wait(){if(!window.TB_NEWS)return setTimeout(wait,50);draw();
+  fetch('https://api.github.com/repos/usernam69/The-ToolBox/releases?per_page=30').then(r=>r.ok?r.json():[]).then(list=>{const rel={};
+    list.forEach(r=>{const v=String(r.tag_name).replace(/^v/,'');rel[v]={url:r.html_url,date:r.published_at}});draw(rel);
+    const newest=list.find(r=>!r.prerelease&&/^v?\d/.test(r.tag_name));if(newest){const v=newest.tag_name.replace(/^v/,'');
+      $('gh').innerHTML=v!==TB_VERSION&&!TB_NEWS.some(n=>n[0]===v)?`✨ Version ${esc(v)} is out. <a href="${esc(newest.html_url)}" target="_blank" rel="noopener">See what's new</a>, or reload the page to update.`:''}}).catch(()=>{})})();
+</script></body></html>

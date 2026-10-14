@@ -35,9 +35,13 @@ function toast(msg,undo){
   $('toast').style.display='flex';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',5000)}
 
 // Remove arr[i], persist, redraw, and offer Undo for 5 seconds.
+// The item also goes to the Trash (System → Trash) for 30 days.
 function removeWithUndo(arr,i,persist,label='Deleted'){
-  const [item]=arr.splice(i,1);persist();
-  toast(label,()=>{arr.splice(Math.min(i,arr.length),0,item);persist()})}
+  const [item]=arr.splice(i,1);
+  // which saved list held it? (checked before saving, so it's still there)
+  const key=item&&item.id?Object.keys(localStorage).find(k=>k.startsWith(PREFIX)&&k!==PREFIX+'trash'&&(localStorage.getItem(k)||'').includes('"id":"'+item.id+'"')):null;
+  persist();const t=Date.now();if(key)save('trash',[{t,label,key:key.slice(PREFIX.length),item},...load('trash',[]).filter(x=>t-x.t<30*DAY)].slice(0,300));
+  toast(label,()=>{arr.splice(Math.min(i,arr.length),0,item);persist();save('trash',load('trash',[]).filter(x=>x.t!==t))})}
 
 function beep(times=3){
   try{const ac=new (window.AudioContext||window.webkitAudioContext)();

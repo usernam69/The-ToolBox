@@ -1,5 +1,5 @@
 // Desktop wrapper for the toolbox: one window showing app/index.html.
-const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { createLanServer } = require('./lan-server');
 
@@ -48,6 +48,26 @@ app.on('before-quit', () => lan && lan.stop());
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
-  createWindow();
+  const win = createWindow();
+  setTimeout(() => checkForUpdate(win), 5000);
 });
+
+// Once a day, ask GitHub for the newest release and offer to download it (nothing is installed by itself).
+const newer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+async function checkForUpdate(win) {
+  const fs = require('fs'), stamp = path.join(app.getPath('userData'), 'update-check.json');
+  let seen = {}; try { seen = JSON.parse(fs.readFileSync(stamp, 'utf8')); } catch {}
+  if (Date.now() - (seen.at || 0) < 864e5) return;
+  try {
+    const r = await fetch('https://api.github.com/repos/usernam69/The-ToolBox/releases/latest', { headers: { 'User-Agent': 'TheToolBox' } });
+    if (!r.ok) return;
+    const rel = await r.json(), latest = String(rel.tag_name || '').replace(/^v/, '');
+    fs.writeFileSync(stamp, JSON.stringify({ at: Date.now(), skipped: seen.skipped }));
+    if (!/^\d+\.\d+\.\d+$/.test(latest) || !newer(latest, app.getVersion()) || seen.skipped === latest) return;
+    const { response } = await dialog.showMessageBox(win, { type: 'info', title: 'Update available', message: `The ToolBox ${latest} is out (you have ${app.getVersion()}).`,
+      detail: 'Download the new UsefulToolbox.exe and replace this one. Your data stays where it is.', buttons: ['Download', 'Later', 'Skip this version'], defaultId: 0, cancelId: 1 });
+    if (response === 0) shell.openExternal(rel.html_url);
+    if (response === 2) fs.writeFileSync(stamp, JSON.stringify({ at: Date.now(), skipped: latest }));
+  } catch {}
+}
 app.on('window-all-closed', () => app.quit());

@@ -6,7 +6,7 @@
 <div class="row"><select id="list"></select><button class="g" id="edit">✎ My words</button><button class="b" id="newg">New word</button><span class="muted" id="stats" style="margin-left:auto"></span></div>
 <div id="custom" class="box" hidden><p class="sub">Paste words about anything you like (a hobby, a game, a subject). Each word can be 4 to 7 letters and needs at least 5 entries. Any word is accepted as a guess.</p><textarea id="cw" placeholder="creeper&#10;zombie&#10;potion&#10;…"></textarea><button class="b" id="cwSave">Save list</button></div>
 <div id="board"></div><div id="msg" style="text-align:center;min-height:1.5em;font-weight:600"></div><div id="kb"></div>
-</main><script src="common.js"></script><script>
+<div id="world" style="margin-top:14px"></div></main><script src="common.js"></script><script src="scores.js"></script><script>
 const LISTS={Animals:'tiger zebra panda koala otter camel horse sheep goose eagle shark whale moose bison llama lemur sloth gecko hippo rhino',Food:'pizza pasta bread mango apple lemon grape bacon salad sushi tacos curry steak honey melon peach chili toast olive cream',
  Gaming:'level quest sword armor potion spawn craft block steve skins loot pixel arena combo match score chest diamond boss',Space:'orbit comet earth venus pluto lunar solar rocket alien stars nova galaxy saturn mars probe crater',Sports:'goal score pitch coach court match point dunk serve skate surf swim relay medal'};
 function lists(){return{...LISTS,...(load('custom','').trim()?{'My words':load('custom','')}:{})}}
@@ -24,7 +24,7 @@ function draw(){const L=answer.length;$('board').innerHTML=[...Array(6)].map((_,
 function key(k){if(over)return;if(k==='⌫'||k==='backspace'){cur=cur.slice(0,-1)}else if(k==='⏎'||k==='enter'){
     if(cur.length!==answer.length){const r=$('board').children[rows.length];r.classList.add('shake');setTimeout(()=>r.classList.remove('shake'),400);return}
     rows.push(cur);const won=cur===answer;cur='';score(rows.at(-1)).forEach((s,i)=>tone(s==='g'?660:s==='y'?520:300,.08,'triangle',.06,i*.06));
-    if(won||rows.length===6){over=true;const s=load('stats',{p:0,w:0,streak:0});s.p++;if(won){s.w++;s.streak++}else s.streak=0;save('stats',s);
+    if(won||rows.length===6){over=true;const s=load('stats',{p:0,w:0,streak:0});s.p++;if(won){s.w++;s.streak++;s.best=Math.max(s.best||0,s.streak)}else s.streak=0;save('stats',s);
       $('msg').textContent=won?['Genius!','Magnificent!','Impressive!','Splendid!','Great!','Phew!'][rows.length-1]:`The word was ${answer.toUpperCase()}`}}
   else if(/^[a-z]$/.test(k)&&cur.length<answer.length)cur+=k;draw()}
 addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||e.ctrlKey||e.metaKey)return;key(e.key.toLowerCase())});
@@ -32,4 +32,6 @@ $('newg').onclick=()=>{newGame();$('newg').blur()};$('list').onchange=()=>{save(
 $('edit').onclick=()=>{$('custom').hidden=!$('custom').hidden;$('cw').value=load('custom','')};
 $('cwSave').onclick=()=>{save('custom',$('cw').value);fillLists();if(lists()['My words']){$('list').value='My words';save('list','My words')}$('custom').hidden=true;newGame()};
 fillLists();newGame();
+// world top 10: longest winning streak
+worldBoard($('world'),'wordle-streak',{unit:' in a row',title:'🌍 World top 10 (longest streak)',getScore:()=>load('stats',{}).best||0});
 </script></body></html>

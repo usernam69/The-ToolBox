@@ -13,7 +13,7 @@ const occ=(px,py)=>st.s.some(p=>p[0]===px&&p[1]===py)||(st.t||[]).some(p=>p[0]==
 function place(){do st.food=[rnd(N),rnd(N)];while(occ(...st.food));if(Math.random()<.25){do st.gold=[rnd(N),rnd(N)];while(occ(...st.gold));st.goldT=40}}
 function mirror(d){return{L:'R',R:'L',U:'U',D:'D'}[d]}
 function move(body,d){const h=body[0],n=[(h[0]+D[d][0]+N)%N,(h[1]+D[d][1]+N)%N];return n}
-function step(){if(st.q.length){const n=st.q.shift();if(D[n][0]!==-D[st.dir][0]||D[n][1]!==-D[st.dir][1])st.dir=n}st.tick++;
+function step(){if(window.GAME_PAUSED&&GAME_PAUSED()){loop=setTimeout(step,200);return}if(st.q.length){const n=st.q.shift();if(D[n][0]!==-D[st.dir][0]||D[n][1]!==-D[st.dir][1])st.dir=n}st.tick++;
   if(st.m==='walls'&&st.tick%6===0)st.walls.forEach(w=>{w.x+=w.dx;w.y+=w.dy;if(w.x<=0||w.x+w.w>=N)w.dx*=-1;if(w.y<=0||w.y+w.h>=N)w.dy*=-1});
   if(st.m==='walls'&&st.tick%150===0&&st.walls.length<5){const v=Math.random()<.5;st.walls.push({x:rnd(N-6)+1,y:rnd(N-6)+1,w:v?1:5,h:v?5:1,dx:v?1:0,dy:v?0:1})}
   const bodies=[[st.s,st.dir],...(st.t?[[st.t,mirror(st.dir)]]:[])];let grow=[0,0];

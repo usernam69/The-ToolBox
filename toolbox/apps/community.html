@@ -6,6 +6,7 @@
 <p class="sub">Mini-apps made by other people. They run in a locked box: they can’t see your notes, scores or anything else in The ToolBox, and they can’t open pop-ups or download files.</p>
 <h3>From the community</h3><div class="apps" id="shared"><p class="muted">Loading…</p></div>
 <h3>Added by me</h3><div class="apps" id="mine"></div>
+<h3>👪 Family gallery</h3><p class="muted" style="font-size:13px;margin-top:-6px">Apps everyone on this device made and shared (the AI app maker’s apps too). Every profile sees these.</p><div class="apps" id="fam"></div>
 <div class="row" style="margin-top:10px"><label class="b" style="cursor:pointer">＋ Add an .html file<input type="file" id="file" accept=".html,.htm,text/html" hidden></label></div>
 <details class="box" style="margin-top:14px"><summary><b>Make your own and share it</b></summary><ol>
  <li>Make one <code>.html</code> file with everything inside it (styles and scripts too). Copy <a href="../community/dice.html" target="_blank">the dice roller</a> to start.</li>
@@ -13,22 +14,52 @@
  <li>To share it with everyone, open a pull request on GitHub that adds your file to <code>toolbox/community/</code> and a line to <code>toolbox/community/apps.json</code>. Once it’s accepted, it shows up for every ToolBox user.</li></ol></details>
 </div>
 <div id="player" hidden><div class="row"><button class="g" id="close">← Back to the list</button><b id="pName"></b><span class="muted" id="pBy"></span></div><iframe id="run" title="Community app" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
-</main><script src="common.js"></script><script>
+</main><script src="common.js"></script><script src="scores.js"></script><script>
 // Apps run with sandbox="allow-scripts" but WITHOUT allow-same-origin, so they get a blank origin:
 // no access to this site's storage, cookies or pages.
 const mine=()=>load('mine',[]);
-const card=(a,i,local)=>`<div class="capp"><span class="e">${esc(a.emoji||'🧩')}</span><div><b>${esc(a.name)}</b><br><span class="muted" style="font-size:13px">${esc(a.desc||'')}${a.author?' · by '+esc(a.author):''}</span><div class="row" style="margin-top:6px"><button class="b" data-${local?'m':'s'}="${i}">Open</button>${local?`<button class="x" data-x="${i}" title="Remove">✕</button>`:''}</div></div></div>`;
+// ☆ Add to menu puts an app in the menu's Community category; ★ ratings are public (one vote per device, anyone can see the average)
+const pinned=()=>load('pinned',[]),pinId=(a,local)=>(local?'m-':'s-')+String(a.id||a.name).toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40);
+const card=(a,i,local)=>{const id=pinId(a,local),on=pinned().some(p=>p.id===id);return`<div class="capp"><span class="e">${esc(a.emoji||'🧩')}</span><div><b>${esc(a.name)}</b><br><span class="muted" style="font-size:13px">${esc(a.desc||'')}${a.author?' · by '+esc(a.author):''}</span>
+  ${local?'':`<div class="stars" data-rate="${esc(a.id)}" aria-label="Rating">${[1,2,3,4,5].map(n=>`<button class="g" data-star="${n}" title="${n} star${n>1?'s':''}" style="padding:0 2px;border:0;background:none">☆</button>`).join('')}<span class="muted avg" style="font-size:12px"></span></div>`}
+  <div class="row" style="margin-top:6px"><button class="b" data-${local?'m':'s'}="${i}">Open</button><button class="g" data-pin="${id}" data-i="${i}" data-local="${local?1:''}" title="${on?'Remove from':'Add to'} the main menu">${on?'★ On menu':'☆ Add to menu'}</button>${local?`<button class="x" data-x="${i}" title="Remove">✕</button>`:''}</div></div></div>`};
+function wirePins(root,list,local){root.querySelectorAll('[data-pin]').forEach(b=>b.onclick=()=>{const p=pinned(),id=b.dataset.pin,k=p.findIndex(x=>x.id===id),a=list()[b.dataset.i];
+  if(k>=0)p.splice(k,1);else p.push({id,name:a.name,emoji:a.emoji||'🧩',desc:a.desc||'',local:!!local});save('pinned',p);b.textContent=k>=0?'☆ Add to menu':'★ On menu';toast(k>=0?'Removed from the menu':'Added to the menu (Community)')})}
+const RATE={topic:id=>'the-toolbox/v1/ratings/'+id,data:{},
+  draw(id){const r=RATE.data[id],mine=load('votes',{})[id]||0,el=document.querySelector(`[data-rate="${CSS.escape(id)}"]`);if(!el)return;
+    el.querySelectorAll('[data-star]').forEach(b=>b.textContent=+b.dataset.star<=(mine||Math.round(r&&r.n?r.s/r.n:0))?'★':'☆');el.querySelector('.avg').textContent=r&&r.n?` ${(r.s/r.n).toFixed(1)} (${r.n})`:' no ratings yet'},
+  async watch(ids){try{const c=await WORLD.connect();c.on('message',(t,buf)=>{const id=t.startsWith('the-toolbox/v1/ratings/')&&t.split('/').pop();if(!id)return;
+      try{const o=JSON.parse(new TextDecoder().decode(buf));if(o&&o.n>=0&&o.s>=0&&o.n<1e6)RATE.data[id]={s:+o.s,n:+o.n}}catch{}RATE.draw(id)});ids.forEach(id=>c.subscribe(RATE.topic(id)))}catch{}},
+  async vote(id,n){const votes=load('votes',{}),old=votes[id]||0;votes[id]=n;save('votes',votes);const r=RATE.data[id]||{s:0,n:0};
+    RATE.data[id]={s:Math.max(0,r.s-old+n),n:r.n+(old?0:1)};RATE.draw(id);try{const c=await WORLD.connect();c.publish(RATE.topic(id),JSON.stringify(RATE.data[id]),{retain:true,qos:1});toast('Thanks for rating!')}catch{toast('Saved here; couldn’t reach the ratings (offline?).')}}};
 function play(name,by,html){$('list').hidden=true;$('player').hidden=false;$('pName').textContent=name;$('pBy').textContent=by?'by '+by:'';$('run').srcdoc=html}
 $('close').onclick=()=>{$('run').srcdoc='';$('player').hidden=true;$('list').hidden=false};
 let shared=[];
 fetch('../community/apps.json').then(r=>r.json()).then(list=>{shared=Array.isArray(list)?list.filter(a=>a&&/^[\w-]+\.html$/.test(a.file)):[];
   $('shared').innerHTML=shared.map((a,i)=>card(a,i,false)).join('')||'<p class="muted">Nothing yet.</p>';
+  wirePins($('shared'),()=>shared,false);$('shared').querySelectorAll('[data-star]').forEach(b=>b.onclick=()=>RATE.vote(b.closest('[data-rate]').dataset.rate,+b.dataset.star));
+  shared.forEach(a=>RATE.draw(a.id));RATE.watch(shared.map(a=>a.id).filter(id=>/^[\w-]+$/.test(id||'')));openFromHash();
   $('shared').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const a=shared[b.dataset.s];try{play(a.name,a.author,await (await fetch('../community/'+a.file)).text())}catch{toast('Could not open it (offline?).')}})})
- .catch(()=>{$('shared').innerHTML='<p class="muted">Couldn’t load the list. The Windows app and the online version both include it.</p>'});
+ .catch(()=>{$('shared').innerHTML='<p class="muted">Couldn’t load the list. The Windows app and the online version both include it.</p>';setTimeout(openFromHash)});
 function drawMine(){const m=mine();$('mine').innerHTML=m.map((a,i)=>card(a,i,true)).join('')||'<p class="muted">Nothing added yet.</p>';
   $('mine').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const a=mine()[b.dataset.m];play(a.name,'you',a.html)});
+  wirePins($('mine'),mine,true);
+  $('mine').querySelectorAll('[data-m]').forEach(b=>{const s=document.createElement('button');s.className='g';s.textContent='👪 Share';s.title='Put it in the family gallery';
+    s.onclick=()=>{const a=mine()[b.dataset.m],g=gallery();if(g.some(x=>x.html===a.html))return toast('It’s already in the family gallery.');
+      g.unshift({name:a.name,emoji:a.emoji||'🧩',html:a.html,by:window.FAM?FAM.current():'',t:Date.now()});try{localStorage.setItem('prof__gallery',JSON.stringify(g.slice(0,40)))}catch{return toast('Not enough space.')}drawFam();toast('Shared with the family!')};b.after(' ',s)});
   $('mine').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const m=mine();m.splice(b.dataset.x,1);save('mine',m);drawMine()})}
 $('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;if(f.size>1.5e6)return toast('That file is too big (1.5 MB max).');const html=await f.text();
   const t=(html.match(/<title>([^<]{1,60})<\/title>/i)||[])[1]||f.name.replace(/\.html?$/,'');const m=mine();m.unshift({name:t,desc:f.name,html,emoji:'🧩'});save('mine',m);$('file').value='';drawMine();toast('Added '+t)};
 drawMine();
+// the family gallery is stored outside the profiles (prof__ keys aren't swapped), so it's shared by everyone on this device
+const gallery=()=>{try{return JSON.parse(localStorage.getItem('prof__gallery')||'[]')}catch{return[]}};
+function drawFam(){const g=gallery();$('fam').innerHTML=g.map((a,i)=>`<div class="capp"><span class="e">${esc(a.emoji)}</span><div><b>${esc(a.name)}</b><br><span class="muted" style="font-size:13px">${a.by?'by '+esc(a.by)+' · ':''}${new Date(a.t).toLocaleDateString()}</span><div class="row" style="margin-top:6px"><button class="b" data-f="${i}">Open</button><button class="x" data-fx="${i}" title="Remove from the gallery">✕</button></div></div></div>`).join('')||'<p class="muted">Nothing shared yet. Use 👪 Share on one of your apps.</p>';
+  $('fam').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{const a=gallery()[b.dataset.f];play(a.name,a.by,a.html)});
+  $('fam').querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{if(!confirm('Remove it from the family gallery?'))return;const g=gallery();g.splice(b.dataset.fx,1);localStorage.setItem('prof__gallery',JSON.stringify(g));drawFam()})}
+drawFam();
+// opened from the main menu: #open=<id>
+function openFromHash(){const id=(location.hash.match(/^#open=([\w-]+)$/)||[])[1];if(!id)return;history.replaceState(null,'',location.pathname);
+  const s=shared.find(a=>pinId(a,false)===id);if(s)return $('shared').querySelector(`[data-s="${shared.indexOf(s)}"]`).click();
+  const i=mine().findIndex(a=>pinId(a,true)===id);if(i>=0)$('mine').querySelector(`[data-m="${i}"]`).click()}
+
 </script></body></html>

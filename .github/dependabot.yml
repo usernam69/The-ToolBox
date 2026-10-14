@@ -1,0 +1,12 @@
+# Weekly pull requests to keep the desktop app's packages (Electron, the builder) and the workflows' actions up to date.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /toolbox-desktop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

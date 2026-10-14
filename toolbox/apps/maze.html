@@ -5,7 +5,7 @@
 <label>Speed <input type="range" id="speed" min="1" max="200" value="40"></label><button class="b" id="gen">Build maze</button><button class="g" id="solve">Solve it</button><button class="g" id="play">I'll solve it myself</button><span id="info" class="muted"></span></div>
 <canvas id="c" width="640" height="640"></canvas>
 <div class="touchpad" id="pad"><button data-d="0,-1">▲</button><button data-d="-1,0">◀</button><button data-d="1,0">▶</button><button data-d="0,1">▼</button></div>
-</main><script src="common.js"></script><script>
+<div id="world" style="margin-top:14px"></div></main><script src="common.js"></script><script src="scores.js"></script><script>
 const c=$('c'),x=c.getContext('2d');let N,cells,anim=null,me=null,path=null,visited=null,t0,frontierSet;
 // walls: bit 1=N 2=E 4=S 8=W
 const DIRS=[[0,-1,1,4],[1,0,2,8],[0,1,4,1],[-1,0,8,2]];
@@ -32,8 +32,10 @@ function draw(){const s=640/N;x.clearRect(0,0,640,640);
   cells.forEach((w,i)=>{const px=i%N*s,py=Math.floor(i/N)*s;if(w&1){x.moveTo(px,py);x.lineTo(px+s,py)}if(w&2){x.moveTo(px+s,py);x.lineTo(px+s,py+s)}if(w&4){x.moveTo(px,py+s);x.lineTo(px+s,py+s)}if(w&8){x.moveTo(px,py);x.lineTo(px,py+s)}});x.stroke()}
 function walk(dx,dy){if(!me||anim)return;const d=DIRS.find(d=>d[0]===dx&&d[1]===dy);if(cells[me.i]&d[2])return;me.i+=dy*N+dx;
   const k=me.trail.indexOf(me.i);if(k>=0)me.trail=me.trail.slice(0,k+1);else me.trail.push(me.i);me.moves++;
-  if(me.i===N*N-1){const t=((Date.now()-t0)/1000).toFixed(1);$('info').textContent=`🎉 Solved in ${t}s and ${me.moves} moves!`;[523,659,784].forEach((f,i)=>tone(f,.2,'triangle',.1,i*.1));me.done=true}draw()}
-$('play').onclick=()=>{if(!cells||anim)return;path=null;visited=null;me={i:0,trail:[0],moves:0};t0=Date.now();$('info').textContent='Use the arrow keys to get from 🟩 to 🟥!';draw();$('play').blur()};
+  if(me.i===N*N-1){const t=((Date.now()-t0)/1000).toFixed(1);$('info').textContent=`🎉 Solved in ${t}s and ${me.moves} moves!`;if(!load('best'+N,0)||+t<load('best'+N,0)){save('best'+N,+t);wb()}[523,659,784].forEach((f,i)=>tone(f,.2,'triangle',.1,i*.1));me.done=true}draw()}
+// world top 10 for each maze size (fastest time)
+const wb=()=>worldBoard($('world'),'maze-'+N,{lower:true,unit:'s',title:`🌍 World top 10 (${N}×${N})`,getScore:()=>load('best'+N,0)});
+$('play').onclick=()=>{wb();if(!cells||anim)return;path=null;visited=null;me={i:0,trail:[0],moves:0};t0=Date.now();$('info').textContent='Use the arrow keys to get from 🟩 to 🟥!';draw();$('play').blur()};
 addEventListener('keydown',e=>{const m={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]}[e.key.toLowerCase()];if(m&&me&&!me.done){e.preventDefault();walk(...m)}});
 $('pad').querySelectorAll('button').forEach(b=>b.onclick=()=>walk(...b.dataset.d.split(',').map(Number)));
 $('gen').onclick=gen;$('solve').onclick=solve;gen();

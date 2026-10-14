@@ -73,6 +73,11 @@ function drawBrief(){
 // ---------- dashboard ----------
 const QUOTES=["The best way to get started is to quit talking and begin doing. — Walt Disney","Simplicity is the soul of efficiency. — Austin Freeman","Make it work, make it right, make it fast. — Kent Beck","Done is better than perfect.","Small steps every day.","What you do every day matters more than what you do once in a while. — Gretchen Rubin","Action is the foundational key to all success. — Pablo Picasso","Start where you are. Use what you have. Do what you can. — Arthur Ashe","Well begun is half done. — Aristotle","You don't have to see the whole staircase, just take the first step. — Martin Luther King Jr."];
 const WIDGETS={brief:'Briefing',challenge:'Daily challenge',pet:'Pet',recent:'Recently used',weather:'Weather',todos:'To-do',done:'Done today',quote:'Quote',bills:'Bills due',habits:'Habits today',cards:'Flashcards'};
+// the dashboard takes on today's mood (from the Mood journal): a soft wash of color and a line that fits
+function moodTint(){const m=(load('moods',{})[isoDay()]||{}).v,sec=$('dash');if(!sec)return;
+  const T={1:['#5b7db1','Rough day. Be kind to yourself, one small thing at a time.'],2:['#7a8cad','A bit low today. A short walk or a song might help.'],3:['#9aa39a','An okay day. Steady wins.'],4:['#e0a83a','Good mood! A great day to start something.'],5:['#ef6c8f','Fantastic! Spread it around.']}[m];
+  sec.style.background=T?`linear-gradient(180deg,${T[0]}22,transparent 260px)`:'';sec.style.borderRadius=T?'16px':'';
+  let n=$('moodLine');if(!T){if(n)n.remove();return}if(!n){n=document.createElement('p');n.id='moodLine';n.className='muted';sec.querySelector('h2')?.after(n)}n.textContent='🎨 '+T[1]}
 tool({id:'dash',name:'Dashboard',group:'Daily',html:`
 <div class="row"><h2 style="margin-right:auto">Dashboard</h2><button class="g" id="dCustom">Customize</button></div>
 <div id="dCustomBox" class="box" style="display:none;margin-bottom:12px"><div class="muted" style="font-size:13px">Tick to show, drag to reorder.</div><ul class="clean" id="dWidgetList"></ul></div>
@@ -117,7 +122,7 @@ init(){
       li.ondrop=e=>{e.preventDefault();const o=widgetOrder().filter(x=>x!==drag);o.splice(o.indexOf(w),0,drag);save('dashOrder',o);applyWidgets();drawWidgetList()};
       ul.append(li)})};
   drawWidgetList();applyWidgets()},
-show(){refreshTodoViews();drawWeather();drawBrief();
+show(){refreshTodoViews();drawWeather();drawBrief();moodTint();
   const bills=typeof billsDueSoon==='function'?billsDueSoon(7):[];
   $('dBills').innerHTML=bills.length?bills.map(b=>`<li><span class="${b.days<=1?'overdue':'soon'}">${esc(b.name)}</span> ${money(b.amt)}<span class="muted" style="margin-left:auto">${b.when}</span></li>`).join(''):'<li class="muted">Nothing due.</li>';
   const hb=load('habits',[]);$('dHabits').innerHTML='';
@@ -304,6 +309,15 @@ command({word:'pomo',help:'pomo  (start or pause the Pomodoro)',run(){pomoToggle
 
 // ---------- calendar ----------
 let calMonth=new Date();calMonth.setDate(1);
+// .ics import: one-off events go on the calendar, yearly ones become birthdays (skipping ones already there)
+function importIcs(text){const lines=text.replace(/\r?\n[ \t]/g,'').split(/\r?\n/),out={events:0,bdays:0};let ev=null;
+  const events=load('events',[]),bdays=load('birthdays',[]),unesc=s=>s.replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1');
+  for(const l of lines){if(l==='BEGIN:VEVENT')ev={};else if(l==='END:VEVENT'&&ev){const m=(ev.start||'').match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/);
+      if(m&&ev.name){const date=`${m[1]}-${m[2]}-${m[3]}`;
+        if(/FREQ=YEARLY/.test(ev.rrule||'')){if(!bdays.some(b=>b.name===ev.name&&b.m===+m[2]&&b.d===+m[3])){bdays.push({id:uid(),name:ev.name.replace(/(’s|'s)? birthday$/i,''),m:+m[2],d:+m[3],y:null});out.bdays++}}
+        else if(!events.some(e=>e.date===date&&e.name===ev.name)){events.push({id:uid(),date,name:ev.name.slice(0,80),time:m[4]?m[4]+':'+m[5]:''});out.events++}}ev=null}
+    else if(ev){const i=l.indexOf(':'),k=l.slice(0,i).split(';')[0],v=l.slice(i+1);if(k==='SUMMARY')ev.name=unesc(v).trim();if(k==='DTSTART')ev.start=v;if(k==='RRULE')ev.rrule=v}}
+  save('events',events.slice(-2000));save('birthdays',bdays);return out}
 function drawCalendar(){
   const y=calMonth.getFullYear(),m=calMonth.getMonth(),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay());
   $('calTitle').textContent=first.toLocaleDateString(undefined,{month:'long',year:'numeric'});
@@ -312,6 +326,8 @@ function drawCalendar(){
   for(let i=0;i<42;i++){const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i),iso=isoDay(d),items=[];
     todos.filter(t=>t.due===iso).forEach(t=>items.push(`<div draggable="true" data-todo="${t.id}" style="cursor:grab" class="${t.d?'done':todoClass(t)}">• ${esc(t.t)}</div>`));
     load('countdowns',[]).filter(c=>c.date===iso).forEach(c=>items.push(`<div>⏳ ${esc(c.name)}</div>`));
+    load('birthdays',[]).filter(b=>b.m===d.getMonth()+1&&b.d===d.getDate()).forEach(b=>items.push(`<div>🎂 ${esc(b.name)}</div>`));
+    load('events',[]).filter(e=>e.date===iso).forEach(e=>items.push(`<div title="${esc(e.time||'')}">📅 ${esc(e.name)}</div>`));
     const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
     bills.filter(b=>Math.min(b.day,last)===d.getDate()).forEach(b=>items.push(`<div>💸 ${esc(b.name)}</div>`));
     const dn=dayNum(d),nc=cards.filter(c=>dn===todayN?c.due<=dn:c.due===dn).length;if(nc&&dn>=todayN)items.push(`<div>🃏 ${nc} card${nc>1?'s':''}</div>`);
@@ -323,9 +339,12 @@ function drawCalendar(){
       if(t){t.due=c.dataset.day;saveTodos();drawCalendar();toast('Moved to '+c.dataset.day)}}})}
 tool({id:'calendar',name:'Calendar',group:'Daily',html:`
 <div class="row"><h2 style="margin-right:auto">Calendar</h2><button class="g" id="calPrev">‹</button><b id="calTitle"></b><button class="g" id="calNext">›</button><button class="g" id="calToday">Today</button></div>
-<p class="sub">Shows to-dos with due dates (•), bills (💸), flashcard reviews (🃏) and countdowns (⏳). Drag a to-do to another day to move it.</p>
-<div class="cal" id="calGrid"></div>`,
-init(){$('calPrev').onclick=()=>{calMonth.setMonth(calMonth.getMonth()-1);drawCalendar()};$('calNext').onclick=()=>{calMonth.setMonth(calMonth.getMonth()+1);drawCalendar()};
+<p class="sub">Shows to-dos with due dates (•), bills (💸), flashcard reviews (🃏), countdowns (⏳), birthdays (🎂) and imported events (📅). Drag a to-do to another day to move it.</p>
+<div class="cal" id="calGrid"></div>
+<div class="row" style="margin-top:8px"><label class="g" style="cursor:pointer">📥 Import a calendar (.ics)<input type="file" id="calIcs" accept=".ics,text/calendar" hidden></label><span class="muted" id="calIcsMsg" style="font-size:13px">From Google Calendar: Settings → Import &amp; export → Export. Yearly events become birthdays.</span><button class="x" id="calClear" title="Remove imported events">Clear imported</button></div>`,
+init(){$('calIcs').onchange=async()=>{const f=$('calIcs').files[0];if(!f)return;const r=importIcs(await f.text());$('calIcs').value='';
+    $('calIcsMsg').textContent=`Imported ${r.events} event${r.events===1?'':'s'} and ${r.bdays} birthday${r.bdays===1?'':'s'}.`;drawCalendar()};
+  $('calClear').onclick=()=>{const ev=load('events',[]);if(!ev.length)return toast('No imported events.');save('events',[]);drawCalendar();toast('Removed imported events',()=>{save('events',ev);drawCalendar()})};$('calPrev').onclick=()=>{calMonth.setMonth(calMonth.getMonth()-1);drawCalendar()};$('calNext').onclick=()=>{calMonth.setMonth(calMonth.getMonth()+1);drawCalendar()};
   $('calToday').onclick=()=>{calMonth=new Date();calMonth.setDate(1);drawCalendar()}},
 show(){todos=load('todos',todos);drawCalendar()}});
 

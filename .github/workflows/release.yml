@@ -43,11 +43,19 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: out, merge-multiple: true }
+      # every download must be there before anything is published
+      - name: Check all files were built
+        run: |
+          ls -la out
+          for f in UsefulToolbox.exe TheToolBox-x86_64.AppImage TheToolBox-arm64.AppImage TheToolBox-extension.zip; do
+            [ -s "out/$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
+          done
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
           name: The ToolBox ${{ github.ref_type == 'tag' && github.ref_name || format('build {0}', github.run_number) }}
           files: out/*
+          generate_release_notes: true
           body: |
             - **Windows:** download `UsefulToolbox.exe` and double-click it (no install needed).
             - **Chromebook:** easiest is to open https://usernam69.github.io/The-ToolBox/ in Chrome and click Install. With Linux turned on, `TheToolBox-x86_64.AppImage` (Intel/AMD) or `TheToolBox-arm64.AppImage` (ARM) also runs, including Wi-Fi hosting.

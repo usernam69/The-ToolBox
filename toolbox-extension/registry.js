@@ -48,13 +48,11 @@ const CATEGORIES=[
   ['story','Interactive story','📖','Play a choose-your-own-adventure or write your own.','apps/story.html'],
   ['starfield','Starfield','🌌','Calm flying-through-space screensaver.','apps/starfield.html'],
   ['poem','Poem remixer','🪶','Shuffle lines of poems into new ones.','apps/poem.html'],
-  ['remix','Remix an app','🛠️','Open any app’s code, change it and see it run.','apps/remix.html'],
   ['comic','Comic builder','💬','Drag characters and speech bubbles into panels.','apps/comic.html']]},
  {id:'bigger',name:'Bigger projects',emoji:'🏗️',blurb:'Bigger builds: worlds, websites, multiplayer and AI.',apps:[
   ['voxel','Voxel world','⛏️','A little 3D block world you can build in.','apps/voxel.html'],
   ['website','Personal website maker','🌐','Fill in a form and download your own home page.','apps/website.html'],
   ['draw','Draw & guess','✏️','One person draws, everyone else guesses, on Wi-Fi or one screen.','apps/draw.html'],
-  ['party','Party quiz','🎤','A game show: one big screen, phones are the buzzers.','apps/party.html'],
   ['chat','Room chat','💬','Real-time chat rooms for friends on the same Wi-Fi.','apps/chat.html'],
   ['buddy','AI study buddy','🤖','Quizzes you on any notes you paste in.','apps/buddy.html'],
   ['appmaker','AI app maker','✨','Describe an app or game and Claude builds it for you.','apps/appmaker.html'],
@@ -68,7 +66,6 @@ const CATEGORIES=[
   ['capsule','Time capsule','💌','Write messages that stay locked until a future date.','apps/capsule.html'],
   ['museum','Infinite museum','🏛️','Walk through rooms of art that never end.','apps/museum.html'],
   ['desklevel','Your desk as a level','📸','Take a photo and play a platformer on it.','apps/desklevel.html'],
-  ['wrapped','ToolBox Wrapped','🎁','Your year in The ToolBox, told as a story.','apps/wrapped.html'],
   ['makemachine','Make-something machine','🎰','Roll a genre, a theme and a rule so you’re never stuck.','apps/makemachine.html']]},
  {id:'community',name:'Community',emoji:'🧩',blurb:'Mini-apps made by other people, plus your own.',apps:[
   ['community','Community apps','🧩','Mini-apps from other people, running safely in a locked box.','apps/community.html']]}];

@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mini ToolBox</title><link rel="stylesheet" href="common.css">
+<style>body{padding:10px;font-size:14px}h2{font-size:15px;margin:10px 0 4px}#t{font:700 40px/1 system-ui,sans-serif;text-align:center;margin:6px 0;font-variant-numeric:tabular-nums}
+.row{justify-content:center}label{display:flex;gap:8px;align-items:center;padding:3px 0}a{font-size:12px}</style></head>
+<body>
+<!-- A small window for the corner of the screen (ChromeOS shelf, Windows): a timer and today's habits.
+     Opened from the menu's 🪟 button; where the browser allows it, it floats on top of other windows. -->
+<div id="t">25:00</div>
+<div class="row"><button class="g" data-m="5">5</button><button class="g" data-m="10">10</button><button class="g" data-m="25">25</button><button class="b" id="go">Start</button></div>
+<h2>Today’s habits</h2><div id="habits"></div>
+<p><a href="../tools.html#habits" target="_blank" rel="noopener">Open habits</a> · <a href="../index.html" target="_blank" rel="noopener">The ToolBox</a></p>
+<script src="errors.js"></script><script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const get=(k,d)=>{try{return JSON.parse(localStorage.getItem('tb_'+k))??d}catch{return d}},put=(k,v)=>{try{localStorage.setItem('tb_'+k,JSON.stringify(v))}catch{}};
+const day=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+try{const t=get('theme','auto');if(t!=='auto')document.documentElement.dataset.theme=t}catch{}
+let mins=25,end=0,timer=null;const fmt=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return String(s/60|0).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const show=()=>{$('t').textContent=fmt(end?end-Date.now():mins*60e3);document.title=end?fmt(end-Date.now())+' · Mini':'Mini ToolBox'};
+function ding(){try{const a=new AudioContext();[880,660,880].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;o.connect(g);g.connect(a.destination);const t=a.currentTime+i*.3;g.gain.setValueAtTime(.2,t);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.start(t);o.stop(t+.3)})}catch{}}
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{if(end)return;mins=+b.dataset.m;show()});
+$('go').onclick=()=>{if(end){clearInterval(timer);end=0;$('go').textContent='Start';return show()}end=Date.now()+mins*60e3;$('go').textContent='Stop';
+  timer=setInterval(()=>{show();if(Date.now()>=end){clearInterval(timer);end=0;$('go').textContent='Start';show();ding();$('t').textContent='Done!'}},250)};
+function habits(){const h=get('habits',[]),d=day();$('habits').innerHTML=h.length?h.map((x,i)=>`<label><input type="checkbox" data-i="${i}" ${(x.days||{})[d]?'checked':''}> ${esc(x.name)}</label>`).join(''):'<p class="muted">No habits yet.</p>';
+  $('habits').querySelectorAll('input').forEach(c=>c.onchange=()=>{const h=get('habits',[]),x=h[c.dataset.i];if(!x)return;x.days=x.days||{};if(c.checked)x.days[d]=true;else delete x.days[d];put('habits',h)})}
+// the Toolbox may change habits in another window
+addEventListener('storage',e=>{if(e.key==='tb_habits')habits()});habits();show();
+</script></body></html>

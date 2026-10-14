@@ -1,0 +1,22 @@
+name: 💡 App or feature idea
+description: Suggest a new app, game or tool, or a change to one
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What would it do, and who is it for?
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind?
+      options: [New app or game, New everyday tool, Change to an existing app, Something else]
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Want to build it?
+      options:
+        - label: I'd like to make it myself (see CONTRIBUTING.md)

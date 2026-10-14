@@ -1,10 +1,7 @@
 // Main-menu extras: favorites, surprise me, theme switch, install, offline badge, update toast,
 // QR code, what's new, daily mix, the focus pet walking around, seasonal effects.
-const VERSION='2026.10.3';
-const NEWS=[
- ['2026.10.3','Online multiplayer with room codes (no PC needed), world high scores, Parkour level editor, family settings (profiles, screen time, school and kiosk mode), quests, ToolBox OS, AI app maker, voice commands, party quiz, ToolBox radio, Remix any app, Wrapped, community apps, Spanish/French/Hebrew, reminders, open-with and share-to.'],
- ['2026.10.2','Favorites, Surprise me, daily mix, QR code to the site, installable on Chromebooks, works fully offline, gamepad support, shortcut sheet (press ?), seasonal effects.'],
- ['2026.10.1','A main menu with 6 categories and 43 new apps and games.']];
+const VERSION=TB_VERSION;
+const NEWS=TB_NEWS;
 const KEYWORDS={lofi:'music beat drums song',rhythm:'music song beat',moodmusic:'music song feelings',soundboard:'sound music noise',
  pixel:'draw art paint sprite',genart:'art draw pattern',comic:'draw art story',draw:'paint art multiplayer friends',
  parkour:'jump platformer run',reverse:'platformer traps',desklevel:'photo camera platformer',snake:'arcade',wordle:'words puzzle',
@@ -41,9 +38,26 @@ $('q').oninput=()=>{const q=$('q').value.trim().toLowerCase();if(!q){route();dra
 $('surprise').onclick=()=>{const a=ALL_APPS[Math.floor(Math.random()*ALL_APPS.length)];menuLS.set('menu_recent',[a.id,...menuLS.get('menu_recent',[]).filter(x=>x!==a.id)].slice(0,8));location.href=a.href};
 
 // theme: auto → light → dark, shared with every app through tb_theme
-const THEMES={auto:'🌗 Auto',light:'☀️ Light',dark:'🌙 Dark'};
-function drawTheme(){const t=menuLS.get('tb_theme','auto');$('themeBtn').textContent=THEMES[t]||THEMES.auto;if(t==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t}
-$('themeBtn').onclick=()=>{const order=['auto','light','dark'],t=menuLS.get('tb_theme','auto');menuLS.set('tb_theme',order[(order.indexOf(t)+1)%3]);drawTheme()};drawTheme();
+const THEMES={auto:'🌗 Auto',light:'☀️ Light',dark:'🌙 Dark',custom:'🎨 Mine'};
+function drawTheme(){const t=menuLS.get('tb_theme','auto');$('themeBtn').textContent=THEMES[t]||THEMES.auto;if(t==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;TB_THEME.apply(t==='custom'?TB_THEME.get():null)}
+// the theme button opens a preview of each look side by side (the previews carry their own colours, the page's stay put)
+const PREVIEW={light:'--pbg:#f6f5f2;--pink:#1d1d1f;--pline:#e2e0da;--pacc:#2f6fde;--pmut:#6b6b70',dark:'--pbg:#141416;--pink:#ececef;--pline:#33333a;--pacc:#6b9bff;--pmut:#9a9aa2'};
+$('themeBtn').onclick=()=>{const d=document.createElement('dialog');d.className='qrd';d.style.maxWidth='min(480px,calc(100vw - 32px))';const t=menuLS.get('tb_theme','auto');
+  const mini=k=>`<button class="g" data-t="${k}" style="padding:6px;${t===k?'outline:2px solid var(--accent)':''}"><div style="${PREVIEW[k==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):k]};width:110px;border-radius:10px;padding:8px;background:var(--pbg);color:var(--pink);border:1px solid var(--pline);text-align:left"><div style="font-weight:700">Aa 🧰</div><div style="height:8px;border-radius:4px;background:var(--pacc);margin:6px 0"></div><div style="font-size:11px;color:var(--pmut)">Card text</div></div><div style="margin-top:4px">${THEMES[k]}</div></button>`;
+  const cur=TB_THEME.get()||{bg:'#fdf6e3',card:'#ffffff',ink:'#2b2b2b',accent:'#d33682'};
+  d.innerHTML=`<h3 style="margin-top:0">Light or dark?</h3><div class="row" style="justify-content:center">${['auto','light','dark'].map(mini).join('')}</div>
+   <details style="text-align:left;margin:8px 0" ${t==='custom'?'open':''}><summary><b>🎨 Make your own</b></summary><div class="row" style="margin-top:6px">
+   ${[['bg','Background'],['card','Cards'],['ink','Text'],['accent','Buttons']].map(([k,l])=>`<label style="font-size:13px">${l}<br><input type="color" data-c="${k}" value="${cur[k]}"></label>`).join('')}</div>
+   <div class="row"><button class="b" id="thUse">Use my colours</button><button class="g" id="thShare">🔗 Share them</button></div></details><button class="g" id="thClose">Close</button>`;
+  const mine=()=>Object.fromEntries([...d.querySelectorAll('[data-c]')].map(i=>[i.dataset.c,i.value]));
+  d.querySelectorAll('[data-c]').forEach(i=>i.oninput=()=>TB_THEME.apply(mine()));
+  d.querySelector('#thUse').onclick=()=>{menuLS.set('tb_customTheme',mine());menuLS.set('tb_theme','custom');drawTheme();d.close()};
+  d.querySelector('#thShare').onclick=()=>{const u=location.href.split(/[?#]/)[0]+'?theme='+TB_THEME.KEYS.map(k=>mine()[k].slice(1)).join('-');navigator.clipboard.writeText(u).then(()=>alert('Link copied. Whoever opens it can use your colours.'),()=>prompt('Copy this link:',u))};
+  d.addEventListener('close',drawTheme);
+  d.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{menuLS.set('tb_theme',b.dataset.t);drawTheme();d.close()});d.querySelector('#thClose').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal()};drawTheme();
+// someone shared their colours: ?theme=bg-card-ink-accent
+{const p=new URLSearchParams(location.search).get('theme');if(p&&/^([0-9a-f]{6}-){3}[0-9a-f]{6}$/i.test(p)){const c=p.split('-'),t=Object.fromEntries(TB_THEME.KEYS.map((k,i)=>[k,'#'+c[i]]));
+  history.replaceState(null,'',location.pathname+location.hash);TB_THEME.apply(t);setTimeout(()=>{if(confirm('Use these shared colours for The ToolBox?')){menuLS.set('tb_customTheme',t);menuLS.set('tb_theme','custom')}drawTheme()},300)}}
 
 // install (Chrome / ChromeOS / Edge / Android)
 let installEvt=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;$('installBtn').hidden=false});
@@ -52,9 +66,9 @@ addEventListener('appinstalled',()=>{$('installBtn').hidden=true});
 
 // offline badge + "new version" banner
 function banner(html){let b=$('banner');if(!b){b=document.createElement('div');b.id='banner';document.body.append(b)}b.innerHTML=html;return b}
-async function offlineState(){const o=$('offline');if(window.toolboxDesktop){o.textContent='🟢 Works offline';o.title='The desktop app keeps everything on this computer';return}if(!('serviceWorker' in navigator)||!location.protocol.startsWith('http')){o.textContent='⚪ Offline needs the installed or online version';return}
+async function offlineState(){const o=$('offline');if(window.toolboxDesktop){o.textContent='🟢 Works offline · v'+VERSION;o.title='The desktop app keeps everything on this computer';return}if(!('serviceWorker' in navigator)||!location.protocol.startsWith('http')){o.textContent='⚪ Offline needs the installed or online version';return}
   try{const names=await caches.keys(),c=names.find(n=>n.startsWith('toolbox-'));const n=c?(await (await caches.open(c)).keys()).length:0;
-    o.textContent=navigator.serviceWorker.controller&&n>50?'🟢 Works offline':'🟡 Saving for offline…';o.title=n+' files saved on this device'}catch{o.textContent='⚪ Offline unavailable'}}
+    o.textContent=navigator.serviceWorker.controller&&n>50?'🟢 Works offline · v'+VERSION:'🟡 Saving for offline…';o.title=n+' files saved on this device ('+c+')'}catch{o.textContent='⚪ Offline unavailable'}}
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   navigator.serviceWorker.getRegistration().then(reg=>{if(!reg)return;
     const watch=w=>w&&w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)
@@ -87,11 +101,16 @@ if(menuLS.get('menu_seen','')!==VERSION){const box=document.createElement('div')
 (()=>{let pet;try{pet=JSON.parse(localStorage.getItem('app_petfocus_pet'))}catch{}if(!pet)return;
   const ST=[[0,'🥚'],[25,'🐣'],[75,'🐥'],[150,'🐤'],[300,'🐔'],[600,'🦢'],[1000,'🦚'],[2000,'🐉']],em=ST.filter(s=>pet.xp>=s[0]).pop()[1];
   const el=document.createElement('a');el.id='menuPet';el.href='apps/petfocus.html';el.title=`${pet.name} (${pet.xp} xp). Click to focus together.`;el.innerHTML=`<span class="body">${em}</span><span class="say"></span>`;document.body.append(el);
-  let x=40,dir=1,said=0;const say=t=>{el.querySelector('.say').textContent=t;said=Date.now()};
+  let x=40,dir=1,said=0;const say=t=>{el.querySelector('.say').textContent=t;said=Date.now()};window.petSay=say;
   const LINES={games:'Ooh, games!',tools:'Good idea, let’s get things done.',creative:'Make something pretty!',quick:'Quick one?',bigger:'Big project time!',wild:'Weird… I like it.'};
   document.addEventListener('pointerover',e=>{const a=e.target.closest('.app,.cat');if(!a||Date.now()-said<2500)return;const c=a.dataset.cat||ALL_APPS.find(x=>x.id===a.dataset.id)?.cat;if(LINES[c])say(LINES[c])});
   setInterval(()=>{x+=dir*1.2;if(x>innerWidth-60||x<10)dir*=-1;if(Math.random()<.004)dir*=-1;el.style.transform=`translateX(${x}px)`;el.querySelector('.body').style.transform=`scaleX(${-dir})`;if(Date.now()-said>3000)el.querySelector('.say').textContent=''},30)})();
 
+// the pet eats the bugs fixed in each update: a few XP per fix, once per version
+(()=>{let pet;try{pet=JSON.parse(localStorage.getItem('app_petfocus_pet'))}catch{}const fed=menuLS.get('menu_petFed','');if(!pet||fed===VERSION)return;menuLS.set('menu_petFed',VERSION);if(!fed)return;
+  const newer=TB_NEWS.slice(0,Math.max(1,TB_NEWS.findIndex(n=>n[0]===fed))),bugs=newer.reduce((n,[,t])=>{const m=t.match(/Fix(?:es|ed)?:([^.]*)/i);return n+(m?m[1].split(/,| and /).length:0)},0);if(!bugs)return;
+  pet.xp+=bugs*5;localStorage.setItem('app_petfocus_pet',JSON.stringify(pet));
+  setTimeout(()=>window.petSay&&petSay(`🐞 Yum! ${bugs} bug${bugs>1?'s':''} from the update. +${bugs*5} XP`),1500)})();
 // seasonal effects: snow in December–January, leaves in autumn, bats around Halloween, hearts in mid-February
 (()=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches||menuLS.get('menu_season',true)===false)return;const d=new Date(),m=d.getMonth(),day=d.getDate();
   const kind=m===11||m===0?'❄️':m===9&&day>=20?'🦇':m===8||m===9||m===10?'🍂':m===1&&day<=15?'💗':m===2&&day>=15||m===3?'🌸':null;if(!kind)return;
@@ -99,6 +118,10 @@ if(menuLS.get('menu_seen','')!==VERSION){const box=document.createElement('div')
   for(let i=0;i<14;i++){const s=document.createElement('span');s.textContent=kind;s.style.left=Math.random()*100+'vw';s.style.animationDuration=8+Math.random()*10+'s';s.style.animationDelay=-Math.random()*18+'s';s.style.fontSize=12+Math.random()*14+'px';c.append(s)}
   const off=document.createElement('button');off.className='g';off.textContent=kind+' Off';off.title='Turn off seasonal effects';off.onclick=()=>{menuLS.set('menu_season',false);c.remove();off.remove()};$('menuBar').append(off)})();
 
+// community apps added with "☆ Add to menu" join the Community category
+(()=>{let p=[];try{p=JSON.parse(localStorage.getItem('app_community_pinned')||'[]')}catch{}const c=CATEGORIES.find(c=>c.id==='community');if(!c||!p.length)return;
+  p.forEach(a=>{const href='apps/community.html#open='+a.id;c.apps.push(['c-'+a.id,a.name,a.emoji,a.desc||'Community app',href]);ALL_APPS.push({id:'c-'+a.id,name:a.name,emoji:a.emoji,desc:a.desc||'Community app',href,cat:'community'})});
+  $('cats').querySelectorAll('.cat[data-cat="community"] .n').forEach(n=>n.textContent=c.apps.length+' apps');route()})();
 addEventListener('hashchange',drawFavs);drawFavs();
 
 // family rules on the menu: hide what kiosk / school mode blocks, show the current profile
@@ -107,13 +130,22 @@ addEventListener('hashchange',drawFavs);drawFavs();
   const blocked=a=>!!FAM.why(a.id,a.cat)&&FAM.why(a.id,a.cat)!=='limit';
   function apply(){if(FAM.unlocked())return;document.querySelectorAll('.app[data-id],.chip[data-id]').forEach(el=>{const a=ALL_APPS.find(x=>x.id===el.dataset.id);if(a&&a.id!=='family'&&blocked(a))el.style.display='none'});
     document.querySelectorAll('.cat[data-cat]').forEach(el=>{const c=CATEGORIES.find(c=>c.id===el.dataset.cat);if(c&&c.apps.every(([id])=>id!=='family'&&blocked({id,cat:c.id})))el.style.display='none'});
-    if(r.limit>0&&FAM.usedToday()>=r.limit*60&&!$('famNote')){const n=document.createElement('div');n.id='famNote';n.className='box';n.innerHTML='⏰ <b>That’s all the ToolBox time for today.</b> See you tomorrow!';$('home').prepend(n)}
+    if(r.limit>0&&FAM.usedToday()>=(r.limit+FAM.bonus())*60&&!$('famNote')){const n=document.createElement('div');n.id='famNote';n.className='box';n.innerHTML='⏰ <b>That’s all the ToolBox time for today.</b> See you tomorrow!';$('home').prepend(n)}
     if(FAM.schoolNow(r)&&!$('famSchool')){const n=document.createElement('p');n.id='famSchool';n.className='muted';n.textContent='🏫 School mode is on until '+r.school.to+'.';$('home').prepend(n)}}
   new MutationObserver(apply).observe(document.querySelector('main'),{childList:true,subtree:true});apply()})();
 
+// who's using it? once per visit, when there are several profiles and the family settings ask for it
+(()=>{const names=FAM.list();if(!FAM.get('prof__ask',false)||names.length<2)return;try{if(sessionStorage.getItem('tb_asked'))return;sessionStorage.setItem('tb_asked','1')}catch{return}
+  const d=document.createElement('dialog');d.className='qrd';d.innerHTML=`<h3 style="margin-top:0">Who’s using The ToolBox?</h3><div class="row" style="justify-content:center">${names.map(n=>`<button class="${n===FAM.current()?'b':'g'}" data-p="${esc(n)}" style="font-size:18px;padding:12px 18px">👤 ${esc(n)}</button>`).join('')}</div>`;
+  d.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{const n=b.dataset.p;if(n===FAM.current())return d.close();const r=FAM.rules();
+    // a profile with limits needs the grown-up PIN to switch away from
+    if(r.pin&&(r.limit>0||r.kiosk&&r.kiosk.on||r.school&&r.school.on)&&!(await FAM.check(prompt('Grown-up PIN to switch profiles')||'')))return alert('Wrong PIN');
+    if(FAM.switchTo(n))location.reload()});document.body.append(d);d.addEventListener('close',()=>d.remove());d.showModal()})();
 // active quest: a chip on the menu that leads back to it
-(()=>{let st;try{st=JSON.parse(localStorage.getItem('app_quests_state'))}catch{}const n=st&&st.active?Object.keys(st.active).length:0;if(!n)return;
-  const a=document.createElement('a');a.className='chip';a.href='apps/quests.html';a.textContent='🗺️ '+n+' quest'+(n>1?'s':'')+' in progress';$('menuBar').append(a)})();
+(()=>{let st;try{st=JSON.parse(localStorage.getItem('app_quests_state'))}catch{}const ids=st&&st.active?Object.keys(st.active):[];if(!ids.length)return;
+  const q=st.active[ids[0]],done=(q.got||[]).filter(Boolean).length,total=q.total||3;
+  const a=document.createElement('a');a.className='chip';a.href='apps/quests.html';a.title=ids.length+' quest'+(ids.length>1?'s':'')+' in progress';
+  a.innerHTML=`${q.emoji||'🗺️'} ${esc(q.name||'Quest')} <span style="display:inline-block;width:50px;height:6px;border-radius:3px;background:var(--line);overflow:hidden"><span style="display:block;height:100%;width:${done/total*100}%;background:var(--accent)"></span></span> ${done}/${total}${ids.length>1?' +'+(ids.length-1):''}`;$('menuBar').append(a)})();
 // story mode (optional): categories unlock one by one as you try apps, with a little tale along the way
 (()=>{const on=menuLS.get('menu_story',false),btn=document.createElement('button');btn.className='g';btn.textContent=on?'📖 Story mode: on':'📖 Story mode';btn.title='Unlock the categories one by one';
   btn.onclick=()=>{menuLS.set('menu_story',!on);location.reload()};$('menuBar').append(btn);if(!on)return;
@@ -130,7 +162,24 @@ addEventListener('hashchange',drawFavs);drawFavs();
   let open=1;for(let i=0;i<CH.length-1;i++){if(used(CH[i][0])>=(NEED[CH[i][0]]||1))open=i+2;else break}
   const cur=CH[Math.min(open,CH.length)-1],need=NEED[cur[0]]||0,done=Math.min(need,used(cur[0]));
   const box=document.createElement('div');box.className='box';box.style.marginBottom='16px';
-  box.innerHTML=open>=CH.length?`<b>📖 The end… or the beginning?</b><p style="margin:4px 0 0">Every room is open. The ToolBox is yours.</p>`:`<b>📖 ${esc(cur[1])}</b><p style="margin:4px 0">${esc(cur[2])}</p>${need?`<div class="muted" style="font-size:13px">${done} of ${need} done</div>`:''}`;
+  box.innerHTML=open>=CH.length?`<b>📖 The end… or the beginning?</b><p style="margin:4px 0 0">Every room is open. The ToolBox is yours.</p>`+
+   // each update adds a chapter: the toolbox grows new gadgets overnight
+   `<p style="margin:8px 0 0"><b>📜 Chapter ${esc(TB_NEWS[0][0])}: Overnight</b><br>You wake to a soft clicking from the toolbox. New gadgets have appeared: ${esc(TB_NEWS[0][1].split(/,\s+|\.\s+/).slice(0,3).join(', ').toLowerCase())}… <a href="apps/changelog.html">read the whole chapter</a>.</p>`:`<b>📖 ${esc(cur[1])}</b><p style="margin:4px 0">${esc(cur[2])}</p>${need?`<div class="muted" style="font-size:13px">${done} of ${need} done</div>`:''}`;
   $('home').prepend(box);
   const lock=()=>document.querySelectorAll('.cat[data-cat]').forEach(el=>{const i=CH.findIndex(c=>c[0]===el.dataset.cat);if(i>=open&&!el.dataset.locked){el.dataset.locked=1;el.disabled=true;el.style.opacity=.45;el.style.cursor='not-allowed';el.querySelector('h2').textContent='🔒 '+el.querySelector('h2').textContent;el.title='Finish the chapter before to unlock this'}});
   lock();new MutationObserver(lock).observe($('cats'),{childList:true})})();
+
+// ↑↑↓↓←→←→BA opens the secret app
+{const K=['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];let at=0;
+  addEventListener('keydown',e=>{const k=e.key.toLowerCase();at=k===K[at]?at+1:k===K[0]?1:0;if(at===K.length){at=0;location.href='apps/secret.html'}})}
+// 🪟 mini window: a timer and today's habits that float above other windows (Document Picture-in-Picture), or a small pop-up
+{const b=document.createElement('button');b.className='g';b.textContent='🪟';b.title='Mini window: timer and habits, always on top';b.setAttribute('aria-label','Mini window');
+  b.onclick=async()=>{if(window.documentPictureInPicture){try{const w=await documentPictureInPicture.requestWindow({width:300,height:420});
+      w.document.body.style.margin='0';const f=w.document.createElement('iframe');f.src='apps/mini.html';f.title='Mini ToolBox';f.style.cssText='border:0;width:100vw;height:100vh';w.document.body.append(f);return}catch{}}
+    if(!window.open('apps/mini.html','tbmini','popup,width=300,height=440'))location.href='apps/mini.html'};$('menuBar').append(b)}
+// ? on the menu: keyboard shortcuts, the version, and a bug report to copy
+function menuSheet(){if($('kbSheet'))return $('kbSheet').remove();const d=document.createElement('div');d.id='kbSheet';d.setAttribute('role','dialog');
+  d.innerHTML=`<b>Menu shortcuts</b><p>/ search · Enter open the first result · Esc clear the search · ? this sheet</p><p class="muted">In every app: ? its own shortcuts · 🔗 share · 🛠️ remix. Version ${VERSION}.</p>${TB_PREFS.html()}<div class="row"><button class="g" id="bugCopy">🐞 Copy a bug report</button><button class="g" id="kbClose">Close</button></div>`;
+  d.querySelector('#kbClose').onclick=()=>d.remove();d.querySelector('#bugCopy').onclick=()=>copyBugReport(VERSION);TB_PREFS.wire(d);document.body.append(d)}
+addEventListener('keydown',e=>{if(e.key==='?'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();menuSheet()}if(e.key==='Escape'&&$('kbSheet'))$('kbSheet').remove()});
+{const b=document.createElement('button');b.className='g';b.textContent='?';b.title='Shortcuts, version and bug reports (?)';b.setAttribute('aria-label','Help');b.onclick=menuSheet;$('menuBar').append(b)}

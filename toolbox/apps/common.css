@@ -43,3 +43,9 @@ a{color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 @media (prefers-contrast:more){:root{--muted:var(--ink);--line:var(--ink)}}
 .topbar h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar>a,.topbar>button{flex-shrink:0}
+
+#pauseOv{position:fixed;inset:49px 0 0 0;z-index:90;border:0;background:rgba(0,0,0,.55);color:#fff;font:600 22px system-ui,sans-serif;cursor:pointer}
+/* big text (Settings in the ? sheet) */
+html.tb-big{zoom:1.2}
+/* left-handed: the jump / action button moves to the left of the arrows */
+html.tb-lefty .touchpad [data-key=" "],html.tb-lefty .touchpad [data-key="enter"],html.tb-lefty .touchpad [data-key="shift"],html.tb-lefty .touchpad [data-m="0,0"]{order:-1}

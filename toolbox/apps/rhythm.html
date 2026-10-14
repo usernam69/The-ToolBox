@@ -4,7 +4,7 @@
 <div class="row"><select id="song"><option value="0">Easy groove · 90 BPM</option><option value="1">Bouncy · 110 BPM</option><option value="2">Fast funk · 130 BPM</option></select><button class="b" id="go">Play</button><b id="score" style="margin-left:auto">0</b><span id="combo" class="muted"></span></div>
 <canvas id="c"></canvas>
 <p class="muted" style="font-size:13px">Notes fall in 4 lanes. Press <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (or tap the lanes) as they cross the line. The music is generated as you play, and the notes follow its beat.</p>
-</main><script src="common.js"></script><script>
+<div id="world" style="margin-top:14px"></div></main><script src="common.js"></script><script src="scores.js"></script><script>
 const c=$('c'),x=c.getContext('2d'),LANES=4,KEYS=['d','f','j','k'],COLS=['#ff5c8a','#ffd166','#06d6a0','#4cc9f0'];
 const SONGS=[{bpm:90,len:48,dens:.45},{bpm:110,len:64,dens:.6},{bpm:130,len:80,dens:.75}];
 let notes=[],t0=0,running=false,score=0,combo=0,maxCombo=0,flash=[0,0,0,0],judge='',judgeT=0,song;
@@ -36,4 +36,6 @@ addEventListener('keydown',e=>{const l=KEYS.indexOf(e.key.toLowerCase());if(l>=0
 c.addEventListener('pointerdown',e=>{const r=c.getBoundingClientRect();hit(Math.floor((e.clientX-r.left)/r.width*LANES))});
 $('go').onclick=()=>{$('go').blur();play()};
 (function idle(){const W=c.clientWidth,H=c.clientHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);x.fillStyle='#12101e';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 22px system-ui';x.textAlign='center';x.fillText('Press Play',W/2,H/2)})();
+// world top 10 for each song
+const wb=()=>worldBoard($('world'),'rhythm-'+$('song').value,{unit:' pts',title:'🌍 World top 10 ('+$('song').selectedOptions[0].text+')',getScore:()=>load('best'+$('song').value,0)});$('song').addEventListener('change',wb);wb();
 </script></body></html>

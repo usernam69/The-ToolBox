@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ToolBox speedrun</title><link rel="stylesheet" href="common.css">
+<style>#clock{font:800 64px/1 system-ui,sans-serif;text-align:center;margin:18px 0;font-variant-numeric:tabular-nums}.seen{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.seen span{font-size:28px}</style></head>
+<body data-app="speedrun" data-cat="games" data-title="ToolBox speedrun"><main>
+<p class="sub">How fast can you open 10 different apps? Press Start, then hop between apps from the menu or the ToolBox OS. Each new app counts the moment it opens. The clock keeps running while you go.</p>
+<div id="clock">0:00.0</div><div class="seen" id="seen"></div>
+<div class="row" style="justify-content:center;margin-top:14px"><button class="b" id="go">Start</button><button class="x" id="stop" hidden>Give up</button></div>
+<p class="muted" style="text-align:center" id="best"></p><div id="world"></div>
+</main><script src="common.js"></script><script src="registry.js"></script><script src="scores.js"></script><script>
+// the run lives in localStorage (common.js ticks off apps on every page), so it carries across pages
+const fmt=ms=>{const s=ms/1000;return Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0')};
+const run=()=>load('run',null),emoji=id=>(ALL_APPS.find(a=>a.id===id)||{}).emoji||'⭐';
+function draw(){const r=run(),b=load('best',0);$('best').textContent=b?'Your best: '+fmt(b):'';$('go').textContent=r&&!r.end?'Go to the menu →':'Start';$('stop').hidden=!(r&&!r.end);
+  $('seen').innerHTML=r?r.seen.map(id=>`<span title="${esc(id)}">${emoji(id)}</span>`).join('')+'<span style="opacity:.3">⬜</span>'.repeat(Math.max(0,10-r.seen.length)):'';
+  $('clock').textContent=r?fmt((r.end||Date.now())-r.start):'0:00.0'}
+$('go').onclick=()=>{const r=run();if(r&&!r.end){location.href='../index.html';return}save('run',{start:Date.now(),seen:[]});tone(660,.15,'square',.08);location.href='../index.html'};
+$('stop').onclick=()=>{save('run',null);draw()};
+setInterval(draw,100);draw();
+worldBoard($('world'),'speedrun',{lower:true,unit:'s',title:'🌍 World top 10 (fastest 10 apps)',getScore:()=>load('best',0)/1000});
+</script></body></html>

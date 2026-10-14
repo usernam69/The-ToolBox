@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Habit garden</title><link rel="stylesheet" href="common.css">
+<style>.bed{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:18px;border-radius:18px;background:linear-gradient(#bfe7ff,#e8f7ff 55%,#8d6e63 55%,#6d4c41)}
+.pot{background:rgba(255,255,255,.75);border-radius:14px;padding:10px;text-align:center;cursor:pointer;border:2px solid transparent;font:inherit;color:#222}.pot:hover{border-color:var(--accent)}
+.pot .p{font-size:64px;line-height:1.1;transition:transform .3s}.pot.done .p{transform:scale(1.08)}.pot b{display:block}.pot small{color:#555}
+@keyframes drop{from{transform:translateY(-30px);opacity:1}to{transform:translateY(20px);opacity:0}}.drop{position:absolute;animation:drop .7s ease-in forwards;font-size:22px}</style></head>
+<body data-app="garden" data-cat="quick" data-title="Habit garden"><main>
+<p class="sub">Each habit is a plant. Tap it to water it (that ticks the habit for today). Keep the streak going and it grows: 🌱 → 🌿 → 🪴 → 🌷 → 🌻 at 21 days. Skip two days and it wilts.</p>
+<div class="bed" id="bed"></div>
+<p class="muted" style="margin-top:10px">Add or rename habits in <a href="../tools.html#habits">Habit streaks</a>.</p>
+</main><script src="common.js"></script><script>
+// the plants read and write the same habits as the Toolbox's Habit streaks
+const STAGES=[[0,'🌰','a seed'],[1,'🌱','a sprout'],[3,'🌿','growing'],[7,'🪴','leafy'],[14,'🌷','budding'],[21,'🌻','in full bloom']];
+const streak=h=>{let n=0;const d=new Date();if(!(h.days||{})[isoDay(d)])d.setDate(d.getDate()-1);for(;(h.days||{})[isoDay(d)];d.setDate(d.getDate()-1))n++;return n};
+const wilted=h=>{const d=new Date(),y=new Date(Date.now()-DAY),y2=new Date(Date.now()-2*DAY),k=h.days||{};return Object.keys(k).length&&!k[isoDay(d)]&&!k[isoDay(y)]&&!k[isoDay(y2)]};
+function draw(){const hs=loadTb('habits',[]),today=isoDay();
+  $('bed').innerHTML=hs.length?hs.map((h,i)=>{const s=streak(h),st=STAGES.filter(x=>s>=x[0]).pop(),w=wilted(h),done=!!(h.days||{})[today];
+    return`<button class="pot ${done?'done':''}" data-i="${i}" aria-label="${esc(h.name)}: ${s} day streak${done?', watered today':''}"><div class="p">${w?'🥀':st[1]}</div><b>${esc(h.name)}</b><small>${w?'wilted, water it to start again':s?`${s} day${s>1?'s':''} · ${st[2]}`:'plant it today'}${done?' · 💧':''}</small></button>`}).join('')
+    :'<p style="grid-column:1/-1;text-align:center;font-size:18px">🌰 No plants yet. <a href="../tools.html#habits">Add a habit</a> to plant your first seed.</p>';
+  $('bed').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const hs=loadTb('habits',[]),h=hs[b.dataset.i];if(!h)return;h.days=h.days||{};
+    if(h.days[today]){delete h.days[today];saveTb('habits',hs);return draw()}h.days[today]=true;saveTb('habits',hs);tone(660,.12,'sine',.08);tone(880,.15,'sine',.06,.1);
+    const r=b.getBoundingClientRect(),d=document.createElement('span');d.className='drop';d.textContent='💧';d.style.left=r.left+r.width/2-10+scrollX+'px';d.style.top=r.top+20+scrollY+'px';document.body.append(d);setTimeout(()=>d.remove(),800);
+    const s=streak(h);if(STAGES.some(x=>x[0]===s&&s>0))setTimeout(()=>toast(`${STAGES.find(x=>x[0]===s)[1]} ${h.name} is ${STAGES.find(x=>x[0]===s)[2]} now!`),300);draw()})}
+addEventListener('storage',e=>{if(e.key==='tb_habits')draw()});addEventListener('pageshow',draw);draw();
+</script></body></html>

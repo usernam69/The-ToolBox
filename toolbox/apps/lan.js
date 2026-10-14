@@ -73,5 +73,10 @@ function wireOnline(start){$('olNew').onclick=()=>{$('olCode').value=ONLINE.newC
   $('olGo').onclick=()=>{const n=$('olName').value.trim(),c=$('olCode').value.trim().toLowerCase();if(!n)return toast('Type your name.');
     if(c.length<6)return toast('Use a room code with at least 6 characters, or press New code.');saveTb('lanName',n);LAN.mode='online';
     const link=location.href.split(/[?#]/)[0]+'?room='+encodeURIComponent(c);try{history.replaceState(null,'','?room='+encodeURIComponent(c))}catch{}
-    const inf=document.createElement('p');inf.className='muted';inf.style.fontSize='13px';inf.innerHTML='🌐 Online room <b>'+esc(c)+'</b> · <a href="#" id="olCopy">copy invite link</a>';
-    document.querySelector('main').prepend(inf);inf.querySelector('#olCopy').onclick=e=>{e.preventDefault();copy(link)};start(c,n)}}
+    const inf=document.createElement('p');inf.className='muted';inf.style.fontSize='13px';inf.innerHTML='🌐 Online room <b>'+esc(c)+'</b> · <a href="#" id="olCopy">copy invite link</a> · <a href="#" id="olQr">📱 big QR to join</a>';
+    document.querySelector('main').prepend(inf);inf.querySelector('#olCopy').onclick=e=>{e.preventDefault();copy(link)};inf.querySelector('#olQr').onclick=e=>{e.preventDefault();roomQr(link,c)};start(c,n)}}
+// a big QR code and room code, for a TV or a shared screen: everyone scans it with their phone to join
+function roomQr(link,code){const s=document.createElement('script');s.src=new URL('vendor/qrcode.min.js',document.querySelector('script[src$="lan.js"]').src).href;s.onload=()=>{
+  const q=qrcode(0,'M');q.addData(link);q.make();const d=document.createElement('dialog');d.style.cssText='border:0;border-radius:20px;background:#fff;color:#111;text-align:center;padding:24px;max-width:calc(100vw - 32px)';
+  d.innerHTML=`<div style="font:700 clamp(20px,4vw,34px) system-ui">Scan to join</div>${q.createSvgTag({cellSize:8,margin:2,scalable:true}).replace('<svg','<svg style="width:min(70vh,80vw);height:min(70vh,80vw)"')}<div style="font:800 clamp(22px,5vw,44px) system-ui;letter-spacing:2px">${esc(code)}</div><button class="g" style="margin-top:10px">Close</button>`;
+  document.body.append(d);d.querySelector('button').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());d.showModal()};document.head.append(s)}

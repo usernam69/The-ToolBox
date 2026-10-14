@@ -1,6 +1,6 @@
 # The ToolBox
 
-A main menu with seven categories: Quick wins, Games, Useful tools, Creative & art, Bigger projects, Wild ideas and Community. Inside are 64 everyday tools plus more than 60 apps and games. Your data stays on your own device and there are no accounts. A few online extras (online rooms, world high scores, the radio) send only what they say they send.
+A main menu with seven categories: Quick wins, Games, Useful tools, Creative & art, Bigger projects, Wild ideas and Community. Inside are 65 everyday tools plus about 70 apps and games. Your data stays on your own device and there are no accounts. A few online extras (online rooms, world high scores, the radio) send only what they say they send.
 
 ## Use it
 
@@ -23,7 +23,7 @@ A main menu with seven categories: Quick wins, Games, Useful tools, Creative & a
 - **Make & share:** Parkour level editor, escape room builder, Voxel world links, classroom packs (Wordle words + flashcards in one link), AI app maker (needs your own Claude API key), community apps that run in a locked box.
 - **Fun extras:** quests across apps, achievements, ToolBox OS (a desktop with windows), ToolBox Wrapped, your art in the Infinite museum, a whole-ToolBox time capsule, to-dos that become roguelike gear.
 
-## The 64 tools (Useful tools)
+## The 65 tools (Useful tools)
 
 | Group | Tools |
 |---|---|
@@ -35,7 +35,7 @@ A main menu with seven categories: Quick wins, Games, Useful tools, Creative & a
 | Text & convert | Unit converter, Recipe scaler, Password generator, QR codes, Word counter, Text cleaner, Color tool, Time zones, Random picker, Calculator, Date calculator, Markdown preview, JSON formatter, Image resizer |
 | Media & dev | Regex tester, Encoder/decoder, Placeholder data, Colors from image, PDF merger, Audio trimmer, GIF maker |
 | Saved | Link saver (imports browser bookmarks), Clipboard history |
-| System | Backup & sync (file, folder such as Google Drive, or GitHub Gist; optional encryption), Share with a friend, Achievements, Plugins, Settings, Help |
+| System | Backup & sync (file, folder such as Google Drive, or GitHub Gist; optional encryption; CSV export), Trash, Share with a friend, Achievements, Plugins, Settings, Help |
 
 Shortcuts: **Ctrl+K** opens the command bar (try `todo buy milk tomorrow`, `timer 10m tea`, `spent 12 lunch food`, or 🎤 to speak), **/** searches, **1–9** switch tools, **[ ]** switch groups, **F** starts focus mode.
 

@@ -9,7 +9,7 @@
 <h3>Melody</h3><div class="seq" id="mel"></div>
 <p class="muted" style="font-size:13px">Click squares to switch them on or off. Changes play right away. Copy pattern puts the beat in your clipboard as text you can paste into the Presets box to load it.</p>
 <div class="box" style="margin-top:14px"><b>📻 ToolBox radio</b> <span class="muted" style="font-size:13px">(online)</span><p class="sub" style="margin:6px 0">Send your loop to the radio and listen to loops other people made. Each person has one slot; sending again replaces yours. Only the pattern and the name you type are shared.</p>
- <div class="row"><input id="rName" maxlength="20" placeholder="Name for your loop"><button class="g" id="rSend">📤 Send my loop</button><button class="b" id="rListen">📻 Listen</button><span id="rNow" class="muted"></span></div></div>
+ <div class="row"><input id="rName" maxlength="20" placeholder="Name for your loop"><button class="g" id="rSend">📤 Send my loop</button><button class="b" id="rListen">📻 Listen</button><select id="rReq" aria-label="Request a loop" hidden><option value="">🙋 Request a loop…</option></select><span id="rNow" class="muted"></span></div></div>
 </main><script src="common.js"></script><script>
 const DR=['Kick','Snare','Hat','Clap'],CH={'Cmaj7':[48,52,55,59],'Am7':[45,48,52,55],'Dm7':[50,53,57,60],'G7':[43,47,50,53],'Fmaj7':[41,45,48,52],'Em7':[40,43,47,50],'Bbmaj7':[46,50,53,57],'Ebmaj7':[39,43,46,50],'Abmaj7':[44,48,51,55]},SCALE=[72,74,76,79,81,84];
 const PRE={Chill:{d:['1000001010000000','0000100000001000','1010101010101010','0000000000000000'],c:['Cmaj7','Am7','Dm7','G7'],m:Array(6).fill(0).map((_,r)=>'0000000000000000')},
@@ -48,21 +48,25 @@ let recorder=null;$('rec').onclick=()=>{if(recorder){recorder.stop();return}cons
 drawAll();
 // ToolBox radio: every loop is a retained message on a free public relay, one per person
 const RADIO={on:false,loops:new Map(),order:[],cur:-1,cycles:0,client:null,mine:null,
-  TOPIC:'the-toolbox/v1/radio/',
+  TOPIC:'the-toolbox/v1/radio/',REQ:'the-toolbox/v1/radio-requests',next:null,
+  // requests are plain (not kept) messages: whoever is listening right now plays that loop next
+  fillReq(){const el=$('rReq'),v=el.value;el.innerHTML='<option value="">🙋 Request a loop…</option>'+[...RADIO.loops].map(([id,p])=>`<option value="${esc(id)}">${esc(p.name)}</option>`).join('');el.value=v;el.hidden=!RADIO.on||!RADIO.loops.size},
   me(){let id=loadTb('radioId','');if(!id){id=uid();saveTb('radioId',id)}return id},
   valid(p){const bin=(a,n)=>Array.isArray(a)&&a.length===n&&a.every(r=>typeof r==='string'&&/^[01]{16}$/.test(r));
     return p&&bin(p.d,4)&&bin(p.m,6)&&Array.isArray(p.c)&&p.c.length===4&&p.c.every(c=>CH[c])&&+p.bpm>=50&&+p.bpm<=150&&typeof p.name==='string'},
   async connect(){if(RADIO.client)return RADIO.client;if(!window.mqtt)await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='vendor/mqtt.min.js';sc.onload=ok;sc.onerror=no;document.head.append(sc)});
-    return new Promise((ok,no)=>{const c=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'tbr_'+uid(),connectTimeout:8000});c.on('connect',()=>{RADIO.client=c;c.subscribe(RADIO.TOPIC+'+');ok(c)});c.on('error',no);
-      c.on('message',(t,buf)=>{const id=t.split('/').pop();if(!buf.length){RADIO.loops.delete(id);RADIO.status();return}try{const p=JSON.parse(new TextDecoder().decode(buf));if(RADIO.valid(p)){p.name=p.name.replace(/[^\p{L}\p{N} _.!'-]/gu,'').slice(0,20)||'Untitled';RADIO.loops.set(id,p);if(!RADIO.order.includes(id))RADIO.order.push(id)}else{RADIO.loops.delete(id)}}catch{}RADIO.status()})})},
-  status(){$('rNow').textContent=RADIO.on?(RADIO.cur>=0&&RADIO.order[RADIO.cur]?`Now playing “${RADIO.loops.get(RADIO.order[RADIO.cur])?.name}” · ${RADIO.loops.size} loops on air`:`Tuning in… ${RADIO.loops.size} loops on air`):''},
+    return new Promise((ok,no)=>{const c=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'tbr_'+uid(),connectTimeout:8000});c.on('connect',()=>{RADIO.client=c;c.subscribe(RADIO.TOPIC+'+');c.subscribe(RADIO.REQ);ok(c)});c.on('error',no);
+      c.on('message',(t,buf)=>{if(t===RADIO.REQ){try{const r=JSON.parse(new TextDecoder().decode(buf));if(RADIO.loops.has(r.id)){RADIO.next=r.id;if(RADIO.on)toast('🙋 A listener requested “'+RADIO.loops.get(r.id).name+'”. It plays next.')}}catch{}return}
+        const id=t.split('/').pop();if(!buf.length){RADIO.loops.delete(id);RADIO.status();return}try{const p=JSON.parse(new TextDecoder().decode(buf));if(RADIO.valid(p)){p.name=p.name.replace(/[^\p{L}\p{N} _.!'-]/gu,'').slice(0,20)||'Untitled';RADIO.loops.set(id,p);if(!RADIO.order.includes(id))RADIO.order.push(id)}else{RADIO.loops.delete(id)}}catch{}RADIO.status()})})},
+  status(){RADIO.fillReq();$('rNow').textContent=RADIO.on?(RADIO.cur>=0&&RADIO.order[RADIO.cur]?`Now playing “${RADIO.loops.get(RADIO.order[RADIO.cur])?.name}” · ${RADIO.loops.size} loops on air`:`Tuning in… ${RADIO.loops.size} loops on air`):''},
   tick(){if(!RADIO.loops.size)return;if(RADIO.cur>=0&&++RADIO.cycles<2)return;RADIO.cycles=0;const ids=RADIO.order.filter(i=>RADIO.loops.has(i));if(!ids.length)return;
-    RADIO.cur=(RADIO.cur+1)%ids.length;const p=JSON.parse(JSON.stringify(RADIO.loops.get(ids[RADIO.cur])));RADIO.order=ids;$('bpm').value=p.bpm;$('bpmv').textContent=p.bpm;P={d:p.d,m:p.m,c:p.c};drawAll();RADIO.status()}};
+    RADIO.cur=RADIO.next&&ids.includes(RADIO.next)?ids.indexOf(RADIO.next):(RADIO.cur+1)%ids.length;RADIO.next=null;const p=JSON.parse(JSON.stringify(RADIO.loops.get(ids[RADIO.cur])));RADIO.order=ids;$('bpm').value=p.bpm;$('bpmv').textContent=p.bpm;P={d:p.d,m:p.m,c:p.c};drawAll();RADIO.status()}};
 $('rListen').onclick=async()=>{if(RADIO.on){RADIO.on=false;if(playing)toggle();if(RADIO.mine){P=RADIO.mine;drawAll()}$('rListen').textContent='📻 Listen';RADIO.status();return}
   try{$('rNow').textContent='Tuning in…';await RADIO.connect();RADIO.mine=JSON.parse(JSON.stringify(P));RADIO.on=true;RADIO.cur=-1;RADIO.cycles=0;$('rListen').textContent='■ Stop radio';
     setTimeout(()=>{if(!RADIO.loops.size){toast('The radio is quiet. Be the first to send a loop!')}if(!playing)toggle()},1500)}catch{toast('Couldn’t reach the radio (offline?).')}};
 $('rSend').onclick=async()=>{const name=$('rName').value.trim();if(!name)return toast('Give your loop a name.');const p={...(RADIO.on&&RADIO.mine?RADIO.mine:P),bpm:+$('bpm').value,name};
   if(!RADIO.valid(p))return toast('That loop can’t be sent.');try{const c=await RADIO.connect();c.publish(RADIO.TOPIC+RADIO.me(),JSON.stringify(p),{retain:true,qos:1});toast('📻 Your loop is on the radio!')}catch{toast('Couldn’t reach the radio (offline?).')}};
+$('rReq').onchange=async()=>{const id=$('rReq').value;if(!id)return;$('rReq').value='';try{const c=await RADIO.connect();c.publish(RADIO.REQ,JSON.stringify({id}),{qos:0});RADIO.next=id;toast('🙋 Requested! It plays next for everyone listening.')}catch{toast('Couldn’t reach the radio.')}};
 // while the radio plays, don't save other people's loops over yours
 const save0=save;save=(k,v)=>{if(k==='p'&&RADIO.on)return;save0(k,v)};
 </script></body></html>

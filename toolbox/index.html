@@ -56,7 +56,8 @@ footer{padding-bottom:60px!important;max-width:1000px;margin:auto;padding:16px;c
  <div id="catView" hidden><div class="crumb"><button class="back" id="backBtn">← All categories</button><h2 id="catTitle"></h2></div><p class="sub" id="catBlurb"></p><div class="apps" id="catApps"></div></div>
  <div id="searchView" hidden><h2 style="margin-bottom:10px">Search results</h2><div class="apps" id="searchApps"></div></div>
 </main>
-<footer>Everything is saved on this device only. <span id="count"></span></footer>
+<footer>Everything is saved on this device only. <span id="count"></span> · <a href="about.html">About &amp; downloads</a></footer>
+<script src="apps/errors.js"></script>
 <script src="apps/registry.js"></script>
 <script src="apps/i18n.js"></script>
 <script>I18N.applyRegistry()</script>
@@ -69,10 +70,10 @@ const card=a=>`<a class="app" href="${esc(a.href)}" data-id="${a.id}"><span clas
 function remember(e){const a=e.target.closest('.app,.chip');if(!a||!a.dataset.id)return;
   try{const r=JSON.parse(localStorage.getItem('menu_recent')||'[]');localStorage.setItem('menu_recent',JSON.stringify([a.dataset.id,...r.filter(x=>x!==a.dataset.id)].slice(0,8)))}catch{}}
 document.addEventListener('click',remember);
-$('cats').innerHTML=CATEGORIES.map(c=>`<button class="cat" data-cat="${c.id}"><div class="e">${c.emoji}</div><h2>${esc(c.name)}</h2><div class="n">${c.apps.length} ${c.id==='tools'?'shortcuts (64 tools inside)':'apps'}</div><p class="muted" style="margin:6px 0 0">${esc(c.blurb)}</p><div class="peek">${c.apps.slice(0,7).map(a=>a[2]).join('')}</div></button>`).join('');
+$('cats').innerHTML=CATEGORIES.map(c=>`<button class="cat" data-cat="${c.id}"><div class="e">${c.emoji}</div><h2>${esc(c.name)}</h2><div class="n">${c.apps.length} ${c.id==='tools'?'shortcuts (65 tools inside)':'apps'}</div><p class="muted" style="margin:6px 0 0">${esc(c.blurb)}</p><div class="peek">${c.apps.slice(0,7).map(a=>a[2]).join('')}</div></button>`).join('');
 $('cats').querySelectorAll('.cat').forEach(b=>b.onclick=()=>{location.hash=b.dataset.cat});
 $('backBtn').onclick=()=>{location.hash=''};
-$('count').textContent=`${ALL_APPS.filter(a=>a.cat!=='tools').length} apps and games + 64 tools.`;
+$('count').textContent=`${ALL_APPS.filter(a=>a.cat!=='tools').length} apps and games + 65 tools.`;
 function drawRecent(){let r=[];try{r=JSON.parse(localStorage.getItem('menu_recent')||'[]')}catch{}
   const list=r.map(id=>ALL_APPS.find(a=>a.id===id)).filter(Boolean).slice(0,6);
   $('recent').innerHTML=list.length&&!location.hash?`<div class="muted" style="font-size:13px">Recently opened</div><div class="row">${list.map(a=>`<a class="chip" href="${esc(a.href)}" data-id="${a.id}">${a.emoji} ${esc(a.name)}</a>`).join('')}</div>`:''}

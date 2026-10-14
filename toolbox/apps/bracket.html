@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tournament bracket</title><link rel="stylesheet" href="common.css">
+<style>#br{display:flex;gap:18px;overflow-x:auto;padding:8px 0 14px}.round{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:160px}.round h4{margin:0;text-align:center;color:var(--muted);font-size:13px}
+.match{border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}.match button{display:block;width:100%;text-align:left;font:inherit;border:0;background:none;color:var(--ink);padding:6px 10px;cursor:pointer}
+.match button+button{border-top:1px solid var(--line)}.match button.win{background:var(--accent);color:var(--accent-ink);font-weight:700}.match button.lose{opacity:.45;text-decoration:line-through}.match button:disabled{cursor:default}
+#champ{font-size:28px;text-align:center;margin:10px 0}</style></head>
+<body data-app="bracket" data-cat="bigger" data-title="Tournament bracket"><main>
+<p class="sub">For game nights and Wi-Fi tournaments: type the players, make the bracket, and tap the winner of each match. Byes are added for you.</p>
+<div class="row"><textarea id="names" class="grow" rows="4" placeholder="One player or team per line"></textarea></div>
+<div class="row"><button class="b" id="make">Make bracket</button><label><input type="checkbox" id="shuffle" checked> Shuffle</label><button class="g" id="reset" hidden>Start over</button><button class="g" id="share" hidden>🔗 Share results</button></div>
+<div id="champ"></div><div id="br"></div>
+</main><script src="common.js"></script><script>
+// rounds[r][m] = [a, b, winner]; a player called null is a bye
+let B=load('bracket',null);$('names').value=load('names','');$('names').oninput=()=>save('names',$('names').value);
+const NAMES=['Round 1','Round 2','Round 3','Round 4','Round 5','Round 6'];
+function make(){let p=$('names').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,64);if(p.length<2)return toast('Add at least two players.');
+  if($('shuffle').checked)p=p.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+  let size=2;while(size<p.length)size*=2;const seeds=[...p,...Array(size-p.length).fill(null)];
+  // spread the byes out: pair the top half with the bottom half
+  const first=[];for(let i=0;i<size/2;i++)first.push([seeds[i],seeds[size-1-i],null]);
+  B=[first];for(let n=size/4;n>=1;n/=2)B.push([...Array(n)].map(()=>[null,null,null]));settle();save('bracket',B);draw()}
+// winners move up a round; in round 1 a bye means the other player goes through; a winner who is no longer in the match is cleared
+function settle(){B.forEach((round,r)=>round.forEach((m,i)=>{if(r>0){m[0]=B[r-1][2*i][2];m[1]=B[r-1][2*i+1][2]}
+  if(r===0&&(m[0]===null)!==(m[1]===null))m[2]=m[0]??m[1];else if(m[2]!==null&&m[2]!==m[0]&&m[2]!==m[1])m[2]=null}))}
+function choose(r,i,k){const m=B[r][i],p=m[k];if(p===null||m[0]===null||m[1]===null)return;
+  m[2]=m[2]===p?null:p;settle();save('bracket',B);draw();if(m[2])tone(660,.1,'triangle',.08)}
+function draw(){$('reset').hidden=$('share').hidden=!B;if(!B){$('br').innerHTML='';$('champ').textContent='';return}const fin=B[B.length-1][0][2];
+  $('champ').textContent=fin?'🏆 '+fin+' wins!':'';
+  $('br').innerHTML=B.map((round,r)=>`<div class="round"><h4>${r===B.length-1?'Final':r===B.length-2&&B.length>2?'Semi-finals':NAMES[r]}</h4>${round.map((m,i)=>`<div class="match">${[0,1].map(k=>{const p=m[k];
+    return`<button data-r="${r}" data-i="${i}" data-k="${k}" class="${m[2]!==null&&p!==null?(m[2]===p?'win':'lose'):''}" ${p===null?'disabled':''}>${p===null?(r===0?'<i class="muted">bye</i>':'<span class="muted">…</span>'):esc(p)}</button>`}).join('')}</div>`).join('')}</div>`).join('');
+  $('br').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>choose(+b.dataset.r,+b.dataset.i,+b.dataset.k));
+  if(fin&&!draw.cheered){draw.cheered=1;[523,659,784,1047].forEach((f,k)=>tone(f,.18,'triangle',.1,k*.1))}if(!fin)draw.cheered=0}
+$('make').onclick=()=>{if(B&&!confirm('Start a new bracket?'))return;make()};$('reset').onclick=()=>{if(!confirm('Clear the bracket?'))return;B=null;save('bracket',null);draw()};
+$('share').onclick=()=>copy(B.map((round,r)=>(r===B.length-1?'Final':NAMES[r])+':\n'+round.map(m=>`  ${m[0]??'bye'} vs ${m[1]??'bye'}${m[2]?' → '+m[2]:''}`).join('\n')).join('\n'));
+draw();
+</script></body></html>

@@ -18,7 +18,11 @@ function start(){sad=false;end=Date.now()+mins*60e3;$('go').hidden=true;$('giveu
 function stop(msg){clearInterval(timer);timer=null;$('go').hidden=false;$('giveup').hidden=true;$('pet').classList.remove('bob');$('time').textContent=fmt(mins*60e3);$('msg').textContent=msg;draw()}
 function tick(){const left=end-Date.now();$('time').textContent=fmt(left);document.title=fmt(left)+' · Focus pet';
   if(left<=0){const before=p.xp;p.xp+=mins;p.sessions++;p.mins+=mins;save('pet',p);[523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.12,i*.15));
-    const grew=STAGES.findIndex(s=>s[0]>before)!==STAGES.findIndex(s=>s[0]>p.xp);stop(grew?'🎉 Your pet grew!':`+${mins} XP. Great focus!`);document.title='Focus pet'}}
+    const grew=STAGES.findIndex(s=>s[0]>before)!==STAGES.findIndex(s=>s[0]>p.xp);stop((grew?'🎉 Your pet grew!':`+${mins} XP. Great focus!`)+' Take a 5-minute break, I’ll call you back.');document.title='Focus pet';breakTimer()}}
+// break reminder: a sound and (if reminders are on) a notification when the 5-minute break is over
+function breakTimer(){clearTimeout(window.brk);window.brk=setTimeout(async()=>{[784,659,784].forEach((f,i)=>tone(f,.2,'triangle',.12,i*.2));$('msg').textContent='☕ Break is over. Ready for another round?';
+  let c={};try{c=JSON.parse(localStorage.getItem('tb_reminders'))||{}}catch{}if(!c.on||c.timers===false||!('Notification' in window)||Notification.permission!=='granted')return;
+  const o={body:'Break is over. Ready for another focus session?',icon:'../icon-192.png',tag:'focus'};try{await (await navigator.serviceWorker.getRegistration()).showNotification('🐣 Back to focus',o)}catch{try{new Notification('🐣 Back to focus',o)}catch{}}},5*60e3)}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&timer){sad=true;stop('😢 You left the tab, so the session ended. Your pet missed you.');document.title='Focus pet'}});
 $('go').onclick=start;$('giveup').onclick=()=>{sad=true;stop('Session given up. No XP this time.')};
 document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{if(timer)return;mins=+b.dataset.m;$('time').textContent=fmt(mins*60e3)});

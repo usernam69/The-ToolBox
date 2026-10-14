@@ -99,7 +99,7 @@ let expenses=load('expenses',[]);const saveExpenses=()=>{save('expenses',expense
 function drawExpenses(){if(!$('xMonth'))return;const mon=$('xMonth').value,list=expenses.filter(x=>x.d.startsWith(mon)).sort((a,b)=>b.d.localeCompare(a.d));
   const by={};list.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amt);const total=list.reduce((s,x)=>s+x.amt,0),max=Math.max(1,...Object.values(by));
   $('xTotal').textContent=`Total ${money(total)}`;
-  $('xChart').innerHTML=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<tr><td style="width:110px">${esc(c)}</td><td><div class="bar" style="width:${v/max*100}%"></div></td><td style="width:90px;text-align:right">${money(v)}</td></tr>`).join('')||'<tr><td class="muted">No spending this month.</td></tr>';
+  $('xChart').innerHTML=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<tr><td style="width:110px">${esc(c)}${load('budgetLimits',{})[c]&&v>load('budgetLimits',{})[c]?' ⚠️':''}</td><td><div class="bar" style="width:${v/max*100}%"></div></td><td style="width:90px;text-align:right">${money(v)}</td></tr>`).join('')||'<tr><td class="muted">No spending this month.</td></tr>';
   // last 6 months
   const months=[...Array(6)].map((_,i)=>{const d=parseIso(mon+'-01');d.setMonth(d.getMonth()-5+i);return d.getFullYear()+'-'+pad2(d.getMonth()+1)});
   const mt=months.map(m=>expenses.filter(x=>x.d.startsWith(m)).reduce((s,x)=>s+x.amt,0)),mm=Math.max(1,...mt);
@@ -117,8 +117,9 @@ tool({id:'expenses',name:'Expense tracker',group:'Money',html:`
  <input id="xNote" class="grow" placeholder="Note (optional)"><input id="xDate" type="date"><button class="b" id="xAdd">Add</button></div>
 <div class="row"><input id="xMonth" type="month"><b id="xTotal" class="grow"></b><button class="g" id="xCsv">Export month (CSV)</button><button class="g" id="xCsvAll">Export all (CSV)</button></div>
 <div class="grid2"><div><table id="xChart"></table></div><div><div class="muted" style="font-size:13px">Last 6 months</div><div id="xMonths" style="display:flex;gap:4px"></div></div></div>
+<details class="box" style="margin:8px 0"><summary><b>Monthly limits</b> <span class="muted" style="font-size:13px">(get a reminder when a category goes over)</span></summary><div class="row" id="xLimits" style="margin-top:8px"></div></details>
 <ul class="clean" id="xList"></ul>`,
-init(){$('xCats').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');$('xDate').value=isoDay();$('xMonth').value=isoDay().slice(0,7);
+init(){$('xCats').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');const lim=load('budgetLimits',{});$('xLimits').innerHTML=CATS.map(c=>`<label style="font-size:13px">${c} <input type="number" min="0" step="1" data-cat="${c}" value="${lim[c]||''}" style="width:80px"></label>`).join('');$('xLimits').oninput=()=>{const o={};$('xLimits').querySelectorAll('input').forEach(i=>{if(+i.value>0)o[i.dataset.cat]=+i.value});save('budgetLimits',o);drawExpenses()};$('xDate').value=isoDay();$('xMonth').value=isoDay().slice(0,7);
   $('xAdd').onclick=()=>{if(addExpense(+$('xAmt').value,$('xCat').value.trim(),$('xNote').value.trim(),$('xDate').value||isoDay())){$('xAmt').value=$('xNote').value=''}};
   $('xAmt').onkeydown=$('xNote').onkeydown=e=>e.key==='Enter'&&$('xAdd').click();$('xMonth').oninput=drawExpenses;
   const csv=list=>['Date,Category,Note,Amount',...list.sort((a,b)=>a.d.localeCompare(b.d)).map(x=>[x.d,x.cat,x.note,x.amt.toFixed(2)].map(v=>/[",\n]/.test(v)?'"'+String(v).replace(/"/g,'""')+'"':v).join(','))].join('\r\n');
@@ -137,11 +138,16 @@ function nextDue(b){const now=new Date(),t=parseIso(isoDay());let y=t.getFullYea
   const mk=(y,m)=>new Date(y,m,Math.min(b.day,new Date(y,m+1,0).getDate()));let d=mk(y,m);if(d<t)d=mk(y,m+1);return d}
 function whenLabel(days,d){return days===0?'today':days===1?'tomorrow':days<7?d.toLocaleDateString(undefined,{weekday:'long'}):d.toLocaleDateString(undefined,{month:'short',day:'numeric'})}
 function billsDueSoon(n){return load('bills',[]).map(b=>{const d=nextDue(b),days=Math.round((d-parseIso(isoDay()))/DAY);return{...b,date:d,days,when:whenLabel(days,d)}}).filter(b=>b.days<=n&&b.paid!==isoDay(b.date).slice(0,7)).sort((a,b)=>a.days-b.days)}
+// every bill is a little boss: paying it knocks it out (bigger bill, bigger boss; early payment is a critical hit)
+function billBoss(b,days){const amt=+b.amt||0,boss=amt>=500?'🐉':amt>=100?'👹':amt>=30?'👺':'🐀',crit=days>3;
+  const d=document.createElement('div');d.setAttribute('aria-hidden','true');d.style.cssText='position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:90px;z-index:200;transition:transform .5s,opacity .5s;pointer-events:none;text-align:center';
+  d.innerHTML=`${boss}<div style="font:700 20px system-ui;color:var(--ink);background:var(--card);border-radius:10px;padding:4px 10px">${crit?'Critical hit! ':''}${esc(b.name)} boss defeated</div>`;document.body.append(d);
+  beep(1);setTimeout(()=>{d.style.transform='translate(-50%,-50%) rotate(25deg) scale(.2)';d.style.opacity='0'},700);setTimeout(()=>d.remove(),1300);bump('bossesBeaten')}
 function drawBills(){const list=bills.map(b=>{const d=nextDue(b),days=Math.round((d-parseIso(isoDay()))/DAY);return{b,d,days}}).sort((a,b)=>a.days-b.days);
   $('bList').innerHTML='';list.forEach(({b,d,days})=>{const li=document.createElement('li');
     const paidKey=isoDay(d).slice(0,7),paid=b.paid===paidKey;
     li.innerHTML=`<span class="grow ${paid?'done':days<=1?'overdue':days<=7?'soon':''}">${esc(b.name)}</span><b>${money(b.amt)}</b><span class="muted" style="width:150px;text-align:right">${paid?'paid ✓':whenLabel(days,d)}</span><button class="g" style="padding:2px 8px" ${paid?'disabled':''} title="Mark paid and log it as an expense">Paid</button><button class="x">✕</button>`;
-    li.querySelector('.g').onclick=()=>{b.paid=paidKey;addExpense(b.amt,'Bills',b.name);saveBills();toast(`${b.name} paid and logged in Expenses`)};
+    li.querySelector('.g').onclick=()=>{b.paid=paidKey;addExpense(b.amt,'Bills',b.name);saveBills();billBoss(b,days);toast(`${b.name} paid and logged in Expenses`)};
     li.lastChild.onclick=()=>removeWithUndo(bills,bills.indexOf(b),saveBills,'Bill removed');$('bList').append(li)});
   if(!bills.length)$('bList').innerHTML='<li class="muted">No bills yet.</li>';
   $('bTotal').textContent=bills.length?`Every month: ${money(bills.reduce((s,b)=>s+b.amt,0))}`:''}

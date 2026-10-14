@@ -9,7 +9,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: node tests/check.js
+      - run: node tests/unit.js
+      - run: node tests/keys.js --check
+      # files in toolbox/ changed but the offline cache name didn't: installed copies would never update
+      - name: Offline cache version was bumped
+        if: github.event_name == 'push'
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- toolbox ':!toolbox/sw.js'; then echo "No app changes"; exit 0; fi
+          if git diff HEAD~1 HEAD -- toolbox/sw.js | grep -q "^+const CACHE="; then echo "✓ Cache version bumped"; exit 0; fi
+          echo "::error file=toolbox/sw.js::Files in toolbox/ changed but CACHE in sw.js was not bumped. Run: node scripts/release.js --bump-only"; exit 1
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i --no-save --no-package-lock @playwright/test@1.48.2
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-report
+          path: |
+            test-report
+            tests/snapshots

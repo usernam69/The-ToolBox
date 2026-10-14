@@ -2,6 +2,7 @@
 const CATEGORIES=[
  {id:'quick',name:'Quick wins',emoji:'⚡',blurb:'Small, fun things you can use in seconds.',apps:[
   ['quests','Quests','🗺️','Little adventures that hop between apps. Earn badges.','apps/quests.html'],
+  ['garden','Habit garden','🌻','Every habit is a plant that grows with your streak.','apps/garden.html'],
   ['boredom','Boredom button','🔴','One button that hands you a random small thing to make.','apps/boredom.html'],
   ['journal','One-liner journal','📓','One question a day, one line answer, kept forever.','apps/journal.html'],
   ['petfocus','Focus pet','🐣','A focus timer where a little creature grows while you work.','apps/petfocus.html'],
@@ -17,6 +18,7 @@ const CATEGORIES=[
  {id:'games',name:'Games',emoji:'🎮',blurb:'Ten games to play right here.',apps:[
   ['parkour','Parkour platformer','🏃','Tight jumps, timed runs and a ghost of your best run.','apps/parkour.html'],
   ['parkouredit','Parkour level editor','✏️','Paint your own Parkour level and share it as a link.','apps/parkour-edit.html'],
+  ['speedrun','ToolBox speedrun','⏱️','How fast can you open 10 different apps?','apps/speedrun.html'],
   ['snake','Snake with a twist','🐍','Snake, but the walls move and you can split in two.','apps/snake.html'],
   ['wordle','Your own Wordle','🟩','Guess the word, using a word list about anything you like.','apps/wordle.html'],
   ['rogue','Tiny roguelike','🗡️','Go down through a dungeon that’s different every run.','apps/rogue.html'],
@@ -27,8 +29,9 @@ const CATEGORIES=[
   ['escapemaker','Escape room builder','🗝️','Make your own escape room and share it as a link.','apps/escape-maker.html'],
   ['idle','Idle clicker','🍪','Numbers go up and upgrades unlock.','apps/idle.html'],
   ['maze','Maze maker','🌀','Watch a maze get built, then solved, or solve it yourself.','apps/maze.html']]},
- {id:'tools',name:'Useful tools',emoji:'🧰',blurb:'The full Toolbox: 64 everyday tools.',apps:[
+ {id:'tools',name:'Useful tools',emoji:'🧰',blurb:'The full Toolbox: 65 everyday tools.',apps:[
   ['open','Open a file','📂','Pick a file and choose which app opens it.','apps/open.html'],
+  ['changelog','What’s changed','📜','Every version of The ToolBox and what it brought.','apps/changelog.html'],
   ['classroom','Classroom pack','📚','Teachers: share Wordle words, flashcards and apps in one link.','apps/classroom.html'],
   ['family','Family settings','👪','Profiles, screen time, school hours and kiosk mode.','apps/family.html'],
   ['toolbox','Open the Toolbox','🧰','Everything: dashboard, to-dos, money, study, files, converters and more.','tools.html'],
@@ -43,6 +46,7 @@ const CATEGORIES=[
   ['links','Link saver','🔗','Save links with tags and search them later.','tools.html#links']]},
  {id:'creative',name:'Creative & art',emoji:'🖌️',blurb:'Make pictures, music, stories and comics.',apps:[
   ['genart','Generative art','🌀','Code that draws a new piece of art every time.','apps/genart.html'],
+  ['pixelwall','Pixel wall','🧱','One shared pixel canvas for everyone, a pixel a minute.','apps/pixelwall.html'],
   ['pixel','Pixel art editor','👾','Draw on a little grid and export a PNG.','apps/pixel.html'],
   ['lofi','Lo-fi loop maker','🎧','Stack drum and chord loops.','apps/lofi.html'],
   ['story','Interactive story','📖','Play a choose-your-own-adventure or write your own.','apps/story.html'],
@@ -55,6 +59,7 @@ const CATEGORIES=[
   ['website','Personal website maker','🌐','Fill in a form and download your own home page.','apps/website.html'],
   ['draw','Draw & guess','✏️','One person draws, everyone else guesses, on Wi-Fi or one screen.','apps/draw.html'],
   ['party','Party quiz','🎤','A game show: one big screen, phones are the buzzers.','apps/party.html'],
+  ['bracket','Tournament bracket','🏆','Make a bracket for game night and tap the winners.','apps/bracket.html'],
   ['chat','Room chat','💬','Real-time chat rooms for friends on the same Wi-Fi.','apps/chat.html'],
   ['buddy','AI study buddy','🤖','Quizzes you on any notes you paste in.','apps/buddy.html'],
   ['appmaker','AI app maker','✨','Describe an app or game and Claude builds it for you.','apps/appmaker.html'],

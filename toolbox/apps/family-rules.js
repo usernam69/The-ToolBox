@@ -8,6 +8,9 @@ var FAM={
   today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')},
   time(){return FAM.get('menu_time',{})},
   usedToday(app){const t=FAM.time()[FAM.today()]||{};return app?(t[app]||0):Object.values(t).reduce((a,b)=>a+b,0)},
+  // extra minutes earned today (family quests)
+  bonus(){const b=FAM.get('menu_bonus',{});return +b[FAM.today()]||0},
+  addBonus(min){const b=FAM.get('menu_bonus',{}),d=FAM.today();FAM.set('menu_bonus',{[d]:(+b[d]||0)+min})},
   unlocked(){return Date.now()<FAM.get('menu_unlockUntil',0)},
   schoolNow(r=FAM.rules()){if(!r.school||!r.school.on)return false;const d=new Date(),hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     return r.school.days.includes(d.getDay())&&hm>=r.school.from&&hm<r.school.to},
@@ -15,7 +18,7 @@ var FAM={
   why(app,cat){if(!app||app==='family'||FAM.unlocked())return'';const r=FAM.rules();
     if(r.kiosk&&r.kiosk.on&&!r.kiosk.allow.includes(cat==='tools'?'tools':app))return'kiosk';
     if(FAM.schoolNow(r)&&r.school.block.includes(cat))return'school';
-    if(r.limit>0&&FAM.usedToday()>=r.limit*60)return'limit';
+    if(r.limit>0&&FAM.usedToday()>=(r.limit+FAM.bonus())*60)return'limit';
     const per=r.perApp&&r.perApp[app];if(per>0&&FAM.usedToday(app)>=per*60)return'applimit';return''},
   async hash(pin){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('toolbox-pin:'+pin));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')},
   async check(pin){const r=FAM.rules();return !r.pin||(await FAM.hash(pin))===r.pin},

@@ -1,0 +1,24 @@
+name: Lighthouse
+# Scores for the menu, the Toolbox and a game (installable app, accessibility, speed) on every push to main.
+# The report is attached to the run; it only fails if accessibility drops below 85.
+on:
+  push:
+    branches: [main]
+    paths: ['toolbox/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx -y @lhci/cli@0.14.0 autorun --collect.staticDistDir=toolbox --collect.url=http://localhost/index.html --collect.url=http://localhost/tools.html --collect.url=http://localhost/apps/snake.html --assert.assertions.categories:accessibility=["error",{"minScore":0.85}] --upload.target=filesystem --upload.outputDir=lighthouse
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse
+          path: lighthouse

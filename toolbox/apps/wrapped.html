@@ -5,9 +5,11 @@
 #bar{position:fixed;top:57px;left:12px;right:12px;display:flex;gap:4px;z-index:5}#bar span{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.35)}#bar span.on{background:#fff}
 #nav{position:fixed;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:10px;z-index:5}#nav button{background:rgba(0,0,0,.35);color:#fff;border:1px solid rgba(255,255,255,.4)}</style></head>
 <body data-app="wrapped" data-cat="wild" data-title="ToolBox Wrapped"><div id="bar"></div><div id="stage"><div class="slide"><div class="big">🎁</div></div></div>
-<div id="nav"><button class="g" id="prev">◀</button><button class="g" id="save">⬇ Save as picture</button><button class="g" id="nextB">▶</button></div>
+<div id="nav"><select id="period" aria-label="Which year or month" class="g" style="background:rgba(0,0,0,.35);color:#fff"></select><button class="g" id="prev">◀</button><button class="g" id="save">⬇ Save as picture</button><button class="g" id="share" hidden>📤 Share</button><button class="g" id="nextB">▶</button></div>
 <script src="common.js"></script><script src="registry.js"></script><script>
-const J=k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},year=new Date().getFullYear(),Y=String(year);
+// ?month=YYYY-MM tells the story of one month instead of the year
+const J=k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},year=new Date().getFullYear(),MONTH=(new URLSearchParams(location.search).get('month')||'').match(/^\d{4}-\d{2}$/)?.[0]||'',Y=MONTH||String(year);
+const LABEL=MONTH?new Date(MONTH+'-01T12:00').toLocaleDateString(undefined,{month:'long',year:'numeric'}):String(year);
 const time=J('menu_time')||{},perApp={};let totalSec=0,days=0;Object.entries(time).filter(([d])=>d.startsWith(Y)).forEach(([,a])=>{days++;Object.entries(a).forEach(([id,s])=>{perApp[id]=(perApp[id]||0)+s;totalSec+=s})});
 const nameOf=id=>{const a=ALL_APPS.find(a=>a.id===id);return a?a.emoji+' '+a.name:id==='tools'?'🧰 The Toolbox':id};
 const topApps=Object.entries(perApp).sort((a,b)=>b[1]-a[1]).slice(0,5);
@@ -19,22 +21,31 @@ const hrs=s=>{if(s>=3600){const h=+(s/3600).toFixed(1);return h+(h===1?' hour':'
 const vibe=topApps[0]?(ALL_APPS.find(a=>a.id===topApps[0][0])||{}).cat:null,VIBES={games:['🎮','The Player','You came for the fun and stayed for the high scores.'],quick:['⚡','The Quick-Fixer','Small wins, every day. That adds up.'],creative:['🎨','The Maker','You made things. Lots of things.'],bigger:['🏗️','The Builder','You go big: worlds, websites, robots.'],wild:['🦄','The Experimenter','You like the weird stuff. Respect.'],tools:['🧰','The Organiser','Lists, timers, budgets: you run a tight ship.']};
 const v=VIBES[vibe]||['🌱','The Explorer','You’re just getting started.'];
 const S=[
- ['#5f2eea',`<div class="big">${year}</div><h2>Your year in The ToolBox</h2><p>Tap to begin</p>`],
+ ['#5f2eea',`<div class="big" style="${MONTH?'font-size:clamp(36px,9vw,80px)':''}">${esc(LABEL)}</div><h2>Your ${MONTH?'month':'year'} in The ToolBox</h2><p>Tap to begin</p>`],
  ['#e5484d',`<p>You spent</p><div class="big">${hrs(totalSec)}</div><h2>in The ToolBox</h2><p>across ${days} day${days===1?'':'s'}</p>`],
  ['#0b8f6a',topApps.length?`<h2>Your top apps</h2><ol>${topApps.map(([id,s])=>`<li>${esc(nameOf(id))} <span style="opacity:.7">· ${hrs(s)}</span></li>`).join('')}</ol>`:`<h2>Your top apps</h2><p>Use some apps and they’ll show up here.</p>`],
  ['#f08c00',`<div class="big">${todos}</div><h2>to-dos finished</h2><p>${checks} habit check-ins${journal?` · ${journal} journal lines`:''}</p>`],
  ['#1971c2',`<h2>High scores</h2><p>🐍 Snake ${snake} · 🗡️ Dungeon ${rogue} · ⌨️ Falling words ${typing}</p><div class="big">${visited}</div><p>different apps tried</p>`],
  ['#c2255c',`<div class="big">${art}</div><h2>pieces of art kept</h2><p>${pet?`Your focus pet ${esc(pet.name)} has ${pet.xp} XP`:'Your focus pet is still an egg, waiting for you'}</p>`],
  ['#2b8a3e',`<div class="big">🏆 ${badges}</div><h2>achievements</h2><p>${quests} quest${quests===1?'':'s'} completed</p>`],
- ['#212529',`<div class="big">${v[0]}</div><h2>You are ${v[1]}</h2><p>${v[2]}</p><p style="opacity:.6;font-size:15px">See you next year 👋</p>`]];
+ ['#212529',`<div class="big">${v[0]}</div><h2>You are ${v[1]}</h2><p>${v[2]}</p><p style="opacity:.6;font-size:15px">See you next ${MONTH?'month':'year'} 👋</p>`]];
 let i=0,auto;
 function show(n){i=Math.max(0,Math.min(S.length-1,n));const[c,h]=S[i];$('stage').style.background=`radial-gradient(circle at 30% 20%,${c}cc,${c} 60%,#000 140%)`;$('stage').innerHTML=`<div class="slide">${h}</div>`;
   $('bar').innerHTML=S.map((_,k)=>`<span class="${k<=i?'on':''}"></span>`).join('');tone(440+i*60,.12,'triangle',.06);clearTimeout(auto);if(i<S.length-1)auto=setTimeout(()=>show(i+1),6000)}
 $('stage').onclick=()=>show(i+1);$('nextB').onclick=()=>show(i+1);$('prev').onclick=()=>show(i-1);addEventListener('keydown',e=>{if(e.key==='ArrowRight')show(i+1);if(e.key==='ArrowLeft')show(i-1)});
 // save the current slide as a picture (drawn to a canvas, text only)
-$('save').onclick=()=>{const c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');const col=S[i][0],g=x.createRadialGradient(300,250,0,540,675,1100);g.addColorStop(0,col);g.addColorStop(1,'#000');x.fillStyle=g;x.fillRect(0,0,1080,1350);
+function picture(){const c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');const col=S[i][0],g=x.createRadialGradient(300,250,0,540,675,1100);g.addColorStop(0,col);g.addColorStop(1,'#000');x.fillStyle=g;x.fillRect(0,0,1080,1350);
   x.fillStyle='#fff';x.textAlign='center';const lines=$('stage').innerText.split('\n').map(s=>s.trim()).filter(Boolean);let y=1350/2-lines.length*45;
   lines.forEach((l,k)=>{const big=/^\d|^🏆|^\p{Extended_Pictographic}/u.test(l)&&l.length<14;x.font=`${big?'900 120px':'600 52px'} system-ui,sans-serif`;y+=big?130:80;x.fillText(l,540,y,980)});
-  x.font='36px system-ui';x.globalAlpha=.7;x.fillText('The ToolBox · '+year,540,1290);download(`toolbox-wrapped-${year}-${i+1}.png`,c.toDataURL('image/png'))};
-show(0);
+  x.font='36px system-ui';x.globalAlpha=.7;x.fillText('The ToolBox · '+year,540,1290);return c}
+$('save').onclick=()=>download(`toolbox-wrapped-${year}-${i+1}.png`,picture().toDataURL('image/png'));
+// share straight to an app (phones, Chromebooks) when the browser can share files
+if(navigator.canShare&&navigator.canShare({files:[new File([''],'a.png',{type:'image/png'})]})){$('share').hidden=false;
+  $('share').onclick=()=>picture().toBlob(async b=>{try{await navigator.share({files:[new File([b],`toolbox-wrapped-${year}-${i+1}.png`,{type:'image/png'})],title:'My ToolBox Wrapped'})}catch{}},'image/png')}
+// pick up where you left off this year
+// pick a period: this year or one of the last 12 months
+$('period').innerHTML=[['', 'This year'],...[...Array(12)].map((_,k)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-k);const v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return[v,d.toLocaleDateString(undefined,{month:'long',year:'numeric'})]})].map(([v,t])=>`<option value="${v}" ${v===MONTH?'selected':''}>${t}</option>`).join('');
+$('period').onchange=()=>{location.search=$('period').value?'month='+$('period').value:''};
+const last=load('slide',{y:0,i:0});show(!MONTH&&last.y===year?last.i:0);
+addEventListener('pagehide',()=>{if(!MONTH)save('slide',{y:year,i})});
 </script></body></html>

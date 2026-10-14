@@ -6,7 +6,7 @@ table{width:100%;border-collapse:collapse}td{padding:4px 6px;border-bottom:1px s
 <div id="panel" hidden>
 <p class="sub">Profiles, screen time, school hours and kiosk mode for this device. These are gentle limits for kids, not real security: someone who knows browser developer tools can get around them.</p>
 <div class="grid2">
-<div class="box"><b>👤 Profiles</b><p class="muted" style="font-size:13px">Each person gets their own notes, games, scores and settings. Limits below apply to the profile that is open now.</p><ul class="clean" id="profs"></ul><div class="row"><input id="newProf" placeholder="New profile name" maxlength="20"><button class="g" id="addProf">Add</button></div></div>
+<div class="box"><b>👤 Profiles</b><p class="muted" style="font-size:13px">Each person gets their own notes, games, scores and settings. Limits below apply to the profile that is open now.</p><ul class="clean" id="profs"></ul><div class="row"><input id="newProf" placeholder="New profile name" maxlength="20"><button class="g" id="addProf">Add</button></div><label style="font-size:14px"><input type="checkbox" id="askWho"> Ask “who’s using The ToolBox?” when it opens</label></div>
 <div class="box"><b>🔑 Family PIN</b><p class="muted" style="font-size:13px" id="pinState"></p><div class="row"><input type="password" inputmode="numeric" id="pin1" placeholder="New PIN" maxlength="12" style="width:110px"><input type="password" inputmode="numeric" id="pin2" placeholder="Again" maxlength="12" style="width:110px"><button class="g" id="setPin">Save PIN</button><button class="x" id="clrPin" title="Remove PIN">✕</button></div></div>
 </div>
 <div class="box"><b>📊 Time used by <span class="cur"></span></b><div class="bars" id="bars"></div><div style="height:22px"></div><p id="todayTot"></p><table id="perApp"></table></div>
@@ -22,6 +22,7 @@ function gate(){const r=R();open=!r.pin||FAM.unlocked();$('gate').hidden=open;$(
 $('gGo').onclick=async()=>{if(await FAM.check($('gPin').value)){FAM.set('menu_unlockUntil',Date.now()+30*6e4);gate()}else toast('Wrong PIN')};$('gPin').onkeydown=e=>{if(e.key==='Enter')$('gGo').click()};
 const nameOf=id=>{const a=ALL_APPS.find(a=>a.id===id);return a?a.emoji+' '+a.name:id==='tools'?'🧰 Toolbox tools':id};
 const mins=s=>s<60?Math.round(s)+'s':Math.round(s/60)+' min';
+$('askWho').checked=FAM.get('prof__ask',false);$('askWho').onchange=()=>FAM.set('prof__ask',$('askWho').checked);
 function draw(){const r=R(),cur=FAM.current();document.querySelectorAll('.cur').forEach(e=>e.textContent=cur);
   $('profs').innerHTML=FAM.list().map(n=>`<li>${n===cur?'<b>'+esc(n)+'</b> (open now)':esc(n)}${n===cur?'':` <button class="g" data-s="${esc(n)}">Switch</button> <button class="x" data-r="${esc(n)}" title="Delete">✕</button>`}</li>`).join('');
   $('profs').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{if(FAM.switchTo(b.dataset.s))location.href='../index.html'});

@@ -24,7 +24,7 @@ function draw(msg){x.fillStyle='#0e1a2b';x.fillRect(0,0,800,600);x.fillStyle='#1
   st.p.forEach(p=>{const s=p.out?Math.max(.2,1-(st.t%10)):1;x.save();x.translate(p.x,p.y);x.scale(s,s);x.fillStyle=p.col;x.beginPath();x.arc(0,0,28,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(-9,-6,6,0,7);x.arc(9,-6,6,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(-9,-5,3,0,7);x.arc(9,-5,3,0,7);x.fill();
     if(p.cd>0){x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=3;x.beginPath();x.arc(0,0,34,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-p.cd/1.2));x.stroke()}x.restore()});
   if(msg){x.fillStyle='rgba(0,0,0,.5)';x.fillRect(0,0,800,600);x.fillStyle='#fff';x.font='bold 44px system-ui';x.textAlign='center';x.fillText(msg,400,300);x.font='18px system-ui';x.fillText('Press Space to play',400,340);x.textAlign='left'}}
-function start(){if(NET.on&&!NET.host){LAN.send({type:'go'});return}if(NET.on&&NET.members.length<2)return toast('Waiting for the other player…');if(run)return;round();run=true;last=performance.now();requestAnimationFrame(frame)}
+function start(){if(NET.on&&NET.watch)return toast('You’re watching this match.');if(NET.on&&!NET.host){LAN.send({type:'go',from:NET.me});return}if(NET.on&&NET.members.length<2)return toast('Waiting for the other player…');if(run)return;round();run=true;last=performance.now();requestAnimationFrame(frame)}
 addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();start()}});$('go').onclick=()=>{$('go').blur();start()};function keyInput(k){return{ax:(keys.has(k.r)?1:0)-(keys.has(k.l)?1:0),ay:(keys.has(k.d)?1:0)-(keys.has(k.u)?1:0),dash:keys.has(k.dash)}}
 // online: either key set moves your own sumo
 function myInput(){const a=keyInput(CTL[0]),b=keyInput(CTL[1]);return{ax:Math.max(-1,Math.min(1,a.ax+b.ax)),ay:Math.max(-1,Math.min(1,a.ay+b.ay)),dash:a.dash||b.dash}}
@@ -35,15 +35,16 @@ const NET={on:false,host:false,me:null,members:[],names:['',''],remote:{ax:0,ay:
     LAN.send({type:'st',p:st.p.map(p=>[r(p.x),r(p.y),p.out?1:0,r(Math.max(0,p.cd))]),R:r(st.R),sc:score,msg:msg||'',run})},
   apply(m){m.p.forEach((q,i)=>{const p=st.p[i];if(!p)return;if(!p.out&&q[2])tone(90,.5,'sawtooth',.1);p.x=q[0];p.y=q[1];p.out=!!q[2];p.cd=q[3]});st.R=m.R;st.t+=.05;
     $('s1').textContent=m.sc[0];$('s2').textContent=m.sc[1];draw(m.msg||(m.run?'':'Waiting for '+(NET.names[0]||'red')+' to start'))},
-  roles(){const ids=NET.members.map(x=>x.id).sort();NET.host=ids[0]===NET.me;NET.names=ids.slice(0,2).map(id=>NET.members.find(x=>x.id===id).name);
-    $('netMsg').innerHTML=NET.members.length<2?'Waiting for a friend to join with the same code…':`<b style="color:#ff5c5c">${esc(NET.names[0])}</b> vs <b style="color:#4cc9f0">${esc(NET.names[1])}</b> · you are ${NET.host?'red':'blue'}. Use WASD or the arrows, Shift or Enter to dash.`}};
+  roles(){const ids=NET.members.map(x=>x.id).sort();NET.host=ids[0]===NET.me;NET.blue=ids[1];NET.watch=ids.indexOf(NET.me)>1;NET.names=ids.slice(0,2).map(id=>NET.members.find(x=>x.id===id).name);
+    const fans=NET.members.length-2;if(NET.watch){$('netMsg').innerHTML=`👀 You're watching <b style="color:#ff5c5c">${esc(NET.names[0])}</b> vs <b style="color:#4cc9f0">${esc(NET.names[1])}</b>${fans>1?' with '+(fans-1)+' other'+(fans>2?'s':''):''}.`;return}
+    $('netMsg').innerHTML=NET.members.length<2?'Waiting for a friend to join with the same code…':`<b style="color:#ff5c5c">${esc(NET.names[0])}</b> vs <b style="color:#4cc9f0">${esc(NET.names[1])}</b> · you are ${NET.host?'red':'blue'}${NET.members.length>2?' · 👀 '+(NET.members.length-2)+' watching':''}. Use WASD or the arrows, Shift or Enter to dash.`}};
 $('onl').onclick=()=>{$('lanPanel').hidden=false;$('onl').hidden=true;lanPanel('duel.html',(room,name)=>{$('lanPanel').hidden=true;NET.on=true;
   LAN.join(room,name,m=>{if(m.type==='hello')NET.me=m.id;
     else if(m.type==='members'){NET.members=m.members;NET.roles();if(NET.members.length<2&&run){run=false;round();draw('Your friend left')}}
-    else if(m.type==='in'&&NET.host&&m.from!==NET.me){NET.remote=m.k}
-    else if(m.type==='go'&&NET.host)start();
+    else if(m.type==='in'&&NET.host&&m.from===NET.blue){NET.remote=m.k}
+    else if(m.type==='go'&&NET.host&&m.from===NET.blue)start();
     else if(m.type==='st'&&!NET.host)NET.apply(m)});
   // the blue player sends its keys 20 times a second when they change, and every half second anyway
-  setInterval(()=>{if(!NET.on||NET.host)return;const k=myInput(),j=JSON.stringify(k);if(j!==NET.lastIn||performance.now()-NET.lastPush>500){NET.lastIn=j;NET.lastPush=performance.now();LAN.send({type:'in',k,from:NET.me})}},50)})};
+  setInterval(()=>{if(!NET.on||NET.host||NET.watch)return;const k=myInput(),j=JSON.stringify(k);if(j!==NET.lastIn||performance.now()-NET.lastPush>500){NET.lastIn=j;NET.lastPush=performance.now();LAN.send({type:'in',k,from:NET.me})}},50)})};
 round();draw('Sumo duel');
 </script></body></html>

@@ -4,7 +4,13 @@
 .prog{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:8px}.prog div{height:100%;background:var(--accent)}</style></head>
 <body data-app="quests" data-cat="quick" data-title="Quests"><main>
 <p class="sub">Little adventures across the ToolBox. Start a quest, then do each step in its app. Steps tick themselves off when you come back here.</p>
-<div id="list"></div>
+<p id="stars" class="muted"></p><div id="list"></div>
+<details class="box" id="maker"><summary><b>✏️ Make your own quest</b></summary>
+ <div class="row" style="margin-top:8px"><input id="mkEmoji" value="🌟" maxlength="4" style="width:60px" aria-label="Emoji"><input id="mkName" class="grow" placeholder="Quest name" maxlength="40"></div>
+ <div id="mkSteps"></div>
+ <div class="row"><label><input type="checkbox" id="mkFam"> Family quest: reward is extra ToolBox time today</label><input id="mkMin" type="number" min="5" max="120" value="15" style="width:70px" aria-label="Minutes"> min</div>
+ <div class="row"><input id="mkPin" type="password" inputmode="numeric" placeholder="Grown-up PIN" style="width:130px" hidden><button class="b" id="mkSave">Add quest</button><span class="muted" id="mkMsg"></span></div>
+ <p class="muted" style="font-size:13px">Your quests show up in the list above. Delete one with its 🗑 button.</p></details>
 </main><script src="common.js"></script><script>
 // a step is done when that app's saved data has changed since the quest started
 const QUESTS=[
@@ -15,23 +21,50 @@ const QUESTS=[
  {id:'future',emoji:'💌',name:'Letter to the future',reward:'🕰️ Time traveller badge',steps:[['Write today’s one-liner','journal','entries','journal.html'],['Seal a time capsule','capsule','list','capsule.html'],['Start a countdown to its date','countdown','list','countdown.html']]},
  {id:'gamer',emoji:'🎮',name:'Arcade tour',reward:'🕹️ Gamer badge',steps:[['Set a new best time on Parkour level 1','parkour','best0','parkour.html'],['Beat your best Snake score','snake','best_walls|best_twin|best_classic','snake.html'],['Play a round of Wordle','wordle','stats','wordle.html']]},
  {id:'builder',emoji:'🏗️',name:'Master builder',reward:'🧱 Builder badge',steps:[['Build something in the voxel world','voxel','meta','voxel.html'],['Make your own Parkour level','parkouredit','mine','parkour-edit.html'],['Make a personal website','website','s','website.html']]}];
+// today's quest: three steps picked from this pool, the same for everyone on the same day
+const POOL=[['Save a color palette','palette','saved','palette.html'],['Draw some pixel art','pixel','px','pixel.html'],['Make a comic panel','comic','c','comic.html'],
+ ['Turn your mood into music','moodmusic','t','moodmusic.html'],['Make a lo-fi loop','lofi','p','lofi.html'],['Keep a remixed poem','poem','kept','poem.html'],
+ ['Save an idea from the make-something machine','makemachine','saved','makemachine.html'],['Finish a focus session','petfocus','pet','petfocus.html'],
+ ['Write today’s one-liner','journal','entries','journal.html'],['Water your to-do list','decay','t','decay.html'],['Seal a time capsule','capsule','list','capsule.html'],
+ ['Start a countdown','countdown','list','countdown.html'],['Build in the voxel world','voxel','meta','voxel.html'],['Play a round of Wordle','wordle','stats','wordle.html'],
+ ['Make a Parkour level','parkouredit','mine','parkour-edit.html'],['Put a note on the sticky wall','sticky','notes','sticky.html']];
+(()=>{const d=new Date(),day=isoDay(d);let s=d.getFullYear()*400+d.getMonth()*32+d.getDate();const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const pool=[...POOL],steps=[];while(steps.length<3)steps.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
+  QUESTS.unshift({id:'daily-'+day,emoji:'☀️',name:'Today’s quest',reward:'⭐ Daily star',daily:true,steps})})();
+// season pass: a longer quest for the season (matches the menu's seasonal effects), new each season
+(()=>{const d=new Date(),m=d.getMonth(),y=m===11?d.getFullYear()+1:d.getFullYear(),S=[[[11,0,1],'winter','❄️','Winter'],[[2,3,4],'spring','🌸','Spring'],[[5,6,7],'summer','☀️','Summer'],[[8,9,10],'autumn','🍂','Autumn']].find(s=>s[0].includes(m));
+  let s=y*7+S[1].length;const r=()=>(s=(s*16807)%2147483647)/2147483647,pool=[...POOL],steps=[];while(steps.length<5)steps.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
+  QUESTS.splice(1,0,{id:`season-${y}-${S[1]}`,emoji:S[2],name:`${S[3]} season pass`,reward:`${S[2]} ${S[3]} ${y} badge`,steps})})();
+// quests you made yourself (and family quests a grown-up set, with extra screen time as the reward)
+load('custom',[]).forEach(q=>QUESTS.push(q));
 const sig=(app,keys)=>keys.split('|').map(k=>localStorage.getItem('app_'+app+'_'+k)||'').join('§');
 const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h+':'+s.length};
 const S=()=>load('state',{active:{},done:{}});
 function refresh(){const st=S();let changed=false;
+  Object.keys(st.active).forEach(id=>{if(/^(daily|season)-/.test(id)&&!QUESTS.some(q=>q.id===id)){delete st.active[id];changed=true}});
   QUESTS.forEach(q=>{const a=st.active[q.id];if(!a)return;a.got=a.got||[];
     // steps go in order; record each one as it happens so later edits don't undo it
     for(let i=0;i<q.steps.length;i++){if(a.got[i])continue;const[, app,keys]=q.steps[i];if(hash(sig(app,keys))!==a.base[i]){a.got[i]=true;changed=true}else break}
     if(a.got.filter(Boolean).length===q.steps.length){st.done[q.id]=Date.now();delete st.active[q.id];changed=true;cheer(q)}});
   if(changed)save('state',st);draw()}
-function cheer(q){toast(`🏆 Quest complete: ${q.name}! You earned ${q.reward}.`);[523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'triangle',.12,i*.09))}
-function draw(){const st=S();$('list').innerHTML=QUESTS.map(q=>{const a=st.active[q.id],done=st.done[q.id],got=a?(a.got||[]):[],n=done?q.steps.length:got.filter(Boolean).length;
+function cheer(q){if(q.bonus&&window.FAM)FAM.addBonus(q.bonus);toast(`🏆 Quest complete: ${q.name}! You earned ${q.reward}.`);[523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'triangle',.12,i*.09))}
+function draw(){const st=S();const stars=Object.keys(st.done).filter(k=>k.startsWith('daily-')).length;$('stars').textContent=stars?'⭐ '+stars+' daily star'+(stars>1?'s':'')+' collected':'';$('list').innerHTML=QUESTS.map(q=>{const a=st.active[q.id],done=st.done[q.id],got=a?(a.got||[]):[],n=done?q.steps.length:got.filter(Boolean).length;
   return`<div class="q ${done?'done':''}"><h3>${q.emoji} ${esc(q.name)}</h3><span class="muted" style="font-size:13px">Reward: ${esc(q.reward)}${done?' · finished '+new Date(done).toLocaleDateString():''}</span>
    ${a||done?`<div class="prog"><div style="width:${n/q.steps.length*100}%"></div></div><ul class="steps">${q.steps.map(([t,,,href],i)=>{const ok=done||got[i],now=!ok&&a&&i===got.filter(Boolean).length;
      return`<li class="${now?'now':''}"><span class="st">${ok?'✅':now?'👉':'⬜'}</span>${esc(t)}${now?`<a class="b" href="${href}">Go</a>`:''}</li>`}).join('')}</ul>`:''}
-   <div class="row" style="margin-top:8px">${done?`<button class="g" data-again="${q.id}">Play again</button>`:a?`<button class="x" data-quit="${q.id}" title="Give up">Give up</button>`:`<button class="b" data-start="${q.id}">Start quest</button>`}</div></div>`}).join('');
+   <div class="row" style="margin-top:8px">${done?`<button class="g" data-again="${q.id}">Play again</button>`:a?`<button class="x" data-quit="${q.id}" title="Give up">Give up</button>`:`<button class="b" data-start="${q.id}">Start quest</button>`}${q.mine?`<button class="x" data-del="${q.id}" title="Delete this quest">🗑</button>`:''}</div></div>`}).join('');
+  $('list').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const id=b.dataset.del,st=S();save('custom',load('custom',[]).filter(q=>q.id!==id));QUESTS.splice(QUESTS.findIndex(q=>q.id===id),1);delete st.active[id];delete st.done[id];save('state',st);draw()});
   $('list').querySelectorAll('[data-start],[data-again]').forEach(b=>b.onclick=()=>{const id=b.dataset.start||b.dataset.again,q=QUESTS.find(x=>x.id===id),st=S();
-    st.active[id]={base:q.steps.map(([, app,keys])=>hash(sig(app,keys))),got:[],at:Date.now()};delete st.done[id];save('state',st);draw();toast(`${q.emoji} Quest started. First: ${q.steps[0][0].toLowerCase()}.`)});
+    st.active[id]={base:q.steps.map(([, app,keys])=>hash(sig(app,keys))),got:[],at:Date.now(),name:q.name,emoji:q.emoji,total:q.steps.length};delete st.done[id];save('state',st);draw();toast(`${q.emoji} Quest started. First: ${q.steps[0][0].toLowerCase()}.`)});
   $('list').querySelectorAll('[data-quit]').forEach(b=>b.onclick=()=>{const st=S();delete st.active[b.dataset.quit];save('state',st);draw()})}
+// quest builder
+$('mkSteps').innerHTML=[0,1,2].map(i=>`<div class="row"><span>${i+1}.</span><select class="grow" data-step="${i}" aria-label="Step ${i+1}">${POOL.map((s,j)=>`<option value="${j}" ${j===i?'selected':''}>${esc(s[0])}</option>`).join('')}</select></div>`).join('');
+$('mkFam').onchange=()=>{$('mkPin').hidden=!$('mkFam').checked||!(window.FAM&&FAM.rules().pin)};
+$('mkSave').onclick=async()=>{const name=$('mkName').value.trim();if(!name)return toast('Give your quest a name.');
+  const steps=[...$('mkSteps').querySelectorAll('select')].map(s=>POOL[+s.value]);if(new Set(steps).size<3)return toast('Pick three different steps.');
+  const fam=$('mkFam').checked,min=Math.max(5,Math.min(120,+$('mkMin').value||15));
+  if(fam&&window.FAM&&!(await FAM.check($('mkPin').value)))return $('mkMsg').textContent='Wrong PIN';
+  const q={id:'my-'+uid(),emoji:$('mkEmoji').value.trim()||'🌟',name,steps,mine:true,...(fam?{bonus:min,reward:`⏰ ${min} extra minutes today`}:{reward:'🌟 Your own badge'})};
+  const c=load('custom',[]);c.push(q);save('custom',c);QUESTS.push(q);$('mkName').value='';$('mkMsg').textContent='';draw();toast(q.emoji+' Quest added.')};
 addEventListener('pageshow',refresh);addEventListener('focus',refresh);refresh();
 </script></body></html>

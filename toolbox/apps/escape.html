@@ -17,7 +17,10 @@
 <div id="pad"><div class="box"><b>Safe</b><div id="disp"></div><div class="keys" id="keys"></div><button class="g" id="padClose" style="margin-top:8px">Close</button></div></div></div>
 <div class="box" style="margin-top:10px"><div id="msg"></div></div>
 <h3>Inventory <span class="muted" style="font-size:13px;font-weight:400">(click an item to hold it, then click where to use it)</span></h3><div id="inv"></div>
-</main><script src="common.js"></script><script>
+<p id="weekRoom" class="muted" style="margin-top:14px"></p></main><script src="common.js"></script><script>
+// room of the week: one of the shared rooms in community/escapes.json, a new one each week (add yours with a pull request)
+fetch('../community/escapes.json').then(r=>r.json()).then(l=>{if(!Array.isArray(l)||!l.length)return;const w=Math.floor((Date.now()/864e5+4)/7),r=l[w%l.length];if(!r||!/^[\w-]+$/.test(r.code))return;
+  $('weekRoom').innerHTML=`🗝️ <b>Room of the week:</b> ${esc(r.name)} · <a href="escape-maker.html#r=${r.code}">Play it</a> · <a href="escape-maker.html">make your own</a>`}).catch(()=>{});
 const WALLS=['The door','The bookshelf','The window','The painting'];
 let s,t0,tick;
 function reset(){s={wall:0,inv:[],sel:null,flags:{},code:''};t0=Date.now();clearInterval(tick);tick=setInterval(()=>{const e=Math.floor((Date.now()-t0)/1000);$('timer').textContent=pad2(Math.floor(e/60))+':'+pad2(e%60)},500);say('You wake up in a locked room. There must be a way out. Look around: click things, and use ‹ › to turn.');draw()}
