@@ -41,7 +41,7 @@ jobs:
     needs: [windows, linux, extension]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { path: out, merge-multiple: true }
       # every download must be there before anything is published
       - name: Check all files were built
