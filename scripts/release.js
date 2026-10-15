@@ -44,7 +44,9 @@ run('node', ['tests/check.js']); run('node', ['tests/unit.js']); run('node', ['t
 
 // 5. commit and tag
 run('git', ['add', '-A']);
-run('git', ['commit', '-m', `Release ${version}`]);
+run('git', ['commit', '-m', `Release ${version}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`]);
 run('git', ['tag', `v${version}`]);
 if (args.includes('--push')) { run('git', ['push']); run('git', ['push', 'origin', `v${version}`]); console.log(`✓ Pushed v${version}. GitHub is building the downloads.`); }
 else console.log(`✓ Committed and tagged v${version}. Push with: git push && git push origin v${version}`);

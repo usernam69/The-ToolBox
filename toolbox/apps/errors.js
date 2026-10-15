@@ -1,5 +1,5 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.2.1';
+var TB_VERSION='1.2.2';
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
  ['1.2.1','Tournament bracket: players with the same name are now numbered so the right one moves up.'],
