@@ -1,7 +1,8 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.2.0';
+var TB_VERSION='1.2.1';
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.2.1','Tournament bracket: players with the same name are now numbered so the right one moves up.'],
  ['1.2.0','Snooze and mark-paid buttons on reminders, quiet hours, smart habit reminders, flashcard, water and budget reminders, games pause when you switch windows, a ? sheet on the menu, theme previews, bug reports from Help.'],
  ['1.1.2','Fixes: paid bills no longer remind you, and games stop moving when you switch windows.'],
  ['1.1.1','Fixes: Share to The ToolBox opens the right page, and the Arcade tour quest says what counts.'],

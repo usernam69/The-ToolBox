@@ -12,7 +12,9 @@
 // rounds[r][m] = [a, b, winner]; a player called null is a bye
 let B=load('bracket',null);$('names').value=load('names','');$('names').oninput=()=>save('names',$('names').value);
 const NAMES=['Round 1','Round 2','Round 3','Round 4','Round 5','Round 6'];
-function make(){let p=$('names').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,64);if(p.length<2)return toast('Add at least two players.');
+function make(){let p=$('names').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,64);
+  // players are matched by name, so repeated names get a number: "Sam", "Sam (2)"
+  const seen={};p=p.map(n=>(seen[n]=(seen[n]||0)+1)>1?`${n} (${seen[n]})`:n);if(p.length<2)return toast('Add at least two players.');
   if($('shuffle').checked)p=p.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
   let size=2;while(size<p.length)size*=2;const seeds=[...p,...Array(size-p.length).fill(null)];
   // spread the byes out: pair the top half with the bottom half
