@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bug hunt</title><link rel="stylesheet" href="common.css">
+<style>#app{border:2px solid var(--line);border-radius:14px;background:var(--card);padding:16px;max-width:420px;margin:10px auto;position:relative;user-select:none}
+#app h2{margin:0 0 8px}#app .item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}#app .btn{padding:6px 12px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:inline-block}
+.found{outline:3px solid #e50000;outline-offset:2px;border-radius:6px}.flip{display:inline-block;transform:rotate(180deg)}#hud{text-align:center;font-weight:700}.miss{animation:shake .3s}@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}</style></head>
+<body data-app="bughunt" data-cat="games" data-title="Bug hunt"><main>
+<p class="sub">This little app is full of bugs! Tap each thing that looks wrong. Find all 5 to clear the level. Careless taps cost time.</p>
+<p id="hud"></p><div id="app"></div><p style="text-align:center"><button class="b" id="go">Start</button></p>
+</main><script src="common.js"></script><script>
+// each level is a fake app; the parts marked data-bug are the planted bugs
+const LEVELS=[
+ ()=>`<h2><span data-bug="spelling: Shoping">Shoping</span> list</h2>${['Milk','Bread','Eggs'].map(t=>`<div class="item"><span>${t}</span><span>✅</span></div>`).join('')}
+   <div class="item"><span><span class="flip" data-bug="upside-down text">Apples</span></span><span>✅</span></div><div class="item"><span>Total items</span><span data-bug="wrong count">7</span></div>
+   <p><span class="btn" data-bug="button says the opposite" style="background:#e50000">Save</span> <span class="btn">Delete</span></p><p class="muted" data-bug="date in the future">Last edit: 31 February</p>`,
+ ()=>`<h2>Weather</h2><div class="item"><span>Today</span><span data-bug="sunny but raining">☀️ Rain</span></div><div class="item"><span>Tomorrow</span><span>⛅ 18°</span></div>
+   <div class="item"><span>Saturday</span><span data-bug="impossible temperature">🌤️ 412°</span></div><div class="item"><span>Sunday</span><span>🌧️ 12°</span></div><div class="item"><span data-bug="day twice">Sunday</span><span>🌧️ 11°</span></div>
+   <p class="muted">Updated <span data-bug="time runs backwards" id="clock">10:00</span></p><p><span class="btn" data-bug="button with no text" style="min-width:60px;min-height:18px"></span></p>`,
+ ()=>`<h2>Music player</h2><div class="item"><span>Now playing</span><span>Lo-fi beats</span></div><div class="item"><span>Volume</span><span data-bug="volume over 100%">130%</span></div>
+   <div class="item"><span>Progress</span><span data-bug="progress past the end">4:20 / 3:00</span></div><div class="item"><span>Shuffle</span><span data-bug="on and off at once">On · Off</span></div>
+   <p style="text-align:center;font-size:28px"><span>⏮️</span> <span data-bug="pause shown while stopped">⏸️ Stopped</span> <span>⏭️</span></p><p class="muted" style="text-align:right" data-bug="text off the edge"><span style="position:relative;left:60px;white-space:nowrap">Next: Rainy window</span></p>`];
+let lvl=0,left=0,t0=0,pen=0,timer=null,clock=null;
+function start(){lvl=0;pen=0;t0=Date.now();level();clearInterval(timer);timer=setInterval(hud,250)}
+function level(){$('app').innerHTML=LEVELS[lvl]();left=$('app').querySelectorAll('[data-bug]').length;left=Math.min(left,5);hud();
+  clearInterval(clock);const c=$('clock');if(c){let m=600;clock=setInterval(()=>{m--;c.textContent=`${m/60|0}:${String(m%60).padStart(2,'0')}`},1000)}}
+function hud(){if(!t0){$('hud').textContent='';return}const s=((Date.now()-t0)/1000+pen).toFixed(1);$('hud').textContent=`Level ${lvl+1}/${LEVELS.length} · bugs left ${left} · ${s}s`}
+$('app').onclick=e=>{if(!t0)return;const b=e.target.closest('[data-bug]');
+  if(!b||b.classList.contains('found')){pen+=2;$('app').classList.remove('miss');void $('app').offsetWidth;$('app').classList.add('miss');tone(150,.12,'sawtooth',.05);return}
+  b.classList.add('found');b.title=b.dataset.bug;left--;tone(900,.08,'triangle',.07);save('found',load('found',0)+1);hud();
+  if(left<=0){if(++lvl<LEVELS.length)setTimeout(level,600);else{const s=+((Date.now()-t0)/1000+pen).toFixed(1);clearInterval(timer);clearInterval(clock);t0=0;
+    const best=load('best',null);if(best===null||s<best)save('best',s);$('hud').textContent=`🐞 All bugs squashed in ${s}s!${best===null||s<best?' New best!':` Best: ${best}s`}`;[523,659,784].forEach((f,k)=>tone(f,.15,'triangle',.1,k*.1))}}};
+$('go').onclick=start;$('hud').textContent=load('best',null)!==null?`Best: ${load('best')}s`:'';
+</script></body></html>

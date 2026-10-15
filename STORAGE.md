@@ -14,10 +14,16 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_` | apps/common.js |
 | `app_boredom_done` | apps/boredom.html |
 | `app_bracket_bracket` | apps/bracket.html |
+| `app_bracket_bracket2` | apps/bracket.html |
+| `app_bracket_liveCode` | apps/bracket.html |
 | `app_bracket_names` | apps/bracket.html |
 | `app_buddy_history` | apps/buddy.html |
 | `app_buddy_notes` | apps/buddy.html |
+| `app_bughunt_best` | apps/bughunt.html |
+| `app_bughunt_found` | apps/bughunt.html |
 | `app_capsule_list` | apps/capsule.html |
+| `app_changelog_countMe` | apps/changelog.html |
+| `app_changelog_pollId` | apps/changelog.html |
 | `app_classroom_draft` | apps/classroom.html |
 | `app_comic_c` | apps/comic.html |
 | `app_community_mine` | apps/appmaker.html |
@@ -35,6 +41,8 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_escape_best` | apps/escape.html |
 | `app_escapemaker_draft` | apps/escape-maker.html |
 | `app_genart_kept` | apps/genart.html |
+| `app_graveyard_flowers` | apps/graveyard.html |
+| `app_graveyard_visited` | apps/graveyard.html |
 | `app_idle_g` | apps/idle.html |
 | `app_journal_entries` | apps/journal.html |
 | `app_lofi_p` | apps/lofi.html |
@@ -57,7 +65,9 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_petfocus_pet` | js/menu.js |
 | `app_pixel_n` | apps/pixel.html |
 | `app_pixel_px` | apps/pixel.html |
+| `app_pixelwall_gallery` | apps/pixelwall.html |
 | `app_pixelwall_last` | apps/pixelwall.html |
+| `app_pixelwall_log` | apps/pixelwall.html |
 | `app_pixelwall_placed` | apps/pixelwall.html |
 | `app_poem_chosen` | apps/poem.html |
 | `app_poem_kept` | apps/poem.html |
@@ -93,6 +103,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_wordle_stats` | apps/wordle.html |
 | `app_wrapped_slide` | apps/wrapped.html |
 | `menu_favs` | js/menu.js |
+| `menu_lastVer` | js/menu.js |
 | `menu_petFed` | js/menu.js |
 | `menu_recent` | apps/common.js |
 | `menu_recent` | apps/os.html |
@@ -101,6 +112,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `menu_season` | js/menu.js |
 | `menu_seen` | js/menu.js |
 | `menu_story` | js/menu.js |
+| `menu_versSeen` | js/menu.js |
 | `menu_visited` | apps/common.js |
 | `menu_visited` | tools.html |
 | `prof_` | apps/family-rules.js |

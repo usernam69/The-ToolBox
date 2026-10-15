@@ -1,7 +1,13 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.2.2';
+var TB_VERSION='1.3.0';
+// release date and the apps changed in this release (both written by the release script)
+var TB_DATE='2026-10-15';var TB_CHANGED=['bracket','changelog','lofi','pixelwall','quests','bughunt','graveyard'];
+// every version gets a fun codename, worked out from its number
+function TB_CODENAME(v){let h=0;for(const c of v)h=h*31+c.charCodeAt(0)>>>0;const A=['Sneaky','Bouncy','Cosmic','Fuzzy','Turbo','Sleepy','Shiny','Brave','Wobbly','Zippy','Quiet','Mighty'],B=['Sam','Otter','Comet','Pickle','Badger','Noodle','Falcon','Muffin','Gecko','Pixel','Walrus','Taco'];return A[h%A.length]+' '+B[(h>>4)%B.length]};
+
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.3.0','Two new apps: Bug hunt and the Bug graveyard, a Bug hunter quest, update confetti with a codename and an update streak, “updated” tags on changed apps, changelog search with comic and haiku views, an RSS feed and a vote on what comes next, a live tournament bracket with undo, a second-chance bracket, tap races and app or bug showdowns, pixel wall replay, guide pictures and a snapshot per version, a commit melody and an hourly radio host in Lo-fi, bug reports that include your last steps, a web zip for USB sticks and checksums with every download. Fixes: pixel wall taps near the edge could land on the next pixel.'],
  ['1.2.1','Tournament bracket: players with the same name are now numbered so the right one moves up.'],
  ['1.2.0','Snooze and mark-paid buttons on reminders, quiet hours, smart habit reminders, flashcard, water and budget reminders, games pause when you switch windows, a ? sheet on the menu, theme previews, bug reports from Help.'],
  ['1.1.2','Fixes: paid bills no longer remind you, and games stop moving when you switch windows.'],
@@ -39,7 +45,14 @@ TB_PREFS.apply();
 // Keeps the last 20 JavaScript errors on this device (never sent anywhere) so a bug report can include them.
 (()=>{const add=(msg,where)=>{try{const l=JSON.parse(localStorage.getItem('tb_errors')||'[]');l.unshift({t:Date.now(),page:location.pathname.split('/').pop()||'index.html',msg:String(msg).slice(0,300)+(where?' @'+where:'')});localStorage.setItem('tb_errors',JSON.stringify(l.slice(0,20)))}catch{}};
   addEventListener('error',e=>add(e.message||'error',e.filename?e.filename.split('/').pop()+':'+e.lineno:''));addEventListener('unhandledrejection',e=>add('Promise: '+(e.reason&&e.reason.message||e.reason)))})();
+// The last 20 things you tapped or pressed (in this tab only, never sent anywhere) so a bug report shows how you got there.
+// Typed text is never kept: only button names and special keys like Enter or Escape.
+(()=>{const add=a=>{try{const l=JSON.parse(sessionStorage.getItem('tb_actions')||'[]');l.push((location.pathname.split('/').pop()||'index.html')+': '+a);sessionStorage.setItem('tb_actions',JSON.stringify(l.slice(-20)))}catch{}};
+  addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('button,a,[role=button],summary,label,select,canvas');if(!el)return;if(el.closest('input[type=password]'))return;
+    const name=(el.getAttribute('aria-label')||el.title||el.textContent||el.tagName).trim().replace(/\s+/g,' ').slice(0,40);add('tap '+el.tagName.toLowerCase()+' “'+name+'”')},true);
+  addEventListener('keydown',e=>{if(e.key.length>1&&!/^(Shift|Control|Alt|Meta|CapsLock|Tab)$/.test(e.key))add('key '+e.key)},true);
+  addEventListener('pageshow',()=>add('opened'))})();
 async function copyBugReport(version){try{const s=JSON.parse(localStorage.getItem('tb_stats')||'{}');s.bugReports=(s.bugReports||0)+1;localStorage.setItem('tb_stats',JSON.stringify(s))}catch{}let errs=[];try{errs=JSON.parse(localStorage.getItem('tb_errors')||'[]')}catch{}
   const cache='caches' in window?(await caches.keys().catch(()=>[])).filter(k=>k.startsWith('toolbox-')).join(','):'';
-  const txt=['The ToolBox bug report','Version: '+(version||'?')+(cache?' ('+cache+')':''),'Where: '+(window.toolboxDesktop?'desktop app':location.origin+location.pathname),'Browser: '+navigator.userAgent,'Screen: '+innerWidth+'x'+innerHeight,'','What happened:','','Recent errors:',...(errs.length?errs.slice(0,10).map(e=>new Date(e.t).toISOString()+' '+e.page+': '+e.msg):['none'])].join('\n');
+  const txt=['The ToolBox bug report','Version: '+(version||'?')+(cache?' ('+cache+')':''),'Where: '+(window.toolboxDesktop?'desktop app':location.origin+location.pathname),'Browser: '+navigator.userAgent,'Screen: '+innerWidth+'x'+innerHeight,'','What happened:','','Recent errors:',...(errs.length?errs.slice(0,10).map(e=>new Date(e.t).toISOString()+' '+e.page+': '+e.msg):['none']),'','Last steps (oldest first):',...(()=>{try{const a=JSON.parse(sessionStorage.getItem('tb_actions')||'[]');return a.length?a:['none']}catch{return['none']}})()].join('\n');
   try{await navigator.clipboard.writeText(txt);alert('Bug report copied. Paste it into a new issue at github.com/usernam69/The-ToolBox/issues')}catch{prompt('Copy this bug report:',txt)}}

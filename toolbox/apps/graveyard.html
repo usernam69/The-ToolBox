@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bug graveyard</title><link rel="stylesheet" href="common.css">
+<style>#yard{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;padding:10px 0 30px;background:linear-gradient(transparent 70%,color-mix(in srgb,#3a7d2c 25%,transparent))}
+.stone{background:linear-gradient(#9aa0a6,#6f757b);color:#fff;border-radius:60px 60px 6px 6px;padding:22px 10px 12px;text-align:center;box-shadow:0 4px 0 #4a4f54;position:relative;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.stone b{font-size:13px;letter-spacing:2px}.stone p{margin:6px 0;font-size:13px;line-height:1.3}.stone small{opacity:.85}.stone button{background:none;border:0;font-size:18px;cursor:pointer;color:#fff}</style></head>
+<body data-app="graveyard" data-cat="wild" data-title="Bug graveyard"><main>
+<p class="sub">Every bug squashed in The ToolBox gets a tombstone. Leave a flower for your favourite. 🌼</p>
+<div id="yard"></div>
+</main><script src="common.js"></script><script>
+// the fixes come from the "What's new" list (TB_NEWS): any "Fixes: a, b and c" part becomes tombstones
+(function wait(){if(!window.TB_NEWS)return setTimeout(wait,50);save('visited',true);
+  const graves=TB_NEWS.flatMap(([v,t])=>{const m=t.match(/Fix(?:es|ed)?:([^.]*)/i);return m?m[1].split(/,| and /).map(s=>s.trim()).filter(Boolean).map(s=>({v,s})):[]});
+  if(!graves.length){$('yard').innerHTML='<p class="muted">No bugs buried yet. Lucky!</p>';return}
+  const flowers=load('flowers',{}),EP=['Squashed','Gone but not forgotten','Rest in pieces','Debugged at last','It worked on my machine'];
+  const draw=()=>{$('yard').innerHTML=graves.map((g,i)=>{const k=g.v+'|'+g.s;return`<div class="stone"><b>R.I.P.</b><p>${esc(g.s[0].toUpperCase()+g.s.slice(1))}</p><small>${EP[i%EP.length]} in v${esc(g.v)}</small>
+    <button data-k="${esc(k)}" title="Leave a flower" aria-label="Leave a flower">${'🌼'.repeat(Math.min(5,flowers[k]||0))||'＋🌼'}</button></div>`}).join('');
+    $('yard').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{flowers[b.dataset.k]=(flowers[b.dataset.k]||0)+1;save('flowers',flowers);tone(880,.08,'sine',.06);draw()})};draw()})();
+</script></body></html>

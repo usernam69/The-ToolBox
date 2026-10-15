@@ -1,37 +1,85 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tournament bracket</title><link rel="stylesheet" href="common.css">
-<style>#br{display:flex;gap:18px;overflow-x:auto;padding:8px 0 14px}.round{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:160px}.round h4{margin:0;text-align:center;color:var(--muted);font-size:13px}
+<style>#br,#br2{display:flex;gap:18px;overflow-x:auto;padding:8px 0 14px}.round{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:160px}.round h4{margin:0;text-align:center;color:var(--muted);font-size:13px}
 .match{border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}.match button{display:block;width:100%;text-align:left;font:inherit;border:0;background:none;color:var(--ink);padding:6px 10px;cursor:pointer}
 .match button+button{border-top:1px solid var(--line)}.match button.win{background:var(--accent);color:var(--accent-ink);font-weight:700}.match button.lose{opacity:.45;text-decoration:line-through}.match button:disabled{cursor:default}
-#champ{font-size:28px;text-align:center;margin:10px 0}</style></head>
+.match .duel{font-size:12px;padding:3px 10px;color:var(--muted);border-top:1px dashed var(--line)}
+#champ{font-size:28px;text-align:center;margin:10px 0}#duel{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50}
+#duel .box{background:var(--card);border-radius:16px;padding:18px;text-align:center;width:min(92vw,420px)}#duel .pads{display:flex;gap:10px;margin-top:12px}#duel .pads button{flex:1;font-size:20px;padding:30px 6px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);touch-action:manipulation}</style></head>
 <body data-app="bracket" data-cat="bigger" data-title="Tournament bracket"><main>
 <p class="sub">For game nights and Wi-Fi tournaments: type the players, make the bracket, and tap the winner of each match. Byes are added for you.</p>
 <div class="row"><textarea id="names" class="grow" rows="4" placeholder="One player or team per line"></textarea></div>
-<div class="row"><button class="b" id="make">Make bracket</button><label><input type="checkbox" id="shuffle" checked> Shuffle</label><button class="g" id="reset" hidden>Start over</button><button class="g" id="share" hidden>🔗 Share results</button></div>
-<div id="champ"></div><div id="br"></div>
-</main><script src="common.js"></script><script>
-// rounds[r][m] = [a, b, winner]; a player called null is a bye
-let B=load('bracket',null);$('names').value=load('names','');$('names').oninput=()=>save('names',$('names').value);
+<div class="row"><button class="g" id="apps" title="Fill in 8 random apps and vote for your favourite">🏆 App showdown</button><button class="g" id="bugs" title="Fill in fixed bugs and vote for the worst one">🐞 Bug showdown</button></div>
+<div class="row"><button class="b" id="make">Make bracket</button><label><input type="checkbox" id="shuffle" checked> Shuffle</label><label title="Round 1 losers play their own bracket; its winner meets the main winner in a grand final"><input type="checkbox" id="second"> Second chance</label>
+ <button class="g" id="undo" hidden>↶ Undo</button><button class="g" id="reset" hidden>Start over</button><button class="g" id="share" hidden>🔗 Share results</button><button class="g" id="live" hidden title="Friends can watch the bracket update live">📡 Go live</button></div>
+<p id="liveMsg" class="muted"></p>
+<div id="champ"></div><div id="br"></div><h3 id="h2" hidden>Second chance</h3><div id="br2"></div><div id="gf"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="registry.js"></script><script>
+// rounds[r][m] = [a, b, winner]; a player called null is a bye.
+// S = {main, second (round 1 losers, optional), grand: [a, b, winner]}
+let S=load('bracket2',null),HIST=[];const watching=new URLSearchParams(location.search).get('watch');
+$('names').value=load('names','');$('names').oninput=()=>save('names',$('names').value);
 const NAMES=['Round 1','Round 2','Round 3','Round 4','Round 5','Round 6'];
-function make(){let p=$('names').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,64);
-  // players are matched by name, so repeated names get a number: "Sam", "Sam (2)"
-  const seen={};p=p.map(n=>(seen[n]=(seen[n]||0)+1)>1?`${n} (${seen[n]})`:n);if(p.length<2)return toast('Add at least two players.');
-  if($('shuffle').checked)p=p.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-  let size=2;while(size<p.length)size*=2;const seeds=[...p,...Array(size-p.length).fill(null)];
+// players are matched by name, so repeated names get a number that isn't already taken: "Sam", "Sam (2)"
+function unique(p){const taken=new Set(),out=[];for(const n of p){let v=n,k=2;while(taken.has(v))v=`${n} (${k++})`;taken.add(v);out.push(v)}return out}
+function build(p){let size=2;while(size<p.length)size*=2;const seeds=[...p,...Array(size-p.length).fill(null)];
   // spread the byes out: pair the top half with the bottom half
   const first=[];for(let i=0;i<size/2;i++)first.push([seeds[i],seeds[size-1-i],null]);
-  B=[first];for(let n=size/4;n>=1;n/=2)B.push([...Array(n)].map(()=>[null,null,null]));settle();save('bracket',B);draw()}
+  const B=[first];for(let n=size/4;n>=1;n/=2)B.push([...Array(n)].map(()=>[null,null,null]));return B}
+function make(){let p=unique($('names').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,64));if(p.length<2)return toast('Add at least two players.');
+  if($('shuffle').checked)p=p.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+  S={main:build(p),second:null,grand:null,wantSecond:$('second').checked&&p.length>=4};HIST=[];settle();commit()}
 // winners move up a round; in round 1 a bye means the other player goes through; a winner who is no longer in the match is cleared
-function settle(){B.forEach((round,r)=>round.forEach((m,i)=>{if(r>0){m[0]=B[r-1][2*i][2];m[1]=B[r-1][2*i+1][2]}
+function settleB(B){B.forEach((round,r)=>round.forEach((m,i)=>{if(r>0){m[0]=B[r-1][2*i][2];m[1]=B[r-1][2*i+1][2]}
   if(r===0&&(m[0]===null)!==(m[1]===null))m[2]=m[0]??m[1];else if(m[2]!==null&&m[2]!==m[0]&&m[2]!==m[1])m[2]=null}))}
-function choose(r,i,k){const m=B[r][i],p=m[k];if(p===null||m[0]===null||m[1]===null)return;
-  m[2]=m[2]===p?null:p;settle();save('bracket',B);draw();if(m[2])tone(660,.1,'triangle',.08)}
-function draw(){$('reset').hidden=$('share').hidden=!B;if(!B){$('br').innerHTML='';$('champ').textContent='';return}const fin=B[B.length-1][0][2];
-  $('champ').textContent=fin?'🏆 '+fin+' wins!':'';
-  $('br').innerHTML=B.map((round,r)=>`<div class="round"><h4>${r===B.length-1?'Final':r===B.length-2&&B.length>2?'Semi-finals':NAMES[r]}</h4>${round.map((m,i)=>`<div class="match">${[0,1].map(k=>{const p=m[k];
-    return`<button data-r="${r}" data-i="${i}" data-k="${k}" class="${m[2]!==null&&p!==null?(m[2]===p?'win':'lose'):''}" ${p===null?'disabled':''}>${p===null?(r===0?'<i class="muted">bye</i>':'<span class="muted">…</span>'):esc(p)}</button>`}).join('')}</div>`).join('')}</div>`).join('');
-  $('br').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>choose(+b.dataset.r,+b.dataset.i,+b.dataset.k));
+const champOf=B=>B&&B[B.length-1][0][2];
+function settle(){settleB(S.main);
+  if(S.wantSecond){const r1=S.main[0],done=r1.every(m=>m[2]!==null);
+    if(done){const losers=r1.filter(m=>m[0]!==null&&m[1]!==null).map(m=>m[2]===m[0]?m[1]:m[0]);
+      if(losers.length>=2&&(!S.second||S.second[0].flatMap(m=>m.slice(0,2)).filter(Boolean).sort().join()!==losers.slice().sort().join()))S.second=build(losers);
+      if(losers.length<2)S.second=null}
+    else S.second=null;
+    if(S.second)settleB(S.second);
+    const a=champOf(S.main),b=S.second?champOf(S.second):null;
+    if(a&&b){if(!S.grand||S.grand[0]!==a||S.grand[1]!==b)S.grand=[a,b,null]}else S.grand=null}}
+function commit(){save('bracket2',S);draw();publish()}
+function choose(which,r,i,k){const B=which==='g'?null:S[which],m=which==='g'?S.grand:B[r][i],p=m[k];if(p===null||m[0]===null||m[1]===null)return;
+  HIST.push(JSON.stringify(S));if(HIST.length>50)HIST.shift();m[2]=m[2]===p?null:p;settle();commit();if(m[2])tone(660,.1,'triangle',.08)}
+const winner=()=>S&&(S.wantSecond?(S.grand&&S.grand[2]):champOf(S.main));
+const label=(B,r)=>r===B.length-1?'Final':r===B.length-2&&B.length>2?'Semi-finals':NAMES[r];
+function matchHtml(which,r,i,m,first){return`<div class="match">${[0,1].map(k=>{const p=m[k];
+  return`<button data-w="${which}" data-r="${r}" data-i="${i}" data-k="${k}" class="${m[2]!==null&&p!==null?(m[2]===p?'win':'lose'):''}" ${p===null||watching?'disabled':''}>${p===null?(first?'<i class="muted">bye</i>':'<span class="muted">…</span>'):esc(p)}</button>`}).join('')}${!watching&&m[0]!==null&&m[1]!==null&&m[2]===null?`<button class="duel" data-duel="${which},${r},${i}">⚡ Settle it with a tap race</button>`:''}</div>`}
+function bracketHtml(which,B){return B.map((round,r)=>`<div class="round"><h4>${label(B,r)}</h4>${round.map((m,i)=>matchHtml(which,r,i,m,r===0)).join('')}</div>`).join('')}
+function draw(){const has=!!S;['reset','share','live','undo'].forEach(id=>$(id).hidden=!has||!!watching);if(has)$('undo').hidden=!HIST.length||!!watching;
+  if(!has){$('br').innerHTML=$('br2').innerHTML=$('gf').innerHTML='';$('champ').textContent='';$('h2').hidden=true;return}
+  const fin=winner();$('champ').textContent=fin?'🏆 '+fin+' wins!':'';
+  $('br').innerHTML=bracketHtml('main',S.main);$('h2').hidden=!S.second;$('br2').innerHTML=S.second?bracketHtml('second',S.second):'';
+  $('gf').innerHTML=S.grand?`<h3>Grand final</h3><div style="max-width:220px">${matchHtml('g',0,0,S.grand,false)}</div>`:'';
+  document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>choose(b.dataset.w,+b.dataset.r,+b.dataset.i,+b.dataset.k));
+  document.querySelectorAll('[data-duel]').forEach(b=>b.onclick=()=>{const [w,r,i]=b.dataset.duel.split(','),m=w==='g'?S.grand:S[w][r][i];duel(m,k=>choose(w,+r,+i,k))});
   if(fin&&!draw.cheered){draw.cheered=1;[523,659,784,1047].forEach((f,k)=>tone(f,.18,'triangle',.1,k*.1))}if(!fin)draw.cheered=0}
-$('make').onclick=()=>{if(B&&!confirm('Start a new bracket?'))return;make()};$('reset').onclick=()=>{if(!confirm('Clear the bracket?'))return;B=null;save('bracket',null);draw()};
-$('share').onclick=()=>copy(B.map((round,r)=>(r===B.length-1?'Final':NAMES[r])+':\n'+round.map(m=>`  ${m[0]??'bye'} vs ${m[1]??'bye'}${m[2]?' → '+m[2]:''}`).join('\n')).join('\n'));
+// a quick game to decide a match: first to 15 taps on their side wins
+function duel(m,done){const d=document.createElement('div');d.id='duel';let n=[0,0],over=false;
+  d.innerHTML=`<div class="box"><b>Tap race!</b><p class="muted">First to 15 taps wins. Players share the screen.</p><div class="pads">${[0,1].map(k=>`<button data-p="${k}">${esc(m[k])}<br><span>0</span></button>`).join('')}</div><button class="g" style="margin-top:10px" id="duelX">Cancel</button></div>`;
+  d.querySelectorAll('[data-p]').forEach(b=>b.onpointerdown=e=>{e.preventDefault();if(over)return;const k=+b.dataset.p;n[k]++;b.querySelector('span').textContent=n[k];tone(400+n[k]*30,.04,'square',.04);
+    if(n[k]>=15){over=true;b.style.background='var(--accent)';setTimeout(()=>{d.remove();done(k)},700)}});
+  d.querySelector('#duelX').onclick=()=>d.remove();document.body.append(d)}
+// presets
+$('apps').onclick=()=>{if(typeof ALL_APPS==='undefined')return toast('App list not loaded.');const a=ALL_APPS.map(x=>x.name).sort(()=>Math.random()-.5).slice(0,8);$('names').value=a.join('\n');save('names',$('names').value)};
+$('bugs').onclick=()=>{const fixes=TB_NEWS.flatMap(([,t])=>{const m=t.match(/Fix(?:es|ed)?:([^.]*)/i);return m?m[1].split(/,| and /).map(s=>s.trim()).filter(Boolean):[]});
+  if(fixes.length<2)return toast('Not enough fixed bugs listed yet.');$('names').value=fixes.slice(0,16).join('\n');save('names',$('names').value)};
+$('make').onclick=()=>{if(S&&!confirm('Start a new bracket?'))return;make()};$('reset').onclick=()=>{if(!confirm('Clear the bracket?'))return;S=null;HIST=[];save('bracket2',null);draw()};
+$('undo').onclick=()=>{if(!HIST.length)return;S=JSON.parse(HIST.pop());commit()};
+$('share').onclick=()=>{const txt=(name,B)=>name+'\n'+B.map((round,r)=>label(B,r)+':\n'+round.map(m=>`  ${m[0]??'bye'} vs ${m[1]??'bye'}${m[2]?' → '+m[2]:''}`).join('\n')).join('\n');
+  copy(txt('Main bracket',S.main)+(S.second?'\n\n'+txt('Second chance',S.second):'')+(S.grand?`\n\nGrand final: ${S.grand[0]} vs ${S.grand[1]}${S.grand[2]?' → '+S.grand[2]:''}`:''))};
+// live: the bracket is a retained message, so watchers see it at once and then every change
+const TOPIC='the-toolbox/v1/bracket/';let liveCode=load('liveCode',null);
+function publish(){if(!liveCode||!S||!WORLD.client)return;WORLD.client.publish(TOPIC+liveCode,JSON.stringify(S),{retain:true,qos:1})}
+function showLive(){const url=location.href.split(/[?#]/)[0]+'?watch='+liveCode;$('liveMsg').innerHTML=`📡 Live. Friends open <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>`}
+$('live').onclick=()=>{liveCode=liveCode||Math.random().toString(36).slice(2,8);save('liveCode',liveCode);WORLD.connect().then(()=>{publish();showLive();copy(location.href.split(/[?#]/)[0]+'?watch='+liveCode)}).catch(()=>toast('Couldn’t go online.'))};
+if(watching){$('names').closest('.row').hidden=true;document.querySelectorAll('main > .row').forEach(r=>r.hidden=true);$('liveMsg').textContent='Connecting to the live bracket…';
+  WORLD.connect().then(c=>{c.on('message',(t,buf)=>{if(t!==TOPIC+watching)return;try{S=JSON.parse(new TextDecoder().decode(buf));if(!S||!Array.isArray(S.main))throw 0;$('liveMsg').textContent='📡 Watching live';draw()}catch{$('liveMsg').textContent='This live bracket isn’t available.'}});c.subscribe(TOPIC+watching)}).catch(()=>$('liveMsg').textContent='Couldn’t connect (offline?).')}
+else{// brackets saved before "second chance" existed
+  const old=load('bracket',null);if(!S&&old){S={main:old,second:null,grand:null,wantSecond:false};save('bracket2',S);save('bracket',null)}
+  if(liveCode&&S)WORLD.connect().then(()=>{publish();showLive()}).catch(()=>{})}
 draw();
 </script></body></html>

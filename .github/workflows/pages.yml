@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  issues: write
   pages: write
   id-token: write
 concurrency:
@@ -25,3 +26,20 @@ jobs:
           path: toolbox
       - id: deployment
         uses: actions/deploy-pages@v4
+  # after deploying, open the live site in a real browser; if a page throws errors, open an issue so it gets fixed
+  live-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm i --no-save --no-package-lock @playwright/test@1.48.2
+      - run: npx playwright install --with-deps chromium
+      - name: Test the live site
+        env: { BASE_URL: 'https://usernam69.github.io/The-ToolBox/' }
+        run: sleep 30 && npx playwright test -g "opens without errors"
+      - name: Open an issue if the live site is broken
+        if: failure()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh issue create --repo "${{ github.repository }}" --title "Live site check failed after ${GITHUB_SHA::7}" --body "The pages check after deploying ${{ github.sha }} found errors. Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. To roll back, run: node scripts/release.js <next version> --rollback"

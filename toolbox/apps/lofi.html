@@ -67,6 +67,16 @@ $('rListen').onclick=async()=>{if(RADIO.on){RADIO.on=false;if(playing)toggle();i
 $('rSend').onclick=async()=>{const name=$('rName').value.trim();if(!name)return toast('Give your loop a name.');const p={...(RADIO.on&&RADIO.mine?RADIO.mine:P),bpm:+$('bpm').value,name};
   if(!RADIO.valid(p))return toast('That loop can’t be sent.');try{const c=await RADIO.connect();c.publish(RADIO.TOPIC+RADIO.me(),JSON.stringify(p),{retain:true,qos:1});toast('📻 Your loop is on the radio!')}catch{toast('Couldn’t reach the radio (offline?).')}};
 $('rReq').onchange=async()=>{const id=$('rReq').value;if(!id)return;$('rReq').value='';try{const c=await RADIO.connect();c.publish(RADIO.REQ,JSON.stringify({id}),{qos:0});RADIO.next=id;toast('🙋 Requested! It plays next for everyone listening.')}catch{toast('Couldn’t reach the radio.')}};
+// 🎼 commit melody: the latest 16 changes to The ToolBox on GitHub become the melody, one note per change (offline: the version list)
+{const b=document.createElement('button');b.className='g';b.textContent='🎼 Commit melody';b.title='Turn The ToolBox’s latest changes into a melody';$('play').parentNode.append(b);
+  b.onclick=async()=>{let ids=[];try{const r=await fetch('https://api.github.com/repos/usernam69/The-ToolBox/commits?per_page=16');if(r.ok)ids=(await r.json()).map(c=>c.sha)}catch{}
+    if(!ids.length)ids=(window.TB_NEWS||[]).map(n=>n[0].replace(/\D/g,'').padEnd(8,'7'));if(!ids.length)return toast('No history to play.');
+    const m=Array.from({length:6},()=>Array(16).fill('0'));ids.slice(0,16).reverse().forEach((h,step)=>{const v=parseInt(h[0],16)||0;if(v<12)m[v%6][step]='1'});
+    P.m=m.map(r=>r.join(''));save('p',P);drawAll();toast(`🎼 ${Math.min(16,ids.length)} changes turned into a melody`);if(!playing)toggle()}}
+// 📻 release radio: while the radio plays, the host announces the current version at the top of every hour
+{let said=-1;const host=()=>{if(!('speechSynthesis' in window)||!window.TB_VERSION)return;const u=new SpeechSynthesisUtterance(`You're listening to ToolBox radio. Running version ${TB_VERSION}, codename ${TB_CODENAME(TB_VERSION)}. ${(TB_NEWS[0]||['',''])[1].split(/[.,]/)[0]}.`);u.rate=.95;u.volume=.8;speechSynthesis.speak(u)};
+  setInterval(()=>{const d=new Date();if(RADIO.on&&playing&&d.getMinutes()===0&&said!==d.getHours()){said=d.getHours();host()}},20000);
+  $('rListen').addEventListener('click',()=>setTimeout(()=>{if(RADIO.on)host()},2500))}
 // while the radio plays, don't save other people's loops over yours
 const save0=save;save=(k,v)=>{if(k==='p'&&RADIO.on)return;save0(k,v)};
 </script></body></html>

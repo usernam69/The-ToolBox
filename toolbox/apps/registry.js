@@ -19,6 +19,7 @@ const CATEGORIES=[
   ['parkour','Parkour platformer','🏃','Tight jumps, timed runs and a ghost of your best run.','apps/parkour.html'],
   ['parkouredit','Parkour level editor','✏️','Paint your own Parkour level and share it as a link.','apps/parkour-edit.html'],
   ['speedrun','ToolBox speedrun','⏱️','How fast can you open 10 different apps?','apps/speedrun.html'],
+  ['bughunt','Bug hunt','🐞','A little app full of planted bugs. Tap them all, fast.','apps/bughunt.html'],
   ['snake','Snake with a twist','🐍','Snake, but the walls move and you can split in two.','apps/snake.html'],
   ['wordle','Your own Wordle','🟩','Guess the word, using a word list about anything you like.','apps/wordle.html'],
   ['rogue','Tiny roguelike','🗡️','Go down through a dungeon that’s different every run.','apps/rogue.html'],
@@ -66,6 +67,7 @@ const CATEGORIES=[
   ['discord','Discord bot maker','🤖','Pick commands and download a ready-to-run bot.','apps/discord.html'],
   ['mhabits','Phone habit app','📱','A big-button habit tracker made for your phone.','apps/mhabits.html']]},
  {id:'wild',name:'Wild ideas',emoji:'🦄',blurb:'Odd experiments that might turn out fun.',apps:[
+  ['graveyard','Bug graveyard','🪦','A tombstone for every bug squashed in The ToolBox.','apps/graveyard.html'],
   ['os','ToolBox OS','🖥️','A full-screen desktop with windows, a taskbar and a start menu.','apps/os.html'],
   ['decay','Decaying to-do list','🥀','Tasks you ignore slowly fade away.','apps/decay.html'],
   ['reverse','Reverse platformer','🙃','You design the level and try to make the runner fail.','apps/reverse.html'],

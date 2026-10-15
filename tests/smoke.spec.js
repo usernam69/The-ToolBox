@@ -18,7 +18,7 @@ function watch(page) {
 for (const p of pages) {
   test(`opens without errors: ${p}`, async ({ page }) => {
     const errors = watch(page);
-    await page.goto('/' + p);
+    await page.goto(new URL(p, (process.env.BASE_URL || 'http://localhost:5199').replace(/\/?$/, '/')).href);
     await page.waitForTimeout(1200);
     expect(errors, errors.join('\n')).toEqual([]);
   });

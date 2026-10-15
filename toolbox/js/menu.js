@@ -183,3 +183,22 @@ function menuSheet(){if($('kbSheet'))return $('kbSheet').remove();const d=docume
   d.querySelector('#kbClose').onclick=()=>d.remove();d.querySelector('#bugCopy').onclick=()=>copyBugReport(VERSION);TB_PREFS.wire(d);document.body.append(d)}
 addEventListener('keydown',e=>{if(e.key==='?'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();menuSheet()}if(e.key==='Escape'&&$('kbSheet'))$('kbSheet').remove()});
 {const b=document.createElement('button');b.className='g';b.textContent='?';b.title='Shortcuts, version and bug reports (?)';b.setAttribute('aria-label','Help');b.onclick=menuSheet;$('menuBar').append(b)}
+
+// after an update: a codename toast, a short chime, confetti once, the pet announces it, an update streak,
+// and "updated" tags on the apps that changed in this version (TB_CHANGED, written by the release script)
+const codename=TB_CODENAME;
+(()=>{const prev=menuLS.get('menu_lastVer','');menuLS.set('menu_lastVer',VERSION);
+  if(window.TB_CHANGED&&TB_CHANGED.length){const s=document.createElement('style');s.textContent=TB_CHANGED.map(id=>`.app[data-id="${CSS.escape(id)}"]`).join(',')+`{position:relative}`+TB_CHANGED.map(id=>`.app[data-id="${CSS.escape(id)}"]::after`).join(',')+`{content:'updated';position:absolute;top:4px;right:6px;font-size:10px;background:var(--accent);color:var(--accent-ink,#fff);border-radius:6px;padding:0 5px}`;document.head.append(s)}
+  if(!prev||prev===VERSION)return;
+  const seen=menuLS.get('menu_versSeen',[]);if(!seen.includes(VERSION))seen.push(VERSION);menuLS.set('menu_versSeen',seen);
+  let streak=0;for(const [v] of TB_NEWS){if(seen.includes(v))streak++;else break}
+  const tb=document.createElement('div');tb.setAttribute('role','status');tb.style.cssText='position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:9999;max-width:90vw';setTimeout(()=>tb.remove(),5000);document.body.append(tb);
+  tb.textContent=(`🎉 Updated to v${VERSION} “${codename(VERSION)}”${streak>1?` · 🔥 ${streak} updates in a row`:''}`);
+  try{const a=new AudioContext();[523,784].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;g.gain.setValueAtTime(.06,a.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+i*.12+.25);o.connect(g).connect(a.destination);o.start(a.currentTime+i*.12);o.stop(a.currentTime+i*.12+.3)})}catch{}
+  setTimeout(()=>window.petSay&&petSay(`📦 New version! ${TB_NEWS[0][1].split(/[.,]/)[0]}`),4000);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const c=document.createElement('canvas');c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9999';c.width=innerWidth;c.height=innerHeight;document.body.append(c);const x=c.getContext('2d');
+  const bits=Array.from({length:120},()=>({x:Math.random()*c.width,y:-20-Math.random()*c.height/2,v:2+Math.random()*3,s:Math.random()*6,h:Math.random()*360}));let t=0;
+  (function f(){x.clearRect(0,0,c.width,c.height);bits.forEach(b=>{b.y+=b.v;b.x+=Math.sin((t+b.s)/10);x.fillStyle=`hsl(${b.h},90%,60%)`;x.fillRect(b.x,b.y,6,9)});if(++t<220)requestAnimationFrame(f);else c.remove()})()})();
+// build date next to the version
+if(window.TB_DATE)setTimeout(()=>{const o=$('offline');if(o)o.title+=` · released ${TB_DATE}`},1500);

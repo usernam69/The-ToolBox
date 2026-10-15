@@ -1,23 +1,49 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pixel wall</title><link rel="stylesheet" href="common.css">
-<style>#wall{width:min(100%,640px);aspect-ratio:1;image-rendering:pixelated;border:1px solid var(--line);border-radius:8px;cursor:crosshair;display:block;margin:auto;background:#fff;touch-action:none}
-.pal{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:10px 0}.pal button{width:30px;height:30px;border-radius:6px;border:2px solid var(--line);cursor:pointer}.pal button.on{border-color:var(--ink);transform:scale(1.15)}</style></head>
+<style>.stage{position:relative;width:min(100%,640px);aspect-ratio:1;margin:auto}#wall,#guide{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;border-radius:8px}
+#wall{border:1px solid var(--line);cursor:crosshair;background:#fff;touch-action:none;box-sizing:border-box}#guide{pointer-events:none;opacity:.3;padding:1px;box-sizing:border-box}
+.pal{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:10px 0}.pal button{width:30px;height:30px;border-radius:6px;border:2px solid var(--line);cursor:pointer}.pal button.on{border-color:var(--ink);transform:scale(1.15)}
+#gallery{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}#gallery figure{margin:0;text-align:center;font-size:12px;color:var(--muted)}#gallery img{width:96px;height:96px;image-rendering:pixelated;border:1px solid var(--line);border-radius:6px;display:block}</style></head>
 <body data-app="pixelwall" data-cat="creative" data-title="Pixel wall"><main>
 <p class="sub">One shared 32×32 wall for everyone using The ToolBox. Pick a color and place one pixel a minute. Paint over others, or help finish their picture. <span class="muted">(online, public: only the pixels are shared)</span></p>
-<div class="pal" id="pal"></div><canvas id="wall" width="32" height="32"></canvas>
+<div class="pal" id="pal"></div><div class="stage"><canvas id="wall" width="32" height="32"></canvas><canvas id="guide" width="32" height="32"></canvas></div>
 <p style="text-align:center" id="msg" class="muted">Connecting…</p>
+<div class="row" style="justify-content:center"><button class="g" id="replay" title="Replays the changes this device has seen today">▶ Replay today</button>
+ <label class="g" style="cursor:pointer" title="Show a faint picture to paint over, only on your screen">🖼️ Guide picture<input type="file" id="guideFile" accept="image/*" hidden></label><button class="g" id="guideOff" hidden>Hide guide</button></div>
+<h3>Wall at each version</h3><p class="muted">A snapshot is kept on this device each time The ToolBox updates.</p><div id="gallery"></div>
 </main><script src="common.js"></script><script src="scores.js"></script><script>
 // each pixel is a retained message (topic …/wall/x-y, payload a palette index), so newcomers get the whole wall at once
 const N=32,TOPIC='the-toolbox/v1/wall/',COLORS=['#ffffff','#e4e4e4','#888888','#222222','#ffa7d1','#e50000','#e59500','#a06a42','#e5d900','#94e044','#02be01','#00d3dd','#0083c7','#0000ea','#cf6ee4','#820080'];
-const x=$('wall').getContext('2d');let color=3,client=null;const cells=new Uint8Array(N*N);
+const cv=$('wall'),x=cv.getContext('2d');let color=3,client=null,replaying=false;const cells=new Uint8Array(N*N);
 $('pal').innerHTML=COLORS.map((c,i)=>`<button style="background:${c}" data-c="${i}" title="Color ${i+1}" class="${i===color?'on':''}"></button>`).join('');
 $('pal').onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;color=+b.dataset.c;$('pal').querySelectorAll('button').forEach(z=>z.classList.toggle('on',z===b))};
-const paint=(i,c)=>{cells[i]=c;x.fillStyle=COLORS[c];x.fillRect(i%N,i/N|0,1,1)};x.fillStyle='#fff';x.fillRect(0,0,N,N);
+const draw1=(i,c)=>{x.fillStyle=COLORS[c];x.fillRect(i%N,i/N|0,1,1)};
+const paint=(i,c)=>{cells[i]=c;if(!replaying)draw1(i,c)};x.fillStyle='#fff';x.fillRect(0,0,N,N);
 const wait=()=>Math.max(0,60000-(Date.now()-load('last',0)));
-function msg(){const w=wait();$('msg').textContent=!client?'Couldn’t reach the wall (offline?).':w?`Next pixel in ${Math.ceil(w/1000)}s`:'Tap the wall to place a pixel.'}
+function msg(){if(replaying)return;const w=wait();$('msg').textContent=!client?'Couldn’t reach the wall (offline?).':w?`Next pixel in ${Math.ceil(w/1000)}s`:'Tap the wall to place a pixel.'}
+// today's changes seen on this device, for the replay: [time, cell, color]
+const today=()=>new Date().toDateString();let LOG=load('log',{day:'',ev:[]});if(LOG.day!==today())LOG={day:today(),ev:[]};
+const logEv=(i,c)=>{if(LOG.day!==today())LOG={day:today(),ev:[]};LOG.ev.push([Date.now(),i,c]);if(LOG.ev.length>4000)LOG.ev.splice(0,LOG.ev.length-4000);save('log',LOG)};
+let first=true;setTimeout(()=>{first=false;snapshot()},3000);// the first burst is the retained wall, not changes
 WORLD.connect().then(c=>{client=c;c.on('message',(t,buf)=>{if(!t.startsWith(TOPIC))return;const m=t.slice(TOPIC.length).match(/^(\d+)-(\d+)$/),v=+new TextDecoder().decode(buf);
-  if(m&&+m[1]<N&&+m[2]<N&&v>=0&&v<COLORS.length)paint(+m[2]*N+ +m[1],v)});c.subscribe(TOPIC+'+');msg()}).catch(msg);
-$('wall').onpointerdown=e=>{if(!client)return toast('Not connected.');if(wait())return toast(`Wait ${Math.ceil(wait()/1000)}s for your next pixel.`);
-  const r=$('wall').getBoundingClientRect(),px=Math.floor((e.clientX-r.left)/r.width*N),py=Math.floor((e.clientY-r.top)/r.height*N);if(px<0||py<0||px>=N||py>=N)return;
-  paint(py*N+px,color);client.publish(TOPIC+px+"-"+py,String(color),{retain:true,qos:1});save('last',Date.now());save('placed',load('placed',0)+1);tone(700,.06,'square',.05);msg()};
+  if(m&&+m[1]<N&&+m[2]<N&&v>=0&&v<COLORS.length){const i=+m[2]*N+ +m[1];if(!first&&cells[i]!==v)logEv(i,v);paint(i,v)}});c.subscribe(TOPIC+'+');msg()}).catch(msg);
+cv.onpointerdown=e=>{if(replaying)return;if(!client)return toast('Not connected.');if(wait())return toast(`Wait ${Math.ceil(wait()/1000)}s for your next pixel.`);
+  // measure inside the border so a tap lands on the pixel under the finger
+  const r=cv.getBoundingClientRect(),px=Math.floor((e.clientX-r.left-cv.clientLeft)/cv.clientWidth*N),py=Math.floor((e.clientY-r.top-cv.clientTop)/cv.clientHeight*N);if(px<0||py<0||px>=N||py>=N)return;
+  logEv(py*N+px,color);paint(py*N+px,color);client.publish(TOPIC+px+"-"+py,String(color),{retain:true,qos:1});save('last',Date.now());save('placed',load('placed',0)+1);tone(700,.06,'square',.05);msg()};
 setInterval(msg,1000);
+// replay: start from the wall as it was at the first change seen today, then play the changes back quickly
+$('replay').onclick=()=>{if(replaying)return;const ev=LOG.day===today()?LOG.ev:[];if(!ev.length)return toast('No changes seen on this device today yet.');
+  replaying=true;
+  // we only know the colours after each change, so start from the current wall with the changed cells blanked
+  const touched=new Set(ev.map(e=>e[1]));touched.forEach(i=>{x.fillStyle='#fff';x.fillRect(i%N,i/N|0,1,1)});
+  let k=0;const step=Math.max(1,Math.ceil(ev.length/300));$('msg').textContent='▶ Replaying today…';
+  (function f(){for(let j=0;j<step&&k<ev.length;j++,k++)draw1(ev[k][1],ev[k][2]);if(k<ev.length)return requestAnimationFrame(f);
+    replaying=false;for(let i=0;i<N*N;i++)draw1(i,cells[i]);msg()})()};
+// guide picture: shrink it to 32×32 and show it faintly over the wall (only here, nothing is sent)
+$('guideFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const img=await createImageBitmap(f),g=$('guide').getContext('2d');g.clearRect(0,0,N,N);g.imageSmoothingEnabled=true;g.drawImage(img,0,0,N,N);$('guide').hidden=false;$('guideOff').hidden=false}catch{toast('That picture couldn’t be opened.')}e.target.value=''};
+$('guideOff').onclick=()=>{$('guide').getContext('2d').clearRect(0,0,N,N);$('guideOff').hidden=true};
+// one snapshot per ToolBox version, kept on this device (newest 12)
+function snapshot(){if(!client)return drawGallery();const g=load('gallery',[]);if(!g.some(s=>s.v===TB_VERSION)){g.unshift({v:TB_VERSION,d:new Date().toLocaleDateString(),img:cv.toDataURL()});save('gallery',g.slice(0,12))}drawGallery()}
+function drawGallery(){const g=load('gallery',[]);$('gallery').innerHTML=g.length?g.map(s=>`<figure><img src="${esc(s.img)}" alt="The wall at version ${esc(s.v)}"><figcaption>v${esc(s.v)} · ${esc(s.d)}</figcaption></figure>`).join(''):'<p class="muted">The first snapshot is saved once the wall loads.</p>'}
+drawGallery();
 </script></body></html>

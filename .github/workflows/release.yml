@@ -35,8 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cp toolbox/apps/registry.js toolbox-extension/ && cd toolbox-extension && zip -r ../TheToolBox-extension.zip .
+      # the whole web app in one zip: unzip it on a USB stick and open index.html, no internet needed
+      - run: cd toolbox && zip -r ../TheToolBox-web.zip .
       - uses: actions/upload-artifact@v4
-        with: { name: extension, path: TheToolBox-extension.zip }
+        with: { name: extension, path: 'TheToolBox-*.zip' }
   release:
     needs: [windows, linux, extension]
     runs-on: ubuntu-latest
@@ -50,6 +52,18 @@ jobs:
           for f in UsefulToolbox.exe TheToolBox-x86_64.AppImage TheToolBox-arm64.AppImage TheToolBox-extension.zip; do
             [ -s "out/$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
           done
+      # warn when a download grew by more than a fifth since the last release
+      - name: Compare download sizes
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh api "repos/${{ github.repository }}/releases/latest" --jq '.assets[] | "\(.name) \(.size)"' > old.txt 2>/dev/null || true
+          while read -r name size; do
+            [ -f "out/$name" ] || continue; new=$(stat -c %s "out/$name")
+            echo "$name: $size -> $new bytes"
+            [ "$new" -gt $(( size * 6 / 5 )) ] && echo "::warning::$name grew from $size to $new bytes"
+          done < old.txt; true
+      # checksums so people can check a download wasn't changed
+      - run: cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
@@ -59,4 +73,6 @@ jobs:
           body: |
             - **Windows:** download `UsefulToolbox.exe` and double-click it (no install needed).
             - **Chromebook:** easiest is to open https://usernam69.github.io/The-ToolBox/ in Chrome and click Install. With Linux turned on, `TheToolBox-x86_64.AppImage` (Intel/AMD) or `TheToolBox-arm64.AppImage` (ARM) also runs, including Wi-Fi hosting.
+            - **No internet / USB stick:** unzip `TheToolBox-web.zip` and open `index.html`.
+            - **Check a download:** compare its SHA-256 with `SHA256SUMS.txt`.
             - **Chrome extension:** unzip `TheToolBox-extension.zip`, open `chrome://extensions`, turn on Developer mode and click **Load unpacked**.
