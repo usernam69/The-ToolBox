@@ -31,7 +31,7 @@
     try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();master=master||ac.createGain();master.connect(ac.destination);master.gain.value=s.vol*.6;ac.resume();next=ac.currentTime+.1;timer=setInterval(tick,50);playing=true}catch{}}
   function stop(){clearInterval(timer);playing=false;if(ac)ac.suspend().catch(()=>{})}
   // browsers only allow sound after you tap or press a key, so the music starts on the first one
-  const first=()=>{start();if(playing)['pointerdown','keydown'].forEach(e=>removeEventListener(e,first,true))};['pointerdown','keydown'].forEach(e=>addEventListener(e,first,true));
+  const first=()=>{if(ac)ac.resume();start();if(playing)['pointerdown','keydown'].forEach(e=>removeEventListener(e,first,true))};['pointerdown','keydown'].forEach(e=>addEventListener(e,first,true));
   document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
   // the 🎵 button and its little panel
   function ui(){page();const b=document.createElement('button'),s=get();b.id='tbMusic';b.type='button';b.title='Background music';b.setAttribute('aria-label','Background music');

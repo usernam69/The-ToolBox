@@ -6,7 +6,7 @@
 <div id="world"></div>
 </main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
 {
-const day=isoDay(),r=ARC.rng('mix'+day),games=(CATEGORIES.find(c=>c.id==='arcade')||{apps:[]}).apps.filter(a=>!['dailymix','chorearcade','aidungeon','chessmail','slowriddles','storychain','leveljam','familytrivia','charades','spoons','musicalchairs','wouldyourather','hotpotato','bubblecam','padparty'].includes(a[0]));
+const day=isoDay(),r=ARC.rng('mix'+day),games=(CATEGORIES.find(c=>c.id==='games')||{apps:[]}).apps.filter(a=>!['dailymix','parkouredit','escapemaker','chorearcade','aidungeon','chessmail','slowriddles','storychain','leveljam','familytrivia','charades','spoons','musicalchairs','wouldyourather','hotpotato','bubblecam','padparty'].includes(a[0]));
 const pick3=ARC.shuffle(games,r).slice(0,3);function draw(){let d={};try{d=JSON.parse(localStorage.getItem('tb_arcadeDay')||'{}')}catch{}const s=d.day===day?d.s||{}:{};const done=pick3.filter(g=>g[0] in s).length;
   $('mix').innerHTML=pick3.map(([id,name,e,desc,href])=>`<div class="dm ${id in s?'done':''}"><span class="e">${e}</span><span class="n"><b>${esc(name)}</b><br><small class="muted">${esc(desc)}</small></span>${id in s?`✅ ${s[id]}`:`<a class="b" href="${esc(href.replace('apps/',''))}" style="padding:8px 12px;border-radius:8px;text-decoration:none">Play</a>`}</div>`).join('');
   let st=load('streak',{n:0,last:''});if(done===3&&st.last!==day){const y=isoDay(new Date(Date.now()-864e5));st={n:st.last===y?st.n+1:1,last:day};save('streak',st);ARC.best(st.n);[523,659,784,1047].forEach((f,k)=>tone(f,.15,'triangle',.08,k*.1))}
