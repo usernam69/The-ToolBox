@@ -1,12 +1,13 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.5.1';
+var TB_VERSION='1.6.0';
 // release date and the apps changed in this release (both written by the release script)
-var TB_DATE='2026-10-16';var TB_CHANGED=['aidungeon','appmaker','buddy'];
+var TB_DATE='2026-10-16';var TB_CHANGED=[];
 // every version gets a fun codename, worked out from its number
 function TB_CODENAME(v){let h=0;for(const c of v)h=h*31+c.charCodeAt(0)>>>0;const A=['Sneaky','Bouncy','Cosmic','Fuzzy','Turbo','Sleepy','Shiny','Brave','Wobbly','Zippy','Quiet','Mighty'],B=['Sam','Otter','Comet','Pickle','Badger','Noodle','Falcon','Muffin','Gecko','Pixel','Walrus','Taco'];return A[h%A.length]+' '+B[(h>>4)%B.length]};
 
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.6.0','Music everywhere: soft background music made live on every page, in a style that fits it (chiptune in games, calm pads in tools, dreamy keys in creative apps). Turn it off or change the volume with 🎵 in the corner. It pauses in apps that make their own music.'],
  ['1.5.1','The AI study buddy, AI app maker and AI dungeon master now work with a key from almost any AI service: Claude, OpenAI, Google Gemini, OpenRouter, Groq, xAI, Mistral, DeepSeek, or a model on your own computer (Ollama, LM Studio). The service is recognised from the key, and if a model name is out of date a working one is picked for you.'],
  ['1.5.0','30 more Arcade games (70 in all): Who knows who?, charades, hot potato, Would you rather with live votes, Spoons on everyone’s phones, story chain, musical chairs, Playable changelog, Bug pet battles, Git gud dungeon, Pixel wall bounce, Radio rhythm, Codename quiz, Haiku battle, Weather racer, Chore arcade that earns screen time, Reverse snake, Gravity Wordle, Voice runner, Bubble pop cam, Slow riddles, Chess by link, Gamepad party, One-button arcade, AI dungeon master, Daily mix, Mirror world, Wi-Fi arena, Paper level maker and Seasonal fun. Bracket matches can now be played in Pong, Reaction duel, Tic-tac-toe or Connect Four, and Ghost kart has a world ghost to race.'],
  ['1.4.0','A new Arcade with 40 games: Bug defense, Release rush, Merge conflict, Code golf garden, Commit detective, Escape the CI, chess, checkers, battleship, Connect Four and tic-tac-toe (online too), Snake battle royale, Pixel wall wars, Level jam, Ghost kart, falling blocks, pinball, mini golf with a hole maker, space shooter, Pocket farm, App card battle, rhythm typing, daily sudoku, Bug sweeper, 2048, Whack-a-bug, reaction duel, memory, Simon, hangman, typing racer, Flappy pixel, breakout, Pong, tap tempo, higher or lower, emoji guess, lights out, the 15 puzzle and dice poker.'],
@@ -59,3 +60,5 @@ async function copyBugReport(version){try{const s=JSON.parse(localStorage.getIte
   const cache='caches' in window?(await caches.keys().catch(()=>[])).filter(k=>k.startsWith('toolbox-')).join(','):'';
   const txt=['The ToolBox bug report','Version: '+(version||'?')+(cache?' ('+cache+')':''),'Where: '+(window.toolboxDesktop?'desktop app':location.origin+location.pathname),'Browser: '+navigator.userAgent,'Screen: '+innerWidth+'x'+innerHeight,'','What happened:','','Recent errors:',...(errs.length?errs.slice(0,10).map(e=>new Date(e.t).toISOString()+' '+e.page+': '+e.msg):['none']),'','Last steps (oldest first):',...(()=>{try{const a=JSON.parse(sessionStorage.getItem('tb_actions')||'[]');return a.length?a:['none']}catch{return['none']}})()].join('\n');
   try{await navigator.clipboard.writeText(txt);alert('Bug report copied. Paste it into a new issue at github.com/usernam69/The-ToolBox/issues')}catch{prompt('Copy this bug report:',txt)}}
+// Background music on every page (apps/music.js, next to this file)
+(()=>{const me=document.currentScript||[...document.scripts].find(s=>/errors\.js/.test(s.src));if(!me||!me.src)return;const s=document.createElement('script');s.src=new URL('music.js',me.src).href;s.defer=true;(document.head||document.documentElement).append(s)})();

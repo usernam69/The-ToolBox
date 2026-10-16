@@ -213,6 +213,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `tb_md` | js/text.js |
 | `tb_meals` | js/life.js |
 | `tb_moods` | js/life.js |
+| `tb_music` | apps/music.js |
 | `tb_n` | js/system.js |
 | `tb_notes` | js/daily.js |
 | `tb_notes` | js/system.js |
