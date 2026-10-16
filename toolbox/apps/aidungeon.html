@@ -1,25 +1,25 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI dungeon master</title><link rel="stylesheet" href="common.css">
 <style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#story{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:200px;max-height:55vh;overflow:auto;line-height:1.55}#story p{margin:0 0 10px}#story .you{color:var(--accent);font-weight:600}</style></head>
 <body data-app="aidungeon" data-cat="games" data-title="AI dungeon master"><main>
-<p class="sub">A text adventure told by Claude. Type what you do, and the story answers. It uses your Claude API key from the AI app maker (kept only on this device). No key? Play the built-in short adventure.</p>
-<div class="row"><select id="world"><option>A haunted castle</option><option>A space station</option><option>A pirate island</option><option>Inside a video game</option></select><button class="g" id="new">New adventure</button></div><div id="story"></div><div class="row"><input id="act" class="grow" placeholder="What do you do?" maxlength="200"><button class="b" id="go">Do it</button></div><p class="muted" id="keyNote"></p>
+<p class="sub">A text adventure told by an AI. Type what you do, and the story answers. Works with a key from Claude, OpenAI, Gemini, OpenRouter and many more (the same key as the AI app maker, kept only on this device). No key? Play the built-in short adventure.</p>
+<div class="row"><select id="world"><option>A haunted castle</option><option>A space station</option><option>A pirate island</option><option>Inside a video game</option></select><button class="g" id="new">New adventure</button></div><div id="story"></div><div class="row"><input id="act" class="grow" placeholder="What do you do?" maxlength="200"><button class="b" id="go">Do it</button></div><p class="muted" id="keyNote"></p><div id="keyBox"></div>
 <div id="world"></div>
 </main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script type="module">
-import Anthropic from 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm';
-const MODEL='claude-opus-5-5',keyNow=()=>loadTb('claudeKey','');let msgs=[],busy=false;
+import {AI} from './ai.js';
+let msgs=[],busy=false;
 const SYSTEM='You are a friendly dungeon master running a short text adventure for players of any age, including kids. Keep every reply to 2 to 4 short sentences, describe what happens because of the player’s action, and end by hinting at 2 or 3 things they could do next. Keep it exciting but never gory or scary in a mature way. After about 10 turns, steer the story to a satisfying ending and finish with the words THE END.';
 const add=(t,who)=>{const p=document.createElement('p');if(who)p.className='you';p.textContent=(who?'> ':'')+t;$('story').append(p);$('story').scrollTop=1e9};
 // the built-in adventure, used without a key or when offline
 const OFF={start:['You stand before an old door with a glowing keyhole. To the left, a dusty bookshelf. To the right, a sleeping cat.',{door:'locked',book:'key',cat:'purr'}],key:'Behind a red book you find a tiny silver key!',purr:'The cat opens one eye, purrs, and goes back to sleep. It seems to be guarding the bookshelf.',locked:'The door is locked. The keyhole is shaped like a tiny key.',open:'The key fits! The door swings open onto a room full of treasure and a sign: “Well done, adventurer.” THE END'};let hasKey=false;
 function offline(a){a=a.toLowerCase();if(/book|shelf|search|look/.test(a)){hasKey=true;return OFF.key}if(/cat|pet/.test(a))return OFF.purr;if(/door|open|key/.test(a))return hasKey?OFF.open:OFF.locked;return'Nothing happens. Try the door, the bookshelf or the cat.'}
 async function ask(text){if(busy)return;busy=true;$('go').disabled=true;if(text)add(text,true);
-  if(!keyNow()){add(text?offline(text):OFF.start[0]);busy=false;$('go').disabled=false;return}
+  if(!AI.ready()){add(text?offline(text):OFF.start[0]);busy=false;$('go').disabled=false;return}
   msgs.push({role:'user',content:text||('Start a new adventure set in: '+$('world').value+'.')});add('…');
-  try{const client=new Anthropic({apiKey:keyNow(),dangerouslyAllowBrowser:true});
-    const res=await client.beta.messages.create({model:MODEL,max_tokens:1000,betas:['server-side-fallback-2026-07-01'],fallbacks:'default',output_config:{effort:'low'},system:SYSTEM,messages:msgs});
-    $('story').lastChild.remove();if(res.stop_reason==='refusal'){add('The dungeon master doesn’t want to continue that way. Try something else!');msgs.pop()}
-    else{const t=res.content.filter(b=>b.type==='text').map(b=>b.text).join('\n').trim()||'…';msgs.push({role:'assistant',content:res.content});add(t);save('turns',load('turns',0)+1);if(/THE END/.test(t)){save('done',load('done',0)+1);ARC.best(load('done',0))}}}
-  catch(e){$('story').lastChild.remove();msgs.pop();add('Couldn’t reach Claude ('+(e.message||'error')+'). Check your key in the AI app maker, or play offline.')}busy=false;$('go').disabled=false}
+  try{const t=(await AI.ask({system:SYSTEM,messages:msgs,effort:'low',maxTokens:1000}))||'…';
+    $('story').lastChild.remove();msgs.push({role:'assistant',content:t});add(t);save('turns',load('turns',0)+1);if(/THE END/.test(t)){save('done',load('done',0)+1);ARC.best(load('done',0))}}
+  catch(e){$('story').lastChild.remove();msgs.pop();add(/declined/.test(e.message)?'The dungeon master doesn’t want to continue that way. Try something else!':e.message+' (No key? The built-in adventure works offline.)')}busy=false;$('go').disabled=false}
 $('go').onclick=()=>{const t=$('act').value.trim();if(!t)return;$('act').value='';ask(t)};$('act').onkeydown=e=>{if(e.key==='Enter')$('go').click()};
-$('new').onclick=()=>{msgs=[];hasKey=false;$('story').innerHTML='';ask('')};$('keyNote').innerHTML=keyNow()?'Using your Claude key (calls cost a little on your Anthropic account).':'No Claude key found: playing the built-in adventure. Add a key in the <a href="appmaker.html">AI app maker</a> to get endless stories.';$('new').click();
+$('new').onclick=()=>{msgs=[];hasKey=false;$('story').innerHTML='';ask('')};
+const note=()=>{$('keyNote').textContent=AI.ready()?'Using your '+AI.name()+' key (each turn costs a little on your account).':'No AI key yet: playing the built-in adventure. Add a key below for endless stories.'};
+AI.panel($('keyBox'),()=>{note();$('new').click()});note();$('new').click();
 </script></body></html>

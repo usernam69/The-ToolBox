@@ -20,7 +20,7 @@ A main menu with eight categories: Quick wins, Games, Arcade, Useful tools, Crea
 - **Menu:** search (also by words like "music" or "draw"), favourites ★, today's mix, Surprise me, recently opened, light/dark switch, QR code to open it on a phone, voice commands 🎤 ("open snake", "10 minute timer"), reminders 🔔, story mode 📖, languages (English, Español, Français, עברית), seasonal effects.
 - **Every app:** 🔗 share link, **?** keyboard shortcuts, 🛠️ Remix (see and change its code), game controller support, screen-reader labels, bigger buttons on touch screens.
 - **Family settings:** profiles for each person, screen time per day and per app, school hours, kiosk mode, all behind a PIN. (A gentle lock for kids, not real security.)
-- **Make & share:** Parkour level editor, escape room builder, Voxel world links, classroom packs (Wordle words + flashcards in one link), AI app maker (needs your own Claude API key), community apps that run in a locked box.
+- **Make & share:** Parkour level editor, escape room builder, Voxel world links, classroom packs (Wordle words + flashcards in one link), AI app maker (needs your own API key from Claude, OpenAI, Gemini, OpenRouter or almost any other AI service), community apps that run in a locked box.
 - **Fun extras:** quests across apps, achievements, ToolBox OS (a desktop with windows), ToolBox Wrapped, your art in the Infinite museum, a whole-ToolBox time capsule, to-dos that become roguelike gear.
 
 ## The 65 tools (Useful tools)

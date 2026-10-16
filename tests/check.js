@@ -9,7 +9,9 @@ const exists = (from, ref) => {
   const clean = ref.split(/[?#]/)[0]; if (!clean) return true;
   return fs.existsSync(path.join(path.dirname(from), decodeURIComponent(clean)));
 };
-const parse = (code, where) => { try { new vm.Script(code, { filename: where }); } catch (e) { problems.push(`${where}: ${e.message}`); } };
+// ES modules (import/export, like apps/ai.js) are checked by node itself in module mode
+const isModule = code => /^\s*(import|export)\s/m.test(code);
+const parse = (code, where) => { try { if (isModule(code)) require('child_process').execFileSync(process.execPath, ['--input-type=module', '--check', '-'], { input: code, stdio: ['pipe', 'ignore', 'pipe'] }); else new vm.Script(code, { filename: where }); } catch (e) { problems.push(`${where}: ${String(e.stderr || e.message).split(/\r?\n/).find(l => /Error/.test(l)) || e.message}`); } };
 
 let pages = 0;
 for (const f of files) {

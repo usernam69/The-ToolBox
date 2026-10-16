@@ -171,8 +171,6 @@ Keys built in code (like `best`+level) show their fixed start.
 | `tb_challengeDone` | js/daily.js |
 | `tb_city` | js/daily.js |
 | `tb_classes` | apps/classroom.html |
-| `tb_claudeKey` | apps/appmaker.html |
-| `tb_claudeKey` | apps/buddy.html |
 | `tb_clips` | js/saved.js |
 | `tb_compact` | js/fun.js |
 | `tb_countdowns` | js/life.js |

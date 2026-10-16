@@ -95,7 +95,7 @@ const CATEGORIES=[
   ['chessmail','Chess by link','✉️','Play chess with a friend, one move at a time, by sending a link.','apps/chessmail.html'],
   ['padparty','Gamepad party','🎮','Up to 4 game controllers on one screen (plus 2 keyboard players: WASD and arrows).','apps/padparty.html'],
   ['onebutton','One-button arcade','🔘','Three games you play with just one button: Space, Enter, a click, a tap or an accessibility switch.','apps/onebutton.html'],
-  ['aidungeon','AI dungeon master','🧙','A text adventure told by Claude.','apps/aidungeon.html'],
+  ['aidungeon','AI dungeon master','🧙','A text adventure told by an AI.','apps/aidungeon.html'],
   ['dailymix','Daily mix','📅','Three Arcade games picked for today, the same for everyone.','apps/dailymix.html'],
   ['mirrorworld','Mirror world','🪞','Dodge the falling blocks.','apps/mirrorworld.html'],
   ['lanarena','Wi-Fi arena','🔫','A top-down blaster for friends on the same Wi-Fi (host from The ToolBox desktop app; no internet needed) or online with a room code.','apps/lanarena.html'],

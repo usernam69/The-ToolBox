@@ -1,25 +1,19 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI app maker</title><link rel="stylesheet" href="common.css">
 <style>#prev{width:100%;height:min(65vh,600px);border:1px solid var(--line);border-radius:12px;background:#fff}#prog{font-variant-numeric:tabular-nums}</style></head>
 <body data-app="appmaker" data-cat="bigger" data-title="AI app maker"><main>
-<p class="sub">Describe a small app or game and Claude builds it. It’s saved to <a href="community.html">Community apps → Added by me</a> and runs in the same locked box, so it can’t touch your other ToolBox data.</p>
+<p class="sub">Describe a small app or game and an AI builds it (with a key from Claude, OpenAI, Gemini or another service). It’s saved to <a href="community.html">Community apps → Added by me</a> and runs in the same locked box, so it can’t touch your other ToolBox data.</p>
 <div class="box"><textarea id="ask" placeholder="e.g. A reaction-time game: the screen turns green at a random moment and I click as fast as I can. Keep my 5 best times." style="min-height:90px"></textarea>
 <div class="row"><button class="b" id="go">✨ Build it</button><button class="g" id="change" hidden>✎ Change it</button><button class="g" id="keep" hidden>💾 Keep it</button><span id="prog" class="muted"></span></div>
 <div class="row" id="ideas"></div></div>
-<details class="box"><summary><b>🔑 Claude API key</b> <span class="muted" id="keyState"></span></summary>
-<p class="sub" style="margin-top:8px">The same key as the AI study buddy. Get one at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>. It’s kept only on this device and sent only to Anthropic. One app usually costs well under a dollar.</p>
-<div class="row"><input id="key" type="password" class="grow" placeholder="sk-ant-…" autocomplete="off"><button class="g" id="saveKey">Save</button><button class="g" id="forget">Forget key</button></div></details>
+<div id="keyBox"></div>
 <div id="out" hidden><h3 id="title"></h3><iframe id="prev" title="Your new app" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
 </main><script src="common.js"></script>
-<details class="box" style="margin-top:12px"><summary><b>🐞 Explain an error</b> <span class="muted" style="font-size:13px">(paste an error message; Claude explains it in plain words)</span></summary>
+<details class="box" style="margin-top:12px"><summary><b>🐞 Explain an error</b> <span class="muted" style="font-size:13px">(paste an error message; the AI explains it in plain words)</span></summary>
  <textarea id="errIn" placeholder="Paste an error, e.g. TypeError: Cannot read properties of undefined (reading 'length')" style="min-height:70px;margin-top:8px"></textarea>
  <div class="row"><button class="b" id="errGo">Explain it</button><button class="g" id="errMine">Use the last ToolBox error</button></div><div id="errOut" style="white-space:pre-wrap"></div></details>
 <script type="module">
-import Anthropic from 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm';
-const MODEL='claude-opus-5-5';
-const keyNow=()=>loadTb('claudeKey','');
-const showKey=()=>{$('keyState').textContent=keyNow()?'· saved ✓':'· not set yet'};showKey();
-$('saveKey').onclick=()=>{const k=$('key').value.trim();if(!k.startsWith('sk-ant-'))return toast('That doesn’t look like a Claude API key.');saveTb('claudeKey',k);$('key').value='';showKey();toast('Key saved')};
-$('forget').onclick=()=>{saveTb('claudeKey','');showKey();toast('Key forgotten')};
+import {AI} from './ai.js';
+AI.panel($('keyBox'));
 const IDEAS=['A reaction-time game','A tip jar for chores with stickers','A drum machine with 4 sounds','A guess-the-flag quiz','A breathing exercise with a growing circle','Bubble wrap to pop'];
 $('ideas').innerHTML=IDEAS.map(i=>`<button class="g" data-i="${esc(i)}">${esc(i)}</button>`).join('');$('ideas').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('ask').value=b.dataset.i});
 const SYSTEM=`You build small, delightful single-file web apps for "The ToolBox", a family-friendly collection of mini-apps.
@@ -30,30 +24,21 @@ Rules for the HTML you return:
 - Suitable for all ages. Plain English labels.`;
 const SCHEMA={type:'object',additionalProperties:false,required:['name','emoji','description','html'],properties:{name:{type:'string'},emoji:{type:'string'},description:{type:'string'},html:{type:'string'}}};
 let cur=null;
-async function build(prompt){if(!keyNow())return toast('Add your Claude API key first (🔑 below).');
+async function build(prompt){if(!AI.ready())return toast('Add an AI key first (🔑 below).');
   $('go').disabled=$('change').disabled=true;$('prog').textContent='Thinking…';
-  try{const client=new Anthropic({apiKey:keyNow(),dangerouslyAllowBrowser:true});
-    const stream=client.beta.messages.stream({model:MODEL,max_tokens:32000,betas:['server-side-fallback-2026-07-01'],fallbacks:'default',system:SYSTEM,
-      messages:[{role:'user',content:prompt}],output_config:{effort:'medium',format:{type:'json_schema',schema:SCHEMA}}});
-    let chars=0;stream.on('text',t=>{chars+=t.length;$('prog').textContent=`Writing… ${Math.round(chars/1000)}k characters`});
-    const res=await stream.finalMessage();
-    if(res.stop_reason==='refusal')throw new Error('Claude declined this one'+(res.stop_details?.explanation?`: ${res.stop_details.explanation}`:'. Try describing it differently.'));
-    if(res.stop_reason==='max_tokens')throw new Error('That app came out too big. Try asking for something smaller.');
-    const r=JSON.parse(res.content.filter(b=>b.type==='text').map(b=>b.text).join(''));
-    cur={name:String(r.name).slice(0,40),emoji:String(r.emoji).slice(0,4)||'✨',desc:String(r.description).slice(0,160),html:String(r.html),ask:prompt};
+  try{const r=await AI.ask({system:SYSTEM,user:prompt,schema:SCHEMA,maxTokens:32000,onProgress:n=>$('prog').textContent=`Writing… ${Math.round(n/1000)}k characters`});
+    if(!r||typeof r.html!=='string'||!/<\w/.test(r.html))throw new Error('The answer didn’t contain an app. Try again, or try a stronger model.');
+    cur={name:String(r.name||'My app').slice(0,40),emoji:String(r.emoji||'').slice(0,4)||'✨',desc:String(r.description||'').slice(0,160),html:String(r.html),ask:prompt};
     $('out').hidden=false;$('title').textContent=cur.emoji+' '+cur.name;$('prev').srcdoc=cur.html;$('change').hidden=$('keep').hidden=false;$('keep').disabled=false;$('keep').textContent='💾 Keep it';$('prog').textContent='Done ✓ Try it below.'}
-  catch(e){$('prog').textContent='';toast(e instanceof Anthropic.AuthenticationError?'That API key was rejected.':e instanceof Anthropic.RateLimitError?'Too many requests. Wait a moment and try again.':e instanceof Anthropic.APIConnectionError?'Could not reach the Claude API. Are you online?':e instanceof Anthropic.APIError?`API error ${e.status}: ${e.message}`:e.message)}
+  catch(e){$('prog').textContent='';toast(e.message)}
   finally{$('go').disabled=$('change').disabled=false}}
 // explain an error in plain words (and, if an app is open here, look at its code for the cause)
 $('errMine').onclick=()=>{let e=[];try{e=JSON.parse(localStorage.getItem('tb_errors')||'[]')}catch{}$('errIn').value=e.length?`${e[0].msg} (in ${e[0].page})`:'';if(!e.length)toast('No ToolBox errors recorded. Nice!')};
-$('errGo').onclick=async()=>{const err=$('errIn').value.trim();if(!err)return toast('Paste an error first.');if(!keyNow())return toast('Add your Claude API key first (🔑 below).');
+$('errGo').onclick=async()=>{const err=$('errIn').value.trim();if(!err)return toast('Paste an error first.');if(!AI.ready())return toast('Add an AI key first (🔑 above).');
   $('errGo').disabled=true;$('errOut').textContent='Thinking…';
-  try{const client=new Anthropic({apiKey:keyNow(),dangerouslyAllowBrowser:true});
-    const res=await client.beta.messages.create({model:MODEL,max_tokens:2000,betas:['server-side-fallback-2026-07-01'],fallbacks:'default',output_config:{effort:'low'},system:'You explain programming errors to beginners and kids. Use short, plain sentences and no jargon. Say what the error means, the most likely cause, and how to fix it, in at most three short paragraphs. If code is given, point to the exact line.',
-      messages:[{role:'user',content:`Error:\n${err.slice(0,4000)}${cur?`\n\nThe app it might come from:\n${cur.html.slice(0,60000)}`:''}`}]});
-    if(res.stop_reason==='refusal')throw new Error('Claude declined to explain this one.');
-    $('errOut').textContent=res.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim()||'No answer came back.'}
-  catch(e){$('errOut').textContent='';toast(e instanceof Anthropic.AuthenticationError?'That API key was rejected.':e instanceof Anthropic.APIConnectionError?'Could not reach the Claude API. Are you online?':e.message)}
+  try{$('errOut').textContent=await AI.ask({effort:'low',maxTokens:2000,system:'You explain programming errors to beginners and kids. Use short, plain sentences and no jargon. Say what the error means, the most likely cause, and how to fix it, in at most three short paragraphs. If code is given, point to the exact line.',
+      user:`Error:\n${err.slice(0,4000)}${cur?`\n\nThe app it might come from:\n${cur.html.slice(0,60000)}`:''}`})||'No answer came back.'}
+  catch(e){$('errOut').textContent='';toast(e.message)}
   finally{$('errGo').disabled=false}};
 $('go').onclick=()=>{const t=$('ask').value.trim();if(t.length<8)return toast('Describe your app in a sentence or two.');build('Build this app: '+t)};
 $('change').onclick=()=>{const t=prompt('What should change?');if(t&&cur)build(`Here is an app you built earlier:\n\n${cur.html}\n\nChange it like this: ${t}\n\nReturn the whole updated app.`)};

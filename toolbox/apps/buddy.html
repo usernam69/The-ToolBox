@@ -3,40 +3,28 @@
 .opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 15%,transparent)}.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 15%,transparent)}.fb{padding:10px;border-radius:10px;margin-top:8px;background:var(--bg)}</style></head>
 <body data-app="buddy" data-cat="bigger" data-title="AI study buddy"><main>
 <div id="setup">
-<p class="sub">Paste your notes and get quizzed on them. With a Claude API key, Claude writes real questions (multiple choice and short answer) and marks your answers with feedback. Without a key, it still works offline using fill-in-the-blank questions.</p>
+<p class="sub">Paste your notes and get quizzed on them. With an AI key (Claude, OpenAI, Gemini or another service), the AI writes real questions (multiple choice and short answer) and marks your answers with feedback. Without a key, it still works offline using fill-in-the-blank questions.</p>
 <textarea id="notes" style="min-height:200px" placeholder="Paste class notes, a textbook page, an article…"></textarea>
 <div class="row"><label>Questions <select id="count"><option>5</option><option selected>8</option><option>12</option></select></label><select id="kind"><option value="mix">Mixed</option><option value="mc">Multiple choice</option><option value="short">Short answer</option></select>
 <select id="level"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select><button class="b" id="start">Quiz me</button><button class="g" id="offline">Quiz me offline</button></div>
-<details class="box" style="margin-top:8px"><summary><b>🔑 Claude API key</b> <span class="muted" id="keyState"></span></summary>
-<p class="sub" style="margin-top:8px">Get a key at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>. It's saved only in this app on this device and is sent only to Anthropic's API. Each quiz costs a few cents.</p>
-<div class="row"><input id="key" type="password" class="grow" placeholder="sk-ant-…" autocomplete="off"><button class="g" id="saveKey">Save</button><button class="g" id="forget">Forget key</button></div></details>
+<div id="keyBox" style="margin-top:8px"></div>
 </div>
 <div id="quiz" hidden><div class="row"><b id="prog"></b><span id="score" class="muted"></span><button class="g" id="quit" style="margin-left:auto">End quiz</button></div><div class="box" id="card"></div></div>
 <div id="done" hidden class="box" style="text-align:center"></div>
 </main>
 <script src="common.js"></script>
 <script type="module">
-import Anthropic from 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm';
-const MODEL='claude-opus-5-5';
-const keyNow=()=>loadTb('claudeKey','');
-const showKey=()=>{$('keyState').textContent=keyNow()?'· saved ✓':'· not set (offline mode only)'};
+import {AI} from './ai.js';
+AI.panel($('keyBox'));
 $('notes').value=load('notes','');$('notes').oninput=()=>save('notes',$('notes').value);
-$('saveKey').onclick=()=>{const k=$('key').value.trim();if(!k.startsWith('sk-ant-'))return toast('That doesn\'t look like a Claude API key.');saveTb('claudeKey',k);$('key').value='';showKey();toast('Key saved')};
-$('forget').onclick=()=>{saveTb('claudeKey','');showKey();toast('Key forgotten')};showKey();
-const client=()=>new Anthropic({apiKey:keyNow(),dangerouslyAllowBrowser:true});
-// One structured-output call; falls back to another model automatically if this one declines.
-async function ask(system,user,schema,effort='medium'){
-  const res=await client().beta.messages.create({model:MODEL,max_tokens:16000,betas:['server-side-fallback-2026-07-01'],fallbacks:'default',
-    system,messages:[{role:'user',content:user}],output_config:{effort,format:{type:'json_schema',schema}}});
-  if(res.stop_reason==='refusal')throw new Error('Claude declined this request'+(res.stop_details?.explanation?`: ${res.stop_details.explanation}`:'.'));
-  if(res.stop_reason==='max_tokens')throw new Error('The answer was cut off. Try fewer questions.');
-  const text=res.content.filter(b=>b.type==='text').map(b=>b.text).join('');return JSON.parse(text)}
+// one structured answer from whichever AI service the key belongs to (see ai.js)
+const ask=(system,user,schema,effort='medium')=>AI.ask({system,user,schema,effort});
 const QSCHEMA={type:'object',additionalProperties:false,required:['questions'],properties:{questions:{type:'array',items:{type:'object',additionalProperties:false,required:['type','question','options','answer','explanation'],
   properties:{type:{type:'string',enum:['mc','short']},question:{type:'string'},options:{type:'array',items:{type:'string'}},answer:{type:'string'},explanation:{type:'string'}}}}}};
 const GSCHEMA={type:'object',additionalProperties:false,required:['verdict','feedback'],properties:{verdict:{type:'string',enum:['correct','partly','wrong']},feedback:{type:'string'}}};
 let Q=[],i=0,pts=0,offline=false;
-const errMsg=e=>e instanceof Anthropic.AuthenticationError?'That API key was rejected. Check it in the 🔑 section.':e instanceof Anthropic.RateLimitError?'Too many requests right now. Wait a moment and try again.':e instanceof Anthropic.APIConnectionError?'Could not reach the Claude API. Are you online?':e instanceof Anthropic.APIError?`API error ${e.status}: ${e.message}`:e.message;
-$('start').onclick=async()=>{const notes=$('notes').value.trim();if(notes.length<80)return toast('Paste a bit more text first.');if(!keyNow())return toast('Add a Claude API key, or use “Quiz me offline”.');
+const errMsg=e=>e.message;
+$('start').onclick=async()=>{const notes=$('notes').value.trim();if(notes.length<80)return toast('Paste a bit more text first.');if(!AI.ready())return toast('Add an AI key (🔑), or use “Quiz me offline”.');
   $('start').disabled=true;$('start').textContent='Writing questions…';
   try{const n=+$('count').value,kind=$('kind').value;
     const r=await ask('You write study quizzes that check real understanding of the student\'s own notes. Every question must be answerable from the notes alone. For "mc" questions give exactly 4 plausible options and set answer to the exact text of the correct option. For "short" questions leave options empty and put a model answer in answer. Keep explanations to one or two sentences.',

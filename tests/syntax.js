@@ -5,7 +5,9 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = process.argv[2] || process.env.TOOLBOX_DIR || path.join(__dirname, '..', 'toolbox');
 const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? (e.name === 'node_modules' ? [] : walk(path.join(d, e.name))) : [path.join(d, e.name)]);
 let bad = 0;
-const parse = (code, where) => { try { new vm.Script(code, { filename: where }); } catch (e) { bad++; console.error(`✗ ${where}: ${e.message}`); } };
+// ES modules (import/export, like apps/ai.js) are checked by node itself in module mode
+const isModule = code => /^\s*(import|export)\s/m.test(code);
+const parse = (code, where) => { try { if (isModule(code)) require('child_process').execFileSync(process.execPath, ['--input-type=module', '--check', '-'], { input: code, stdio: ['pipe', 'ignore', 'pipe'] }); else new vm.Script(code, { filename: where }); } catch (e) { bad++; console.error(`✗ ${where}: ${String(e.stderr || e.message).split(/\r?\n/).find(l => /Error/.test(l)) || e.message}`); } };
 const tops = code => [...code.matchAll(/^(?:function\s+([A-Za-z_$][\w$]*)|(?:const|let|class)\s+([A-Za-z_$][\w$]*))/gm)].map(m => m[1] || m[2]);
 for (const f of walk(ROOT)) {
   const rel = path.relative(ROOT, f).split(path.sep).join('/');
