@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Release rush</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.lane{border:1px solid var(--line);border-radius:10px;padding:6px;min-height:240px;background:var(--card)}.lane h4{margin:0 0 6px;text-align:center}.job{border-radius:8px;padding:6px;margin:4px 0;background:var(--bg);border:1px solid var(--line);cursor:pointer;font-size:13px;position:relative;overflow:hidden}.job i{position:absolute;left:0;bottom:0;height:3px;background:var(--accent)}.job.bug{background:#ffe0e0;color:#900}@media(max-width:600px){.lanes{grid-template-columns:1fr 1fr}}</style></head>
+<body data-app="releaserush" data-cat="games" data-title="Release rush"><main>
+<p class="sub">Features arrive. Tap one to work on it: code it, test it, ship it. Bugs sneak into shipped work, so tap them to fix them before the build turns red. 3 minutes.</p>
+<p class="arc-hud" id="hud"></p><div class="lanes"><div class="lane"><h4>📥 To do</h4><div id="l0"></div></div><div class="lane"><h4>⌨️ Coding</h4><div id="l1"></div></div><div class="lane"><h4>🧪 Testing</h4><div id="l2"></div></div><div class="lane"><h4>🚀 Shipped</h4><div id="l3"></div></div></div><p style="text-align:center"><button class="b" id="go">Start</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const NAMES=['Dark mode','Undo','Share button','Search','Big text','Offline saving','Sound effects','New level','High scores','Emoji picker','Export','Shortcuts'];
+let jobs=[],score=0,end=0,next=0,ci=100,run=false,id=0;
+function start(){ARC.hideOver();jobs=[];score=0;end=Date.now()+180000;next=0;ci=100;run=true}
+function draw(){for(let l=0;l<4;l++)$('l'+l).innerHTML=jobs.filter(j=>j.lane===l).map(j=>`<div class="job ${j.bug?'bug':''}" data-id="${j.id}">${j.bug?'🐞 Fix: ':''}${esc(j.name)}${j.work?`<i style="width:${j.p*100}%"></i>`:''}</div>`).join('');
+  $('hud').textContent=run?`🚀 ${score} shipped · build ${ci>60?'🟢':ci>25?'🟡':'🔴'} ${Math.round(ci)}% · ${Math.max(0,Math.ceil((end-Date.now())/1000))}s`:'Press Start'}
+document.querySelector('.lanes').onclick=e=>{const d=e.target.closest('[data-id]');if(!d||!run)return;const j=jobs.find(z=>z.id===+d.dataset.id);if(!j)return;
+  if(j.bug){j.work=true;return}if(j.lane<3&&!j.work){if(j.lane>0&&jobs.some(z=>z.lane===j.lane&&z.work&&!z.bug))return toast('Finish the one in this column first.');j.work=true;j.p=0;if(j.lane===0)j.lane=1}};
+let last=0;ARC.loop(dt=>{if(!run)return;next-=dt;if(next<=0){next=4+Math.random()*3;if(jobs.filter(j=>j.lane===0).length<6)jobs.push({id:id++,name:NAMES[rnd(NAMES.length)],lane:0,p:0})}
+  jobs.forEach(j=>{if(!j.work)return;j.p+=dt/(j.bug?1.2:j.lane===1?3:2);if(j.p>=1){j.p=0;j.work=false;if(j.bug){j.gone=true;tone(900,.06);return}j.lane++;if(j.lane===3){score++;tone(700,.1,'triangle');if(Math.random()<.45)setTimeout(()=>run&&jobs.push({id:id++,name:j.name,lane:3,bug:true,p:0}),2000+Math.random()*4000)}}});
+  jobs=jobs.filter(j=>!j.gone&&!(j.lane===3&&!j.bug&&j.age>4));jobs.forEach(j=>{if(j.lane===3&&!j.bug)j.age=(j.age||0)+dt});
+  ci=Math.min(100,ci-jobs.filter(j=>j.bug).length*dt*4+dt*2);if(ci<=0||Date.now()>end){run=false;const final=ci<=0?score:score+Math.round(ci/10);const r=ARC.best(final);ARC.over(ci<=0?`🔴 The build broke! ${score} shipped`:`🎉 ${score} features shipped · score ${final}${r.isNew?' · new best!':''}`,start)}
+  if((last+=dt)>.1){last=0;draw()}});
+$('go').onclick=start;draw();ARC.board('releaserush');
+}
+</script></body></html>

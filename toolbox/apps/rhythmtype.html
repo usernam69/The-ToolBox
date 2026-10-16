@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rhythm typing</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="rhythmtype" data-cat="games" data-title="Rhythm typing"><main>
+<p class="sub">Letters fall to the beat. Type each one as it crosses the line. Perfect timing scores more. Miss 10 and the song ends.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas><p style="text-align:center"><button class="b" id="go">Start</button> <input id="mob" placeholder="Phone: type here" style="width:150px" autocapitalize="off"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const x=ARC.canvas('c',400,520);const LANES='asdfjkl';let notes,score,miss,combo,t,next,run=false;const BPM=100,beat=60/BPM;
+function start(){ARC.hideOver();notes=[];score=0;miss=0;combo=0;t=0;next=1;run=true}
+function hit(k){if(!run)return;const n=notes.filter(n=>!n.done&&n.k===k).sort((a,b)=>Math.abs(a.y-460)-Math.abs(b.y-460))[0];if(!n||Math.abs(n.y-460)>40){combo=0;tone(150,.05,'sawtooth',.04);return}
+  const d=Math.abs(n.y-460);n.done=true;combo++;score+=(d<12?100:d<25?60:30)+combo*2;tone(440*2**(LANES.indexOf(k)/7),.08,'triangle',.08);n.hit=d<12?'Perfect':'Good'}
+addEventListener('keydown',e=>{if(e.target.id==='mob')return;const k=e.key.toLowerCase();if(LANES.includes(k))hit(k)});$('mob').oninput=()=>{const v=$('mob').value.slice(-1).toLowerCase();$('mob').value='';hit(v)};$('go').onclick=start;
+ARC.loop(dt=>{x.fillStyle='#111';x.fillRect(0,0,400,520);LANES.split('').forEach((k,i)=>{x.fillStyle='#222';x.fillRect(10+i*55,0,50,520);x.fillStyle='#888';x.font='16px monospace';x.fillText(k.toUpperCase(),28+i*55,505)});x.fillStyle='#ffd400';x.fillRect(0,458,400,4);
+  if(run){t+=dt;if(t>=next*beat){next++;if(Math.random()<.8)notes.push({k:LANES[rnd(7)],y:-20});if(next%4===0)tone(110,.05,'sine',.08)}notes.forEach(n=>{n.y+=260*dt;if(!n.done&&n.y>500){n.done=true;miss++;combo=0}});
+    notes=notes.filter(n=>n.y<540&&!(n.done&&!n.hit));notes.forEach(n=>{if(n.hit&&(n.t=(n.t||0)+dt)>.4)n.gone=true});notes=notes.filter(n=>!n.gone);
+    if(miss>=10){run=false;const r=ARC.best(score);ARC.over(`🎹 ${score} points${r.isNew?' · new best!':''}`,start)}}
+  (notes||[]).forEach(n=>{const i=LANES.indexOf(n.k);if(n.hit){x.fillStyle='#2fb344';x.font='14px system-ui';x.fillText(n.hit,8+i*55,450)}else{x.fillStyle='#4cc9f0';x.fillRect(14+i*55,n.y-14,42,28);x.fillStyle='#111';x.font='bold 18px monospace';x.fillText(n.k.toUpperCase(),29+i*55,n.y+6)}});
+  $('hud').textContent=`${score||0} points · combo ${combo||0} · misses ${miss||0}/10`});
+ARC.board('rhythmtype');
+}
+</script></body></html>

@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dice poker</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#dice{display:flex;gap:8px;justify-content:center;margin:12px 0}#dice button{width:60px;height:60px;font-size:40px;border-radius:12px;border:2px solid var(--line);background:var(--card);line-height:1}#dice button.k{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 25%,var(--card))}</style></head>
+<body data-app="dicepoker" data-cat="games" data-title="Dice poker"><main>
+<p class="sub">Roll five dice up to three times. Tap dice to keep them between rolls. 5 hands per game.</p>
+<p class="arc-hud" id="hud"></p><div id="dice"></div><p style="text-align:center"><button class="b" id="roll">Roll</button> <button class="g" id="stand">Score this hand</button></p><p id="res" style="text-align:center" class="muted"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const F='⚀⚁⚂⚃⚄⚅';let d,keep,rolls,hand,total;
+function score(v){const c={};v.forEach(n=>c[n]=(c[n]||0)+1);const n=Object.values(c).sort((a,b)=>b-a),s=[...new Set(v)].sort().join('');
+  if(n[0]===5)return['Five of a kind',50];if(n[0]===4)return['Four of a kind',30];if(n[0]===3&&n[1]===2)return['Full house',25];if(s==='01234'||s==='12345')return['Straight',20];if(n[0]===3)return['Three of a kind',10];if(n[0]===2&&n[1]===2)return['Two pairs',5];if(n[0]===2)return['A pair',2];return['Nothing',0]}
+function start(){ARC.hideOver();hand=0;total=0;newHand()}
+function newHand(){d=[0,0,0,0,0].map(()=>rnd(6));keep=[0,0,0,0,0];rolls=1;hand++;draw()}
+function draw(){$('dice').innerHTML=d.map((v,i)=>`<button data-i="${i}" class="${keep[i]?'k':''}">${F[v]}</button>`).join('');$('hud').textContent=`Hand ${hand}/5 · roll ${rolls}/3 · total ${total}`;$('res').textContent=score(d)[0];$('roll').disabled=rolls>=3}
+$('dice').onclick=e=>{const b=e.target.closest('[data-i]');if(b){keep[b.dataset.i]^=1;draw()}};
+$('roll').onclick=()=>{if(rolls>=3)return;d=d.map((v,i)=>keep[i]?v:rnd(6));rolls++;tone(300+rnd(300),.05);draw()};
+$('stand').onclick=()=>{const [n,p]=score(d);total+=p;toast(`${n}: +${p}`);if(hand>=5){const r=ARC.best(total);ARC.over(`🎲 ${total} points${r.isNew?' · new best!':''}`,start)}else newHand()};start();ARC.board('dicepoker');
+}
+</script></body></html>

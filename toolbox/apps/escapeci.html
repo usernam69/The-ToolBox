@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Escape the CI</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#door{font-size:70px;text-align:center}#err{font:14px monospace;background:#1e1e1e;color:#ff8080;padding:10px;border-radius:8px;white-space:pre-wrap}#code{font:14px monospace;background:var(--card);border:1px solid var(--line);padding:10px;border-radius:8px;white-space:pre-wrap}#fixes{display:grid;gap:6px;margin-top:8px}#fixes button{text-align:left;font:14px monospace;white-space:pre-wrap}</style></head>
+<body data-app="escapeci" data-cat="games" data-title="Escape the CI"><main>
+<p class="sub">You’re locked in the build server! Each door opens when you fix its failing check. Read the error, pick the fix. 5 doors, as few wrong guesses as possible.</p>
+<p class="arc-hud" id="hud"></p><div id="door"></div><div id="code"></div><p><b>Failing check</b></p><div id="err"></div><div id="fixes"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const D=[{code:'const total = prices.reduce((a, b) => a + b);',err:'TypeError: Reduce of empty array with no initial value\n  at checkout (cart.js:12)',fixes:['const total = prices.reduce((a, b) => a + b, 0);','const total = prices.reduce((a, b) => a - b);','const total = prices.length;'],ok:0},
+ {code:'if (user.name = "admin") showAdmin();',err:'✗ test: normal users must not see the admin page\n  expected showAdmin not to be called',fixes:['if (user.name == "admin") showAdmin();','if (user.name === "admin") showAdmin();','if (!user.name = "admin") showAdmin();'],ok:1},
+ {code:'for (let i = 0; i <= items.length; i++) draw(items[i]);',err:'TypeError: Cannot read properties of undefined (reading \'x\')\n  at draw (list.js:4)',fixes:['for (let i = 1; i <= items.length; i++) draw(items[i]);','for (let i = 0; i < items.length; i++) draw(items[i]);','for (let i = 0; i <= items.length + 1; i++) draw(items[i]);'],ok:1},
+ {code:'const data = fetch("/api/scores");\nshow(data.top);',err:'✗ test: shows the top score\n  received: undefined',fixes:['const data = await (await fetch("/api/scores")).json();\nshow(data.top);','const data = fetch("/api/scores").top;\nshow(data);','const data = JSON.parse(fetch("/api/scores"));\nshow(data.top);'],ok:0},
+ {code:'el.innerHTML = "<b>" + comment + "</b>";',err:'✗ security check: a comment containing <img onerror=…> ran a script',fixes:['el.innerHTML = "<b>" + comment.trim() + "</b>";','el.innerText = "<b>" + comment + "</b>";','const b = document.createElement("b");\nb.textContent = comment;\nel.replaceChildren(b);'],ok:2}];
+let n=0,wrong=0,order;
+function show(){ARC.hideOver();const d=D[n];$('hud').textContent=`Door ${n+1}/${D.length} · wrong guesses ${wrong}`;$('door').textContent='🚪';$('code').textContent=d.code;$('err').textContent=d.err;order=ARC.shuffle([0,1,2]);
+  $('fixes').innerHTML=order.map(i=>`<button class="g" data-f="${i}">${esc(d.fixes[i])}</button>`).join('')}
+$('fixes').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;if(+b.dataset.f===D[n].ok){$('door').textContent='🔓';tone(880,.15,'triangle');if(++n>=D.length){const r=ARC.best(wrong,{lower:true});n=0;const w=wrong;wrong=0;ARC.over(`🔐 You escaped the CI with ${w} wrong guess${w===1?'':'es'}${r.isNew?' · new best!':''}`,show)}else setTimeout(show,700)}
+  else{wrong++;b.disabled=true;tone(150,.25,'sawtooth',.06);$('hud').textContent=`Door ${n+1}/${D.length} · wrong guesses ${wrong}`}};show();ARC.board('escapeci',{lower:true,unit:' wrong',title:'🌍 Fewest wrong guesses'});
+}
+</script></body></html>

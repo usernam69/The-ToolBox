@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Whack-a-bug</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.wg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:420px;margin:auto}.wg button{height:90px;font:28px monospace;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}.wg button.up{background:#ffe4e4}</style></head>
+<body data-app="whackbug" data-cat="games" data-title="Whack-a-bug"><main>
+<p class="sub">Bugs pop out of the code. Tap them before they ship! 30 seconds.</p>
+<p class="arc-hud" id="hud">Score 0 · 30s</p><div class="wg" id="g"></div><p style="text-align:center"><button class="b" id="go">Start</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const g=$('g'),L=['if(x)','for(;;)','x++','fn()','{ }','return','let a','a==b','i<n'];g.innerHTML=L.map((l,i)=>`<button data-i="${i}">${l}</button>`).join('');
+let score=0,end=0,up=-1,t=null;const bs=[...g.children];
+function next(){bs.forEach(b=>{b.classList.remove('up');b.textContent=L[+b.dataset.i]});if(Date.now()>end)return done();let i;do i=rnd(9);while(i===up);up=i;bs[i].classList.add('up');bs[i].textContent=Math.random()<.15?'🦋':'🐞';t=setTimeout(next,Math.max(380,900-score*12))}
+function done(){up=-1;const r=ARC.best(score);$('hud').textContent=`Score ${score}`;ARC.over(`🔨 ${score} bugs squashed${r.isNew?' · new best!':' · best '+r.best}`,start)}
+function start(){ARC.hideOver();score=0;end=Date.now()+30000;clearTimeout(t);next()}
+g.onpointerdown=e=>{const b=e.target.closest('button');if(!b||up<0)return;if(+b.dataset.i===up){const fly=b.textContent==='🦋';score+=fly?-3:1;tone(fly?200:800,.06,'square',.06);clearTimeout(t);next()}else score=Math.max(0,score-1);$('hud').textContent=`Score ${score} · ${Math.max(0,Math.ceil((end-Date.now())/1000))}s`};
+$('go').onclick=start;ARC.board('whackbug');
+}
+</script></body></html>

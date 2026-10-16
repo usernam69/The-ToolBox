@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Level jam</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#theme{font-size:28px;text-align:center;margin:6px 0 14px}.lv{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;margin:6px 0;background:var(--card)}.lv .n{flex:1}</style></head>
+<body data-app="leveljam" data-cat="games" data-title="Level jam"><main>
+<p class="sub">A new theme every week. Build a Parkour level that fits it, share it here, and vote for your favourites. Everything shared is public.</p>
+<div id="theme"></div><p style="text-align:center"><a class="b" href="parkour-edit.html" style="text-decoration:none;padding:8px 14px;border-radius:10px">🛠️ Open the level editor</a></p><h3>Share your level</h3><div class="row"><input id="title" maxlength="30" placeholder="Level name"><input id="link" class="grow" placeholder="Paste the Play link from the editor (…#lvl=…)"><button class="b" id="send">Share</button></div><h3>This week’s levels</h3><div id="list"><p class="muted">Connecting…</p></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const THEMES=['Ice and lava','Only one jump','The tower','Backwards','Tiny rooms','Speed run','Stairs forever','Spikes everywhere','The long fall','Secret path','Zig-zag','Upside world'];
+const wk=(()=>{const d=new Date(),j=new Date(d.getFullYear(),0,1);return d.getFullYear()+'w'+Math.ceil(((d-j)/864e5+j.getDay()+1)/7)})(),theme=THEMES[[...wk].reduce((a,c)=>a+c.charCodeAt(0),0)%THEMES.length];
+$('theme').innerHTML=`This week: <b>${esc(theme)}</b>`;const T='the-toolbox/v1/jam/'+wk+'/',V='the-toolbox/v1/jamvote/'+wk+'/',levels={},votes={},me=load('id',null)||uid();save('id',me);let cl=null;
+function draw(){const L=Object.entries(levels);if(!L.length){$('list').innerHTML='<p class="muted">No levels yet this week. Be the first!</p>';return}const n=id=>Object.values(votes).filter(v=>v===id).length;
+  $('list').innerHTML=L.sort((a,b)=>n(b[0])-n(a[0])).map(([id,l])=>`<div class="lv"><span class="n"><b>${esc(l.title)}</b> <span class="muted">by ${esc(l.by)}</span></span><a class="g" href="parkour.html#lvl=${encodeURIComponent(l.code)}">▶ Play</a><button class="g" data-v="${esc(id)}">${votes[me]===id?'⭐':'☆'} ${n(id)}</button></div>`).join('');
+  $('list').querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{if(!cl)return;votes[me]=b.dataset.v;cl.publish(V+me,b.dataset.v,{retain:true,qos:1});draw()})}
+WORLD.connect().then(c=>{cl=c;c.on('message',(t,buf)=>{const s=new TextDecoder().decode(buf);if(t.startsWith(T)){const id=t.slice(T.length);try{const l=JSON.parse(s);if(l&&typeof l.code==='string'&&/^[\w-]{4,6000}$/.test(l.code)&&typeof l.title==='string')levels[id]={code:l.code,title:l.title.slice(0,30),by:String(l.by||'someone').slice(0,16)};else delete levels[id]}catch{delete levels[id]}draw()}
+  if(t.startsWith(V)&&/^[\w-]{1,40}$/.test(s))votes[t.slice(V.length)]=s,draw()});c.subscribe(T+'+');c.subscribe(V+'+');setTimeout(draw,1500)}).catch(()=>$('list').innerHTML='<p class="muted">The jam needs the internet.</p>');
+$('send').onclick=()=>{const m=$('link').value.match(/lvl=([\w-]+)/)||$('link').value.trim().match(/^([\w-]{4,})$/),title=$('title').value.trim();if(!m)return toast('Paste the Play link from the level editor.');if(!title)return toast('Give your level a name.');if(!cl)return toast('Not connected.');
+  const by=loadTb('worldName','')||'someone';if(!loadTb('worldName',''))toast('Tip: set a nickname on any world board to sign your levels.');cl.publish(T+me,JSON.stringify({code:m[1],title,by}),{retain:true,qos:1});toast('🏗️ Shared!');save('shared',load('shared',0)+1)};
+}
+</script></body></html>

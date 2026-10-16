@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Snake battle royale</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="snakeroyale" data-cat="games" data-title="Snake battle royale"><main>
+<p class="sub">Up to 8 snakes in one arena. Hit another snake’s body and you’re out. Last snake slithering wins. Online with a code, or against bots. Arrow keys / WASD / swipe.</p>
+<div class="row" style="justify-content:center"><button class="b" id="bots">Play vs bots</button></div><div id="room"></div><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',480,480),N=40,Z=12,COL=['#2fb344','#e5484d','#3e63dd','#ffd400','#b15cff','#ff8c00','#4cc9f0','#ff4fa3'];
+let me,others={},bots=[],food=[],run=false,step=0,dir=[1,0],nd=[1,0],mode='bots',alive=0;
+// online: everyone simulates their own snake and sends its body 8 times a second; you only die by hitting others or walls
+const R=ARC.room('snakeroyale',m=>{if(m.t==='s'&&Array.isArray(m.b)&&m.b.length<400)others[m.from]={b:m.b.filter(p=>Array.isArray(p)&&p.length===2).map(p=>[p[0]|0,p[1]|0]),c:(m.c|0)%8,dead:!!m.dead,at:Date.now()};if(m.t==='go'){mode='net';begin()}},{onJoin:()=>{if(R.host)setTimeout(()=>{R.send({t:'go'});mode='net';begin()},800)}});
+function snake(i){const x0=4+((i*13)%32),y0=4+((i*7)%32);return{b:[[x0,y0],[x0-1,y0],[x0-2,y0]],d:[1,0],c:i%8,dead:false,grow:0}}
+function begin(){ARC.hideOver();me=snake(rnd(8));me.c=mode==='net'?(Object.keys(others).length)%8:0;dir=[1,0];nd=[1,0];food=Array.from({length:12},()=>[rnd(N),rnd(N)]);bots=mode==='bots'?[1,2,3,4,5,6,7].map(snake):[];run=true;step=0;alive=0}
+$('bots').onclick=()=>{mode='bots';others={};begin()};
+addEventListener('keydown',e=>{const d={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]}[e.key.toLowerCase()];if(d&&!(d[0]===-dir[0]&&d[1]===-dir[1])){nd=d;if(e.key.startsWith('Arrow'))e.preventDefault()}});
+let sx,sy;c.onpointerdown=e=>{sx=e.clientX;sy=e.clientY};c.onpointerup=e=>{const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;const d=Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];if(!(d[0]===-dir[0]&&d[1]===-dir[1]))nd=d};
+const bodies=()=>[...(me&&!me.dead?[me.b]:[]),...bots.filter(b=>!b.dead).map(b=>b.b),...Object.values(others).filter(o=>!o.dead&&Date.now()-o.at<3000).map(o=>o.b)];
+function hits(head,self){return head[0]<0||head[1]<0||head[0]>=N||head[1]>=N||bodies().some(b=>b.some((p,i)=>p[0]===head[0]&&p[1]===head[1]&&!(b===self&&i===0)))}
+function advance(s,d){const h=[s.b[0][0]+d[0],s.b[0][1]+d[1]];if(hits(h,s.b)){s.dead=true;return}s.b.unshift(h);const f=food.findIndex(p=>p[0]===h[0]&&p[1]===h[1]);if(f>=0){food[f]=[rnd(N),rnd(N)];s.grow+=3}if(s.grow>0)s.grow--;else s.b.pop()}
+function botDir(s){const opts=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>!(d[0]===-s.d[0]&&d[1]===-s.d[1])&&!hits([s.b[0][0]+d[0],s.b[0][1]+d[1]],s.b));if(!opts.length)return s.d;
+  const f=food.reduce((a,p)=>Math.abs(p[0]-s.b[0][0])+Math.abs(p[1]-s.b[0][1])<Math.abs(a[0]-s.b[0][0])+Math.abs(a[1]-s.b[0][1])?p:a,food[0]);return opts.sort((a,b)=>(Math.abs(s.b[0][0]+a[0]-f[0])+Math.abs(s.b[0][1]+a[1]-f[1]))-(Math.abs(s.b[0][0]+b[0]-f[0])+Math.abs(s.b[0][1]+b[1]-f[1]))+(Math.random()<.1?2:0))[0]}
+ARC.loop(dt=>{x.fillStyle='#111';x.fillRect(0,0,480,480);if(run){step+=dt;if(step>.12){step=0;alive+=.12;dir=nd;if(!me.dead){me.d=dir;advance(me,dir)}bots.forEach(b=>{if(!b.dead){b.d=botDir(b);advance(b,b.d)}});
+    if(mode==='net')R.send({t:'s',b:me.b.slice(0,120),c:me.c,dead:me.dead});
+    const rivals=mode==='bots'?bots.filter(b=>!b.dead).length:Object.values(others).filter(o=>!o.dead&&Date.now()-o.at<3000).length;
+    if(me.dead||rivals===0&&(mode==='bots'||Object.keys(others).length)){run=false;const won=!me.dead;if(won){save('wins',load('wins',0)+1);ARC.best(load('wins',0))}ARC.over(won?'👑 Last snake standing!':`💀 Out after ${alive.toFixed(0)}s`,()=>{if(mode==='net')R.send({t:'go'});begin()})}}}
+  x.fillStyle='#ff4fa3';food.forEach(p=>x.fillRect(p[0]*Z+3,p[1]*Z+3,Z-6,Z-6));
+  const draw=(b,col,dead)=>{x.globalAlpha=dead?.25:1;x.fillStyle=col;b.forEach((p,i)=>x.fillRect(p[0]*Z+1,p[1]*Z+1,Z-2,Z-2));x.globalAlpha=1};
+  bots.forEach(b=>draw(b.b,COL[b.c],b.dead));Object.values(others).forEach(o=>draw(o.b,COL[o.c],o.dead));if(me){draw(me.b,COL[me.c],me.dead);x.strokeStyle='#fff';x.strokeRect(me.b[0][0]*Z,me.b[0][1]*Z,Z,Z)}
+  $('hud').textContent=run?`${mode==='bots'?bots.filter(b=>!b.dead).length+' bots left':Object.keys(others).length+1+' players'} · length ${me.b.length}`:'Pick bots or start an online game'});
+ARC.board('snakeroyale',{key:'wins',unit:' wins'});
+}
+</script></body></html>

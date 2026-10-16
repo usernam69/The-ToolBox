@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Simon says</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:320px;margin:auto}#sg button{aspect-ratio:1;border-radius:20px;border:0;opacity:.45;cursor:pointer}#sg button.lit{opacity:1;transform:scale(1.04)}</style></head>
+<body data-app="simon" data-cat="games" data-title="Simon says"><main>
+<p class="sub">Watch the lights, then repeat the pattern. It grows by one each round.</p>
+<p class="arc-hud" id="hud">Round 0</p><div id="sg"><button style="background:#2fb344"></button><button style="background:#e5484d"></button><button style="background:#f5d90a"></button><button style="background:#3e63dd"></button></div><p style="text-align:center"><button class="b" id="go">Start</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const P=[...$('sg').children],F=[330,262,392,196];let seq=[],at=0,busy=true;
+const flash=(i,d=350)=>new Promise(r=>{P[i].classList.add('lit');tone(F[i],d/1000,'triangle',.12);setTimeout(()=>{P[i].classList.remove('lit');setTimeout(r,120)},d)});
+async function play(){busy=true;$('hud').textContent='Round '+seq.length;await new Promise(r=>setTimeout(r,500));for(const i of seq)await flash(i,Math.max(180,420-seq.length*12));busy=false;at=0}
+function start(){ARC.hideOver();seq=[rnd(4)];play()}
+P.forEach((b,i)=>b.onpointerdown=async()=>{if(busy)return;flash(i,200);if(i!==seq[at]){busy=true;const s=seq.length-1,r=ARC.best(s);tone(110,.5,'sawtooth',.1);ARC.over(`🔴 You reached round ${s}${r.isNew?' · new best!':' · best '+r.best}`,start);return}
+  if(++at===seq.length){seq.push(rnd(4));play()}});
+$('go').onclick=start;ARC.board('simon',{unit:' rounds'});
+}
+</script></body></html>

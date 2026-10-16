@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hangman: changelog words</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#w{font:700 32px monospace;letter-spacing:8px;text-align:center;margin:14px 0}#kb{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:460px;margin:auto}#kb button{width:36px;height:40px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:700}#kb button:disabled{opacity:.3}#man{font-size:40px;text-align:center;letter-spacing:4px}</style></head>
+<body data-app="hangman" data-cat="games" data-title="Hangman: changelog words"><main>
+<p class="sub">Guess the word, one letter at a time. The words come from The ToolBox’s own “What’s new” list. 6 misses and you’re out.</p>
+<div id="man"></div><div id="w"></div><div id="kb"></div><p class="arc-hud" id="hud"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let word,got,miss,streak=load('streak',0);
+function pool(){const w=(window.TB_NEWS||[]).flatMap(([,t])=>t.toLowerCase().match(/[a-z]{5,10}/g)||[]);const u=[...new Set(w)].filter(x=>!/^(about|their|which|there|these|every|other)$/.test(x));return u.length>20?u:ARC.WORDS}
+function start(){ARC.hideOver();const p=pool();word=p[rnd(p.length)];got=new Set();miss=0;draw()}
+function draw(){$('w').textContent=[...word].map(c=>got.has(c)?c:'_').join('');$('man').textContent='💀'.repeat(miss)+'⚪'.repeat(6-miss);
+  $('kb').innerHTML=[...'abcdefghijklmnopqrstuvwxyz'].map(c=>`<button data-c="${c}" ${got.has(c)||(c+'').length>1?'disabled':''}>${c}</button>`).join('');$('hud').textContent='Streak '+streak}
+function guess(c){if(got.has(c)||miss>=6||[...word].every(x=>got.has(x)))return;got.add(c);if(!word.includes(c)){miss++;tone(160,.1,'sawtooth',.06)}else tone(700,.06);draw();
+  if([...word].every(x=>got.has(x))){streak++;save('streak',streak);ARC.best(streak);ARC.over('🎉 '+word+' · streak '+streak,start)}else if(miss>=6){streak=0;save('streak',0);ARC.over('🪢 It was “'+word+'”',start)}}
+$('kb').onclick=e=>{const b=e.target.closest('[data-c]');if(b)guess(b.dataset.c)};addEventListener('keydown',e=>{if(/^[a-z]$/.test(e.key))guess(e.key)});
+(function w(){if(!window.TB_NEWS&&!w.n){w.n=1;return setTimeout(w,300)}start()})();ARC.board('hangman',{unit:' in a row',title:'🌍 Longest streaks'});
+}
+</script></body></html>

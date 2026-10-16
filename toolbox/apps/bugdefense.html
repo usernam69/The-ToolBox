@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bug defense</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#bar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}#bar button.on{outline:2px solid var(--accent)}</style></head>
+<body data-app="bugdefense" data-cat="games" data-title="Bug defense"><main>
+<p class="sub">Bugs march toward the release. Tap empty squares to build tests that zap them (unit test 20 coins, fuzz test 45 coins, slower but hits everything near it). Don’t let 10 bugs ship!</p>
+<p class="arc-hud" id="hud"></p><div id="bar"><button class="g on" data-t="0">🧪 Unit test (20)</button><button class="g" data-t="1">🌀 Fuzz test (45)</button><button class="b" id="wave">Send next wave</button></div><canvas id="c" class="arc-c" style="background:#1d2b1d"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',480,480),S=40,PATH=[[0,1],[1,1],[2,1],[3,1],[4,1],[4,2],[4,3],[3,3],[2,3],[1,3],[1,4],[1,5],[1,6],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[7,5],[7,4],[7,3],[7,2],[8,2],[9,2],[10,2],[10,3],[10,4],[10,5],[10,6],[10,7],[10,8],[10,9],[11,9]];
+const onPath=new Set(PATH.map(p=>p+''));let towers,bugs,shots,coins,lives,wave,kind=0,spawn=0,left=0,over=false;
+const T=[{cost:20,range:90,rate:.45,dmg:1,col:'#4cc9f0'},{cost:45,range:70,rate:1.3,dmg:2,col:'#f72585',splash:true}];
+function start(){ARC.hideOver();towers=[];bugs=[];shots=[];coins=60;lives=10;wave=0;over=false;hud()}
+function hud(){$('hud').textContent=`🪙 ${coins} · ❤️ ${lives} · wave ${wave}`}
+$('bar').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;kind=+b.dataset.t;$('bar').querySelectorAll('[data-t]').forEach(z=>z.classList.toggle('on',z===b))};
+$('wave').onclick=()=>{if(over||left>0||bugs.length)return;wave++;left=6+wave*2;spawn=0;hud()};
+c.onpointerdown=e=>{if(over)return;const p=ARC.pos(c,e),gx=p.x/S|0,gy=p.y/S|0;if(onPath.has(gx+','+gy)||towers.some(t=>t.gx===gx&&t.gy===gy))return;if(coins<T[kind].cost)return toast('Not enough coins.');coins-=T[kind].cost;towers.push({gx,gy,k:kind,cd:0});tone(500,.05);hud()};
+const at=d=>{const i=Math.min(PATH.length-1,Math.floor(d)),f=d-i,a=PATH[i],b=PATH[Math.min(PATH.length-1,i+1)];return[(a[0]+(b[0]-a[0])*f)*S+S/2,(a[1]+(b[1]-a[1])*f)*S+S/2]};
+start();ARC.loop(dt=>{if(!over){if(left>0){spawn-=dt;if(spawn<=0){spawn=.8;left--;const boss=left===0&&wave%5===0;bugs.push({d:0,hp:boss?10+wave*3:1+wave*.6|0,max:boss?10+wave*3:1+wave*.6|0,sp:boss?.9:1.4+wave*.05,boss})}}
+    bugs.forEach(b=>{b.d+=b.sp*dt;[b.x,b.y]=at(b.d)});bugs=bugs.filter(b=>{if(b.d>=PATH.length-1){lives-=b.boss?3:1;tone(120,.2,'sawtooth',.06);hud();return false}if(b.hp<=0){coins+=b.boss?25:4;hud();return false}return true});
+    towers.forEach(t=>{t.cd-=dt;if(t.cd>0)return;const tx=t.gx*S+S/2,ty=t.gy*S+S/2,y=T[t.k],tg=bugs.filter(b=>Math.hypot(b.x-tx,b.y-ty)<y.range).sort((a,b)=>b.d-a.d)[0];if(!tg)return;t.cd=y.rate;
+      (y.splash?bugs.filter(b=>Math.hypot(b.x-tg.x,b.y-tg.y)<40):[tg]).forEach(b=>b.hp-=y.dmg);shots.push({x1:tx,y1:ty,x2:tg.x,y2:tg.y,t:.1,c:y.col});tone(y.splash?200:900,.02,'square',.03)});
+    if(lives<=0){over=true;const r=ARC.best(wave);ARC.over(`🛡️ The bugs shipped on wave ${wave}${r.isNew?' · new best!':' · best '+r.best}`,start)}}
+  x.fillStyle='#1d2b1d';x.fillRect(0,0,480,480);x.fillStyle='#5a4a32';PATH.forEach(([a,b])=>x.fillRect(a*S,b*S,S,S));x.font='26px system-ui';x.fillText('🚀',440,392);
+  towers.forEach(t=>{x.fillStyle=T[t.k].col;x.beginPath();x.arc(t.gx*S+S/2,t.gy*S+S/2,14,0,7);x.fill();x.fillText(t.k?'🌀':'🧪',t.gx*S+7,t.gy*S+30)});
+  bugs.forEach(b=>{x.font=(b.boss?30:20)+'px system-ui';x.fillText('🐞',b.x-12,b.y+8);x.fillStyle='#e5484d';x.fillRect(b.x-12,b.y-16,24*b.hp/b.max,3)});
+  shots=shots.filter(s=>(s.t-=dt)>0);shots.forEach(s=>{x.strokeStyle=s.c;x.lineWidth=2;x.beginPath();x.moveTo(s.x1,s.y1);x.lineTo(s.x2,s.y2);x.stroke()})});
+ARC.board('bugdefense',{unit:' waves'});
+}
+</script></body></html>

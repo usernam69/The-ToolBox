@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Higher or lower</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#card{font-size:110px;text-align:center;line-height:1.1}#hl{display:flex;gap:10px;justify-content:center}#hl button{font-size:20px;padding:12px 24px}</style></head>
+<body data-app="higherlower" data-cat="games" data-title="Higher or lower"><main>
+<p class="sub">Will the next card be higher or lower? Build the longest streak you can. Aces are high.</p>
+<div id="card"></div><p class="arc-hud" id="hud">Streak 0</p><div id="hl"><button class="b" data-g="1">⬆ Higher</button><button class="b" data-g="-1">⬇ Lower</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const S='♠♥♦♣',V=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];let deck,cur,streak=0;
+const show=c=>{$('card').innerHTML=`<span style="color:${c.s===1||c.s===2?'#e5484d':'var(--ink)'}">${V[c.v]}${S[c.s]}</span>`};
+function start(){ARC.hideOver();deck=ARC.shuffle([...Array(52)].map((_,i)=>({v:i%13,s:i/13|0})));cur=deck.pop();streak=0;show(cur);$('hud').textContent='Streak 0'}
+$('hl').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||!cur)return;const n=deck.pop();if(!n)return start();const d=Math.sign(n.v-cur.v);cur=n;show(n);
+  if(d===0||d===+b.dataset.g){streak+=d?1:0;tone(800,.06);$('hud').textContent='Streak '+streak}else{tone(150,.3,'sawtooth',.08);const r=ARC.best(streak);ARC.over(`🎴 Streak of ${streak}${r.isNew?' · new best!':' · best '+r.best}`,start)}};
+start();ARC.board('higherlower',{unit:' in a row'});
+}
+</script></body></html>

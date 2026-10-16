@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Battleship</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.boards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}.bs{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:min(92vw,300px);background:#0b3d66;padding:4px;border-radius:8px}.bs div{aspect-ratio:1;background:#1a5c94;border-radius:2px;font-size:12px;display:flex;align-items:center;justify-content:center}.bs div.s{background:#8a96a3}.bs div.h{background:#e5484d}.bs div.m{background:#9cc4e4}.enemy div{cursor:crosshair}</style></head>
+<body data-app="battleship" data-cat="games" data-title="Battleship"><main>
+<p class="sub">Sink the enemy fleet before they sink yours. Play the computer, or a friend online with a code. Ships are placed for you (tap “Shuffle ships” to move them).</p>
+<div class="row" style="justify-content:center"><select id="mode"><option value="cpu">vs computer</option><option value="net">online</option></select><button class="g" id="shuf">Shuffle ships</button><button class="b" id="go">New game</button></div><div id="room" hidden></div><p class="arc-hud" id="hud"></p><div class="boards"><div><b>Enemy waters</b><div class="bs enemy" id="en"></div></div><div><b>Your fleet</b><div class="bs" id="me"></div></div></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const SH=[5,4,3,3,2];let mine,shotsAtMe,myShots,enemy,turn,over,cpuQ=[];
+function fleet(){const g=Array(100).fill(0);SH.forEach((len,k)=>{for(;;){const h=Math.random()<.5,x=rnd(h?11-len:10),y=rnd(h?10:11-len),idx=[...Array(len)].map((_,i)=>h?y*10+x+i:(y+i)*10+x);if(idx.every(i=>!g[i])){idx.forEach(i=>g[i]=k+1);break}}});return g}
+const R=ARC.room('battleship',m=>{if(m.t==='shot'){const hit=mine[m.i]>0;shotsAtMe[m.i]=hit?2:1;R.send({t:'res',i:m.i,hit,sunk:hit&&sunk(mine,shotsAtMe,mine[m.i]),dead:lost(mine,shotsAtMe)});turn='me';draw();if(lost(mine,shotsAtMe))end(false)}
+  if(m.t==='res'){myShots[m.i]=m.hit?2:1;if(m.sunk)toast('💥 You sank a ship!');turn='them';draw();if(m.dead)end(true)}if(m.t==='new'){reset(false)}},{onJoin:()=>{if(R.host){reset(true);R.send({t:'new'})}}});
+const sunk=(g,s,k)=>g.every((v,i)=>v!==k||s[i]===2),lost=(g,s)=>g.every((v,i)=>!v||s[i]===2);
+function reset(first=true){ARC.hideOver();mine=fleet();shotsAtMe=Array(100).fill(0);myShots=Array(100).fill(0);enemy=$('mode').value==='cpu'?fleet():null;turn=first?'me':'them';over=false;cpuQ=[];draw()}
+function draw(){$('en').innerHTML=myShots.map((s,i)=>`<div data-i="${i}" class="${s===2?'h':s===1?'m':''}">${s===2?'💥':''}</div>`).join('');$('me').innerHTML=mine.map((v,i)=>`<div class="${shotsAtMe[i]===2?'h':shotsAtMe[i]===1?'m':v?'s':''}"></div>`).join('');
+  $('hud').textContent=over?'':turn==='me'?'Your shot: tap enemy waters':'Waiting for the other side…'}
+function end(won){over=true;if(won){save('wins',load('wins',0)+1);ARC.best(load('wins',0))}ARC.over(won?'🚢 You sank the whole fleet!':'🌊 Your fleet was sunk.',()=>{reset(true);if($('mode').value==='net')R.send({t:'new'})})}
+$('en').onclick=e=>{const d=e.target.closest('[data-i]');if(!d||over||turn!=='me')return;const i=+d.dataset.i;if(myShots[i])return;tone(300,.05);
+  if($('mode').value==='net'){turn='wait';R.send({t:'shot',i});draw();return}
+  const hit=enemy[i]>0;myShots[i]=hit?2:1;if(hit&&sunk(enemy,myShots,enemy[i]))toast('💥 You sank a ship!');draw();if(lost(enemy,myShots))return end(true);turn='them';draw();setTimeout(cpu,500)};
+function cpu(){let i;while(cpuQ.length&&shotsAtMe[cpuQ[0]])cpuQ.shift();if(cpuQ.length)i=cpuQ.shift();else do i=rnd(100);while(shotsAtMe[i]||((i%10+(i/10|0))%2&&Math.random()<.7));
+  const hit=mine[i]>0;shotsAtMe[i]=hit?2:1;if(hit)[i-10,i+10,i%10?i-1:-1,i%10<9?i+1:-1].filter(j=>j>=0&&j<100&&!shotsAtMe[j]).forEach(j=>cpuQ.push(j));turn='me';draw();if(lost(mine,shotsAtMe))end(false)}
+$('shuf').onclick=()=>{if(shotsAtMe.some(Boolean)||myShots.some(Boolean))return toast('Only before the first shot.');mine=fleet();draw()};$('go').onclick=()=>{reset(true);if($('mode').value==='net')R.send({t:'new'})};$('mode').onchange=()=>{$('room').hidden=$('mode').value!=='net';reset(true)};
+reset(true);ARC.board('battleship',{key:'wins',unit:' wins'});
+}
+</script></body></html>

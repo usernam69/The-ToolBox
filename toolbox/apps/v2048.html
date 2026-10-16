@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>2048: version edition</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#b{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px;margin:auto;background:var(--line);padding:8px;border-radius:12px;touch-action:none}#b div{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font:700 20px system-ui;background:var(--card)}</style></head>
+<body data-app="v2048" data-cat="games" data-title="2048: version edition"><main>
+<p class="sub">Slide the tiles (arrow keys or swipe). Matching versions merge into the next one. Reach v11!</p>
+<p class="arc-hud" id="hud">Score 0</p><div id="b"></div><p style="text-align:center"><button class="g" id="go">New game</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let B,score;
+function add(){const e=[];B.forEach((v,i)=>{if(!v)e.push(i)});if(e.length)B[e[rnd(e.length)]]=Math.random()<.9?1:2}
+function draw(){$('b').innerHTML=B.map(v=>`<div style="${v?`background:hsl(${v*31},70%,${70-v*3}%);color:#111`:''}">${v?'v'+v:''}</div>`).join('');$('hud').textContent='Score '+score}
+function start(){ARC.hideOver();B=Array(16).fill(0);score=0;add();add();draw()}
+function slide(dir){// dir: 0 left 1 right 2 up 3 down
+  let moved=false;for(let k=0;k<4;k++){const idx=[0,1,2,3].map(j=>dir<2?k*4+(dir?3-j:j):(dir===2?j:3-j)*4+k),row=idx.map(i=>B[i]).filter(Boolean),out=[];
+    for(let j=0;j<row.length;j++){if(row[j]===row[j+1]){out.push(row[j]+1);score+=2**(row[j]+1);j++}else out.push(row[j])}
+    idx.forEach((i,j)=>{const v=out[j]||0;if(B[i]!==v)moved=true;B[i]=v})}
+  if(!moved)return;add();draw();tone(300+score%400,.04);
+  const stuck=!B.includes(0)&&B.every((v,i)=>(i%4===3||v!==B[i+1])&&(i>11||v!==B[i+4]));if(stuck){const r=ARC.best(score);ARC.over(`🔢 Score ${score}, highest v${Math.max(...B)}${r.isNew?' · new best!':''}`,start)}}
+addEventListener('keydown',e=>{const d={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}[e.key];if(d!==undefined){e.preventDefault();slide(d)}});
+let sx,sy;$('b').onpointerdown=e=>{sx=e.clientX;sy=e.clientY};$('b').onpointerup=e=>{const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<25)return;slide(Math.abs(dx)>Math.abs(dy)?(dx>0?1:0):(dy>0?3:2))};
+$('go').onclick=start;start();ARC.board('v2048');
+}
+</script></body></html>

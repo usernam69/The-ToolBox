@@ -1,12 +1,13 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.3.0';
+var TB_VERSION='1.4.0';
 // release date and the apps changed in this release (both written by the release script)
-var TB_DATE='2026-10-15';var TB_CHANGED=['bracket','changelog','lofi','pixelwall','quests','bughunt','graveyard'];
+var TB_DATE='2026-10-16';var TB_CHANGED=['battleship','bisect','blocks','breakout','bugdefense','cardbattle','checkers','chess','codegarden','connect4','dicepoker','emojiguess','escapeci','farm','fifteen','flappy','ghostkart','hangman','higherlower','leveljam','lightsout','memory','mergeconflict','minesweeper','minigolf','pinball','pong','reaction','releaserush','rhythmtype','simon','snakeroyale','spaceshooter','sudoku','taptempo','tictactoe','typeracer','v2048','wallwars','whackbug'];
 // every version gets a fun codename, worked out from its number
 function TB_CODENAME(v){let h=0;for(const c of v)h=h*31+c.charCodeAt(0)>>>0;const A=['Sneaky','Bouncy','Cosmic','Fuzzy','Turbo','Sleepy','Shiny','Brave','Wobbly','Zippy','Quiet','Mighty'],B=['Sam','Otter','Comet','Pickle','Badger','Noodle','Falcon','Muffin','Gecko','Pixel','Walrus','Taco'];return A[h%A.length]+' '+B[(h>>4)%B.length]};
 
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.4.0','A new Arcade with 40 games: Bug defense, Release rush, Merge conflict, Code golf garden, Commit detective, Escape the CI, chess, checkers, battleship, Connect Four and tic-tac-toe (online too), Snake battle royale, Pixel wall wars, Level jam, Ghost kart, falling blocks, pinball, mini golf with a hole maker, space shooter, Pocket farm, App card battle, rhythm typing, daily sudoku, Bug sweeper, 2048, Whack-a-bug, reaction duel, memory, Simon, hangman, typing racer, Flappy pixel, breakout, Pong, tap tempo, higher or lower, emoji guess, lights out, the 15 puzzle and dice poker.'],
  ['1.3.0','Two new apps: Bug hunt and the Bug graveyard, a Bug hunter quest, update confetti with a codename and an update streak, “updated” tags on changed apps, changelog search with comic and haiku views, an RSS feed and a vote on what comes next, a live tournament bracket with undo, a second-chance bracket, tap races and app or bug showdowns, pixel wall replay, guide pictures and a snapshot per version, a commit melody and an hourly radio host in Lo-fi, bug reports that include your last steps, a web zip for USB sticks and checksums with every download. Fixes: pixel wall taps near the edge could land on the next pixel.'],
  ['1.2.1','Tournament bracket: players with the same name are now numbered so the right one moves up.'],
  ['1.2.0','Snooze and mark-paid buttons on reminders, quiet hours, smart habit reminders, flashcard, water and budget reminders, games pause when you switch windows, a ? sheet on the menu, theme previews, bug reports from Help.'],

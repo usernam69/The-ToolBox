@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chess</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#cb{display:grid;grid-template-columns:repeat(8,1fr);max-width:440px;margin:auto;border:3px solid #6b4f2a;user-select:none}#cb div{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(24px,8vw,44px);cursor:pointer;line-height:1}#cb .l{background:#f0d9b5}#cb .d{background:#b58863}#cb .s{outline:3px solid #2f80ed;outline-offset:-3px}#cb .t::after{content:"";width:28%;height:28%;border-radius:50%;background:rgba(0,0,0,.25)}#cb .k{background:#e5484d!important}</style></head>
+<body data-app="chess" data-cat="games" data-title="Chess"><main>
+<p class="sub">Play a friend on this screen, or the computer (it looks two moves ahead). Tap a piece, then where it goes. Castling, promotion and en passant are included.</p>
+<div class="row" style="justify-content:center"><select id="mode"><option value="cpu">vs computer</option><option value="local">2 players here</option></select><button class="g" id="undo">↶ Undo</button><button class="b" id="go">New game</button></div><p class="arc-hud" id="hud"></p><div id="cb"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+// board: 64 chars, uppercase white; state also tracks castling rights and the en passant square
+const G={'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙','k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'};let S,sel=-1,hist=[];
+const init=()=>({b:'rnbqkbnrpppppppp'.split('').concat(Array(32).fill('.'),'PPPPPPPPRNBQKBNR'.split('')),w:true,c:'KQkq',ep:-1});
+const white=p=>p!=='.'&&p===p.toUpperCase(),own=(p,w)=>p!=='.'&&white(p)===w;
+function attacked(b,sq,byW){for(let i=0;i<64;i++){const p=b[i];if(p==='.'||white(p)!==byW)continue;if(pseudo({b,w:byW,c:'',ep:-1},i,true).includes(sq))return true}return false}
+function pseudo(s,i,att=false){const b=s.b,p=b[i],w=white(p),t=p.toLowerCase(),x=i%8,y=i/8|0,out=[];const add=(nx,ny)=>{if(nx<0||nx>7||ny<0||ny>7)return false;const j=ny*8+nx;if(own(b[j],w))return false;out.push(j);return b[j]==='.'};
+  if(t==='p'){const d=w?-1:1,j=(y+d)*8+x;if(!att&&y+d>=0&&y+d<8&&b[j]==='.'){out.push(j);if((w?y===6:y===1)&&b[(y+2*d)*8+x]==='.')out.push((y+2*d)*8+x)}
+    for(const dx of[-1,1]){const nx=x+dx,ny=y+d;if(nx<0||nx>7||ny<0||ny>7)continue;const k=ny*8+nx;if(att||(b[k]!=='.'&&!own(b[k],w))||k===s.ep)out.push(k)}}
+  if(t==='n')[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]].forEach(([a,c])=>add(x+a,y+c));
+  if(t==='k'){[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([a,c])=>add(x+a,y+c));
+    if(!att){const r=w?7:0;if(i===r*8+4&&!attacked(b,i,!w)){if(s.c.includes(w?'K':'k')&&b[r*8+5]==='.'&&b[r*8+6]==='.'&&!attacked(b,r*8+5,!w))out.push(r*8+6);if(s.c.includes(w?'Q':'q')&&b[r*8+3]==='.'&&b[r*8+2]==='.'&&b[r*8+1]==='.'&&!attacked(b,r*8+3,!w))out.push(r*8+2)}}}
+  const dirs=t==='r'?[[1,0],[-1,0],[0,1],[0,-1]]:t==='b'?[[1,1],[1,-1],[-1,1],[-1,-1]]:t==='q'?[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]:[];dirs.forEach(([a,c])=>{for(let k=1;k<8;k++)if(!add(x+a*k,y+c*k))break});return out}
+function move(s,i,j){const b=s.b.slice(),p=b[i],w=s.w;let c=s.c,ep=-1;if(p.toLowerCase()==='p'&&j===s.ep)b[j+(w?8:-8)]='.';if(p.toLowerCase()==='p'&&Math.abs(j-i)===16)ep=(i+j)/2;
+  if(p.toLowerCase()==='k'&&Math.abs(j-i)===2){const r=j>i?j+1:j-2,to=j>i?j-1:j+1;b[to]=b[r];b[r]='.'}b[j]=p;b[i]='.';if(p==='P'&&j<8)b[j]='Q';if(p==='p'&&j>55)b[j]='q';
+  if(p==='K')c=c.replace(/[KQ]/g,'');if(p==='k')c=c.replace(/[kq]/g,'');[[63,'K'],[56,'Q'],[7,'k'],[0,'q']].forEach(([q,f])=>{if(i===q||j===q)c=c.replace(f,'')});return{b,w:!w,c,ep}}
+const legal=(s,i)=>pseudo(s,i).filter(j=>{const n=move(s,i,j);return!attacked(n.b,n.b.indexOf(s.w?'K':'k'),!s.w)});
+const allMoves=s=>{const m=[];s.b.forEach((p,i)=>{if(own(p,s.w))legal(s,i).forEach(j=>m.push([i,j]))});return m};
+const V={p:1,n:3,b:3.2,r:5,q:9,k:0};const evalB=b=>b.reduce((a,p,i)=>p==='.'?a:a+(white(p)?-1:1)*(V[p.toLowerCase()]+((p.toLowerCase()==='p'||p.toLowerCase()==='n')?(3.5-Math.abs(3.5-i%8))*.05:0)),0);
+function search(s,d,al,be){const ms=allMoves(s);if(!ms.length)return attacked(s.b,s.b.indexOf(s.w?'K':'k'),!s.w)?(s.w?1000:-1000):0;if(!d)return evalB(s.b);
+  let best=s.w?1e9:-1e9;for(const [i,j] of ms){const v=search(move(s,i,j),d-1,al,be);if(s.w){best=Math.min(best,v);be=Math.min(be,v)}else{best=Math.max(best,v);al=Math.max(al,v)}if(be<=al)break}return best}
+function cpu(){const ms=ARC.shuffle(allMoves(S));let best=null,bv=-1e9;for(const [i,j] of ms){const v=search(move(S,i,j),2,-1e9,1e9);if(v>bv){bv=v;best=[i,j]}}if(best){hist.push(S);S=move(S,...best);tone(330,.06);draw()}}
+function status(){const ms=allMoves(S),chk=attacked(S.b,S.b.indexOf(S.w?'K':'k'),!S.w);if(!ms.length)return chk?(S.w?'Black':'White')+' wins by checkmate!':'Stalemate: a draw.';return(S.w?'White':'Black')+' to move'+(chk?' · check!':'')}
+function draw(){const t=sel>=0?legal(S,sel):[],chkK=attacked(S.b,S.b.indexOf(S.w?'K':'k'),!S.w)?S.b.indexOf(S.w?'K':'k'):-1;
+  $('cb').innerHTML=S.b.map((p,i)=>`<div data-i="${i}" class="${((i%8)+(i/8|0))%2?'d':'l'} ${i===sel?'s':''} ${t.includes(i)?'t':''} ${i===chkK?'k':''}">${G[p]||''}</div>`).join('');const st=status();$('hud').textContent=st;
+  if(!allMoves(S).length&&!draw.done){draw.done=1;if(/White wins/.test(st)&&$('mode').value==='cpu'){save('wins',load('wins',0)+1);ARC.best(load('wins',0))}ARC.over('♟️ '+st,reset)}}
+function reset(){ARC.hideOver();S=init();sel=-1;hist=[];draw.done=0;draw()}
+$('cb').onclick=e=>{const d=e.target.closest('[data-i]');if(!d)return;const i=+d.dataset.i;if($('mode').value==='cpu'&&!S.w)return;
+  if(sel>=0&&legal(S,sel).includes(i)){hist.push(S);S=move(S,sel,i);sel=-1;tone(440,.05);draw();if($('mode').value==='cpu'&&!S.w&&allMoves(S).length){$('hud').textContent='Thinking…';setTimeout(cpu,50)}return}
+  sel=own(S.b[i],S.w)?i:-1;draw()};
+$('undo').onclick=()=>{if(!hist.length)return;S=hist.pop();if($('mode').value==='cpu'&&!S.w&&hist.length)S=hist.pop();sel=-1;draw.done=0;ARC.hideOver();draw()};$('go').onclick=reset;$('mode').onchange=reset;reset();ARC.board('chess',{key:'wins',unit:' wins'});
+}
+</script></body></html>

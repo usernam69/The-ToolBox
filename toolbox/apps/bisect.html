@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Commit detective</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#cm{display:flex;flex-direction:column;gap:3px;max-width:520px;margin:auto}#cm button{display:flex;gap:8px;text-align:left;font:13px monospace;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)}#cm button.good{background:#d8f5dd;color:#145a24}#cm button.bad{background:#ffdcdc;color:#8a1010}#cm span.h{color:var(--muted)}</style></head>
+<body data-app="bisect" data-cat="games" data-title="Commit detective"><main>
+<p class="sub">The app worked at the first commit and is broken at the last one. Run the tests on commits to find the one that broke it, with as few test runs as possible. Hint: try the middle.</p>
+<p class="arc-hud" id="hud"></p><p style="text-align:center"><button class="b" id="test">🧪 Run tests on the selected commit</button> <button class="g" id="blame">👉 This one broke it</button></p><div id="cm"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const MSG=['Add dark mode','Fix typo in help','Speed up search','New snake level','Update icons','Refactor storage','Add share button','Tweak colours','Bigger buttons on phones','Sound effects','Clean up old code','Translate menu','Faster loading','Add undo','Fix scroll on iPad','New font','Better errors','Move settings','Add quests','Improve offline mode','Shorter names','Add confetti','New theme','Fix crash on start','Cache images','Rename files','Add tests','Tidy CSS','Update docs','Bump version','Add pet','Fix timer','Add RSS','Rework menu','Polish animations','Add stickers'];
+let C,bad,sel,runs,tested;
+function start(){ARC.hideOver();const n=24+rnd(13);C=ARC.shuffle(MSG).slice(0,n).map(m=>({m,h:Math.random().toString(16).slice(2,9)}));bad=1+rnd(n-1);sel=-1;runs=0;tested={0:'good',[n-1]:'bad'};draw()}
+function draw(){$('cm').innerHTML=C.map((c,i)=>`<button data-i="${i}" class="${tested[i]||''}" style="${i===sel?'outline:2px solid var(--accent)':''}"><span class="h">${c.h}</span>${esc(c.m)}${tested[i]==='good'?' ✓':tested[i]==='bad'?' ✗':''}</button>`).join('');$('hud').textContent=`${C.length} commits · test runs ${runs}`}
+$('cm').onclick=e=>{const b=e.target.closest('[data-i]');if(b){sel=+b.dataset.i;draw()}};
+$('test').onclick=()=>{if(sel<0)return toast('Pick a commit first.');if(tested[sel])return toast('Already tested.');runs++;tested[sel]=sel>=bad?'bad':'good';tone(tested[sel]==='good'?800:250,.1,'triangle');draw()};
+$('blame').onclick=()=>{if(sel<0)return toast('Pick the commit you think broke it.');const ideal=Math.ceil(Math.log2(C.length-1));
+  if(sel===bad){const score=Math.max(0,100-(runs-ideal)*15);ARC.best(score);ARC.over(`🕵️ Got it in ${runs} test runs (the fastest possible is about ${ideal}) · score ${score}`,start)}else{runs+=3;tone(120,.3,'sawtooth',.06);toast('Not that one. +3 runs as a penalty.');draw()}};
+start();ARC.board('bisect',{unit:' pts'});
+}
+</script></body></html>

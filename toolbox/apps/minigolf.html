@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mini golf</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#ed{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}#ed button.on{outline:2px solid var(--accent)}</style></head>
+<body data-app="minigolf" data-cat="games" data-title="Mini golf"><main>
+<p class="sub">Drag back from the ball and let go to putt. 6 holes. Make your own hole with the editor and share it as a link.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c" style="background:#2e8b3a"></canvas><div class="row" style="justify-content:center"><button class="g" id="edit">✏️ Make a hole</button><button class="g" id="restart">↺ Restart course</button></div><div id="ed" hidden><button class="g on" data-t="w">🧱 Wall</button><button class="g" data-t="s">🟨 Sand</button><button class="g" data-t="b">⚪ Ball</button><button class="g" data-t="h">⛳ Hole</button><button class="g" data-t="x">🧽 Clear</button><button class="b" id="play">▶ Play it</button><button class="g" id="share">🔗 Share link</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',400,560),G=20;// a hole: walls and sand as grid cells, ball and hole positions
+const COURSE=[{b:[200,480],h:[200,90],w:[],s:[]},{b:[80,480],h:[320,100],w:[[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],[14,10],[15,10],[16,10],[17,10],[18,10],[19,10]],s:[]},
+ {b:[200,500],h:[200,80],w:[[8,12],[9,12],[10,12],[11,12]],s:[[6,7],[7,7],[8,7],[11,7],[12,7],[13,7],[6,8],[7,8],[12,8],[13,8]]},{b:[60,500],h:[340,80],w:[[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,8],[7,8],[8,8],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[6,18],[7,18],[8,18],[9,18],[10,18],[11,18],[12,18],[13,18],[14,18],[15,18],[16,18],[17,18],[18,18],[19,18]],s:[]},
+ {b:[200,520],h:[200,60],w:[[9,6],[10,6],[9,13],[10,13],[4,9],[15,9],[5,9],[14,9]],s:[[9,9],[10,9],[9,10],[10,10]]},{b:[40,40],h:[360,520],w:[[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11],[4,12],[4,13],[4,14],[4,15],[4,16],[4,17],[4,18],[4,19],[4,20],[15,8],[15,9],[15,10],[15,11],[15,12],[15,13],[15,14],[15,15],[15,16],[15,17],[15,18],[15,19],[15,20],[15,21],[15,22],[15,23],[15,24],[15,25],[15,26],[15,27]],s:[]}];
+let holes=COURSE,hi=0,H,ball,vel,strokes,total,drag=null,editing=false,tool='w';
+const key=(a,b)=>a+','+b;function load1(h){H={b:[...h.b],h:[...h.h],w:new Set(h.w.map(p=>key(...p))),s:new Set(h.s.map(p=>key(...p)))};ball=[...H.b];vel=[0,0];strokes=0}
+function startCourse(list){ARC.hideOver();holes=list;hi=0;total=0;load1(holes[0])}
+const wall=(px,py)=>px<0||py<0||px>=400||py>=560||H.w.has(key(px/G|0,py/G|0));
+c.onpointerdown=e=>{const p=ARC.pos(c,e);if(editing){paintCell(p);drag='paint';return}if(Math.hypot(vel[0],vel[1])>5)return;if(Math.hypot(p.x-ball[0],p.y-ball[1])<40)drag=p};
+c.onpointermove=e=>{const p=ARC.pos(c,e);if(drag==='paint'&&(tool==='w'||tool==='s'||tool==='x'))paintCell(p);else if(drag&&drag!=='paint')drag.cur=p};
+c.onpointerup=()=>{if(drag&&drag!=='paint'&&drag.cur){const dx=ball[0]-drag.cur.x,dy=ball[1]-drag.cur.y,pw=Math.min(160,Math.hypot(dx,dy));if(pw>8){const a=Math.atan2(dy,dx);vel=[Math.cos(a)*pw*4.2,Math.sin(a)*pw*4.2];strokes++;tone(300,.05)}}drag=null};
+function paintCell(p){const k=key(p.x/G|0,p.y/G|0);if(tool==='w'){H.w.add(k);H.s.delete(k)}if(tool==='s'){H.s.add(k);H.w.delete(k)}if(tool==='x'){H.w.delete(k);H.s.delete(k)}if(tool==='b'){H.b=[p.x,p.y];ball=[p.x,p.y]}if(tool==='h')H.h=[p.x,p.y]}
+const pack1=()=>({b:H.b.map(Math.round),h:H.h.map(Math.round),w:[...H.w].map(k=>k.split(',').map(Number)),s:[...H.s].map(k=>k.split(',').map(Number))});
+$('edit').onclick=()=>{editing=!editing;$('ed').hidden=!editing;if(editing){load1({b:[200,500],h:[200,80],w:[],s:[]});$('hud').textContent='Editing: paint walls and sand, place the ball and the hole'}};
+$('ed').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;tool=b.dataset.t;$('ed').querySelectorAll('[data-t]').forEach(z=>z.classList.toggle('on',z===b))};
+$('play').onclick=()=>{const h=pack1();editing=false;$('ed').hidden=true;startCourse([h])};$('restart').onclick=()=>{editing=false;$('ed').hidden=true;startCourse(COURSE)};
+$('share').onclick=async()=>copy(location.href.split('#')[0]+'#hole='+await tbPack(JSON.stringify(pack1())));
+(async()=>{const m=location.hash.match(/hole=([\w-]+)/);if(m){try{const h=JSON.parse(await tbUnpack(m[1]));if(Array.isArray(h.b)&&Array.isArray(h.h)&&Array.isArray(h.w)&&Array.isArray(h.s)){startCourse([h]);toast('⛳ Playing a shared hole');return}}catch{}toast('That hole link is broken.')}startCourse(COURSE)})();
+ARC.loop(dt=>{if(!H)return;if(!editing){const sand=H.s.has(key(ball[0]/G|0,ball[1]/G|0)),fr=sand?.9:.985;for(let k=0;k<4;k++){const nx=ball[0]+vel[0]*dt/4,ny=ball[1]+vel[1]*dt/4;if(wall(nx,ball[1]))vel[0]*=-.8;else ball[0]=nx;if(wall(ball[0],ny))vel[1]*=-.8;else ball[1]=ny}
+    vel=vel.map(v=>v*Math.pow(fr,dt*60));if(Math.hypot(vel[0],vel[1])<6)vel=[0,0];
+    if(Math.hypot(ball[0]-H.h[0],ball[1]-H.h[1])<11&&Math.hypot(vel[0],vel[1])<380){total+=strokes;tone(900,.15,'triangle');if(++hi<holes.length){toast(`⛳ Hole in ${strokes}`);load1(holes[hi])}else{const r=holes===COURSE?ARC.best(total,{lower:true}):{};ARC.over(`⛳ Course done in ${total} strokes${r.isNew?' · new best!':''}`,()=>startCourse(holes))}}}
+  x.fillStyle='#2e8b3a';x.fillRect(0,0,400,560);x.fillStyle='#e9d58a';H.s.forEach(k=>{const [a,b]=k.split(',');x.fillRect(a*G,b*G,G,G)});x.fillStyle='#6b4f2a';H.w.forEach(k=>{const [a,b]=k.split(',');x.fillRect(a*G,b*G,G,G)});
+  x.fillStyle='#111';x.beginPath();x.arc(H.h[0],H.h[1],10,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(ball[0],ball[1],7,0,7);x.fill();
+  if(drag&&drag!=='paint'&&drag.cur){x.strokeStyle='#fff';x.setLineDash([4,4]);x.beginPath();x.moveTo(ball[0],ball[1]);x.lineTo(2*ball[0]-drag.cur.x,2*ball[1]-drag.cur.y);x.stroke();x.setLineDash([])}
+  if(!editing)$('hud').textContent=`Hole ${hi+1}/${holes.length} · strokes ${strokes} · total ${total}`});
+ARC.board('minigolf',{lower:true,unit:' strokes',title:'🌍 Best rounds'});
+}
+</script></body></html>

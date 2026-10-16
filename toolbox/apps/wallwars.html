@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pixel wall wars</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#ww{display:grid;grid-template-columns:repeat(16,1fr);gap:1px;max-width:480px;margin:auto;touch-action:none;background:var(--line)}#ww div{aspect-ratio:1;background:#fff}</style></head>
+<body data-app="wallwars" data-cat="games" data-title="Pixel wall wars"><main>
+<p class="sub">Two teams, one 16×16 wall, 60 seconds. Paint as many squares in your colour as you can. Play on one screen (left = red, right = blue) or online with a code.</p>
+<div class="row" style="justify-content:center"><select id="mode"><option value="local">2 players here</option><option value="net">online</option></select><button class="b" id="go">Start</button></div><div id="room" hidden></div><p class="arc-hud" id="hud"></p><div id="ww"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const N=16,C=['#fff','#e5484d','#3e63dd'];let W=Array(N*N).fill(0),run=false,end=0,team=1;
+const R=ARC.room('wallwars',m=>{if(m.t==='p'&&m.i>=0&&m.i<N*N&&(m.c===1||m.c===2)){W[m.i]=m.c;cell(m.i)}if(m.t==='go'){begin(m.end);team=2}},{onJoin:()=>{}});
+$('ww').innerHTML=W.map((_,i)=>`<div data-i="${i}"></div>`).join('');const cells=[...$('ww').children];const cell=i=>cells[i].style.background=C[W[i]];
+function begin(e){ARC.hideOver();W.fill(0);cells.forEach((_,i)=>cell(i));run=true;end=e}
+$('go').onclick=()=>{const e=Date.now()+60000;team=1;begin(e);if($('mode').value==='net')R.send({t:'go',end:e})};$('mode').onchange=()=>$('room').hidden=$('mode').value!=='net';
+function paint(e){if(!run)return;const d=document.elementFromPoint(e.clientX,e.clientY);if(!d||d.dataset.i===undefined)return;const i=+d.dataset.i,local=$('mode').value==='local',c=local?(i%N<N/2?1:2):team;
+  if(local){const r=$('ww').getBoundingClientRect();if((e.clientX<r.left+r.width/2)!==(c===1))return}if(W[i]===c)return;W[i]=c;cell(i);tone(300+c*200,.02,'square',.03);if(!local)R.send({t:'p',i,c})}
+$('ww').onpointerdown=e=>{$('ww').setPointerCapture?.(e.pointerId);paint(e)};$('ww').onpointermove=e=>{if(e.buttons||e.pointerType==='touch')paint(e)};
+// on one screen: each side paints its own colour but can steal across the middle by dragging
+setInterval(()=>{const r=W.filter(v=>v===1).length,b=W.filter(v=>v===2).length;$('hud').textContent=`🟥 ${r} · 🟦 ${b}${run?' · '+Math.max(0,Math.ceil((end-Date.now())/1000))+'s':''}`;
+  if(run&&Date.now()>end){run=false;const mine=team===1?r:b;if($('mode').value==='net')ARC.best(mine);ARC.over(r===b?'🤝 A draw!':(r>b?'🟥 Red':'🟦 Blue')+' wins!',()=>$('go').click())}},200);
+ARC.board('wallwars',{unit:' squares'});
+}
+</script></body></html>

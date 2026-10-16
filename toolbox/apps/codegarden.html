@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Code golf garden</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#gd{font-size:34px;text-align:center;letter-spacing:4px;min-height:44px}#tg{font-size:44px;font-weight:800;text-align:center}#toks{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0}#toks button{min-width:48px;height:48px;font:700 20px system-ui}#expr{font:24px monospace;text-align:center;min-height:32px}</style></head>
+<body data-app="codegarden" data-cat="games" data-title="Code golf garden"><main>
+<p class="sub">Make the target number using the numbers and + − × ÷. Every puzzle you solve grows your garden. Fewer numbers used = bonus water.</p>
+<div id="gd"></div><div id="tg"></div><div id="expr"></div><div id="toks"></div><p style="text-align:center"><button class="g" id="undo">⌫</button> <button class="b" id="ok">Check</button> <button class="g" id="skip">Skip</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let nums,target,expr=[],used=new Set(),garden=load('garden',0);const PL=['🌱','🌿','🌷','🌻','🌳','🌸','🍀','🌼'];
+function newP(){nums=[1,2,3,4,5,6,7,8,9,10,25].sort(()=>Math.random()-.5).slice(0,5);// target: a random small expression of the numbers, so it can always be made
+  const a=nums[0],b=nums[1],c=nums[2];target=[a*b+c,a+b*c,(a+b)*c,a*b-c,a+b+c].filter(v=>v>0&&v<200)[rnd(3)]||a+b;expr=[];used=new Set();draw()}
+function draw(){$('gd').textContent=Array.from({length:garden},(_,i)=>PL[i%PL.length]).join('').slice(-40)||'(plant your first sprout)';$('tg').textContent='🎯 '+target;$('expr').textContent=expr.map(t=>t.v).join(' ')||' ';
+  $('toks').innerHTML=nums.map((v,i)=>`<button class="g" data-n="${i}" ${used.has(i)?'disabled':''}>${v}</button>`).join('')+['+','−','×','÷','(',')'].map(o=>`<button class="g" data-o="${o}">${o}</button>`).join('')}
+$('toks').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.n!==undefined){used.add(+b.dataset.n);expr.push({v:nums[b.dataset.n],n:+b.dataset.n})}else expr.push({v:b.dataset.o});draw()};
+$('undo').onclick=()=>{const t=expr.pop();if(t&&t.n!==undefined)used.delete(t.n);draw()};$('skip').onclick=newP;
+$('ok').onclick=()=>{const s=expr.map(t=>t.v).join(' ').replace(/−/g,'-').replace(/×/g,'*').replace(/÷/g,'/');if(!/^[\d\s+\-*/()]+$/.test(s))return toast('Make an expression first.');let v;try{v=Function('return ('+s+')')()}catch{return toast('That isn’t a complete sum.')}
+  if(Math.abs(v-target)<1e-9){garden+=used.size<=3?2:1;save('garden',garden);ARC.best(garden);tone(880,.12,'triangle');toast(used.size<=3?'🌷 Solved with few numbers: double growth!':'🌱 Solved!');newP()}else{toast(`That makes ${+v.toFixed(2)}, not ${target}.`);tone(160,.2,'sawtooth',.05)}};
+newP();ARC.board('codegarden',{key:'best',unit:' plants'});
+}
+</script></body></html>

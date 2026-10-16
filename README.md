@@ -1,6 +1,6 @@
 # The ToolBox
 
-A main menu with seven categories: Quick wins, Games, Useful tools, Creative & art, Bigger projects, Wild ideas and Community. Inside are 65 everyday tools plus about 72 apps and games. Your data stays on your own device and there are no accounts. A few online extras (online rooms, world high scores, the radio) send only what they say they send.
+A main menu with seven categories: Quick wins, Games, Useful tools, Creative & art, Bigger projects, Wild ideas and Community. Inside are 65 everyday tools plus about 112 apps and games and games. Your data stays on your own device and there are no accounts. A few online extras (online rooms, world high scores, the radio) send only what they say they send.
 
 ## Use it
 

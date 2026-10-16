@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>App card battle</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.hand{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.card{width:130px;border:2px solid var(--line);border-radius:12px;padding:8px;background:var(--card);cursor:pointer;text-align:center}.card .e{font-size:36px}.card.sel{border-color:var(--accent);transform:translateY(-6px)}.card small{display:block;color:var(--muted)}#arena{display:flex;gap:20px;justify-content:center;align-items:center;min-height:150px}</style></head>
+<body data-app="cardbattle" data-cat="games" data-title="App card battle"><main>
+<p class="sub">Every ToolBox app is a card with Fun, Speed and Brains. Pick a card and a stat each round; the higher number wins the round. Best of 5 against the computer.</p>
+<script src="registry.js"></script><p class="arc-hud" id="hud"></p><div id="arena"></div><div class="row" style="justify-content:center" id="stats"></div><div class="hand" id="hand"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const apps=ALL_APPS.filter(a=>a.cat!=='community');const stat=(a,k)=>{let h=0;for(const ch of a.id+k)h=(h*31+ch.charCodeAt(0))>>>0;return 1+h%10};
+const card=a=>({a,fun:stat(a,'f'),speed:stat(a,'s'),brains:stat(a,'b')});let mine,theirs,sel=-1,wins,losses,round;
+const show=(c,pick)=>`<div class="card ${pick?'sel':''}"><div class="e">${c.a.emoji}</div><b>${esc(c.a.name)}</b><small>🎉 Fun ${c.fun} · ⚡ Speed ${c.speed} · 🧠 Brains ${c.brains}</small></div>`;
+function start(){ARC.hideOver();const d=ARC.shuffle(apps).slice(0,10).map(card);mine=d.slice(0,5);theirs=d.slice(5);wins=losses=round=0;sel=-1;$('arena').innerHTML='';draw()}
+function draw(){$('hud').textContent=`Round ${round+1}/5 · you ${wins} – ${losses} computer`;$('hand').innerHTML=mine.map((c,i)=>`<div data-i="${i}">${show(c,i===sel)}</div>`).join('');
+  $('stats').innerHTML=sel<0?'<span class="muted">Pick a card</span>':['fun','speed','brains'].map(k=>`<button class="b" data-k="${k}">Play ${{fun:'🎉 Fun',speed:'⚡ Speed',brains:'🧠 Brains'}[k]}</button>`).join('')}
+$('hand').onclick=e=>{const d=e.target.closest('[data-i]');if(d){sel=+d.dataset.i;draw()}};
+$('stats').onclick=e=>{const b=e.target.closest('[data-k]');if(!b||sel<0)return;const k=b.dataset.k,m=mine.splice(sel,1)[0],ti=theirs.reduce((bi,c,i)=>c[k]>theirs[bi][k]?i:bi,0),t=Math.random()<.35?theirs.splice(rnd(theirs.length),1)[0]:theirs.splice(ti,1)[0];
+  const r=Math.sign(m[k]-t[k]);if(r>0)wins++;if(r<0)losses++;round++;tone(r>0?800:r<0?200:500,.12,'triangle');sel=-1;
+  $('arena').innerHTML=show(m)+`<b style="font-size:24px">${r>0?'You win!':r<0?'They win':'Tie'}<br><small class="muted">${k} ${m[k]} vs ${t[k]}</small></b>`+show(t);draw();
+  if(round>=5){if(wins>losses){save('wins',load('wins',0)+1);ARC.best(load('wins',0))}ARC.over(wins>losses?`🃏 You win ${wins}–${losses}!`:wins<losses?`The computer wins ${losses}–${wins}`:'A draw!',start)}};
+start();ARC.board('cardbattle',{key:'wins',unit:' wins'});
+}
+</script></body></html>

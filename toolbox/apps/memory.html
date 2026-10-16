@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Memory match</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#mg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:400px;margin:auto}#mg button{aspect-ratio:1;font-size:34px;border-radius:12px;border:2px solid var(--line);background:var(--accent);cursor:pointer}#mg button.open,#mg button.done{background:var(--card)}#mg button.done{opacity:.5}</style></head>
+<body data-app="memory" data-cat="games" data-title="Memory match"><main>
+<p class="sub">Flip two cards at a time and find all the pairs in as few moves as you can.</p>
+<p class="arc-hud" id="hud">Moves 0</p><div id="mg"></div><p style="text-align:center"><button class="g" id="go">New game</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const E=['🐍','🏃','🎨','🎧','🧰','🐞','🌻','🚀'];let cards,open=[],moves=0,lock=false;
+function deal(){ARC.hideOver();cards=ARC.shuffle([...E,...E]);moves=0;open=[];$('hud').textContent='Moves 0';$('mg').innerHTML=cards.map((c,i)=>`<button data-i="${i}" aria-label="Card"></button>`).join('')}
+$('mg').onclick=e=>{const b=e.target.closest('button');if(!b||lock||b.classList.contains('open')||b.classList.contains('done'))return;b.classList.add('open');b.textContent=cards[b.dataset.i];open.push(b);tone(500,.04);
+  if(open.length<2)return;moves++;$('hud').textContent='Moves '+moves;const [a,c]=open;open=[];
+  if(a.textContent===c.textContent){a.classList.add('done');c.classList.add('done');tone(900,.1,'triangle');if(document.querySelectorAll('#mg .done').length===16){const r=ARC.best(moves,{lower:true});ARC.over(`🃏 Done in ${moves} moves${r.isNew?' · new best!':' · best '+r.best}`,deal)}}
+  else{lock=true;setTimeout(()=>{[a,c].forEach(x=>{x.classList.remove('open');x.textContent=''});lock=false},700)}};
+$('go').onclick=deal;deal();ARC.board('memory',{lower:true,unit:' moves',title:'🌍 Fewest moves'});
+}
+</script></body></html>

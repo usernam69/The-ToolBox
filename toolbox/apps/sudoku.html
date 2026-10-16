@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Daily sudoku</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#sd{display:grid;grid-template-columns:repeat(9,1fr);max-width:400px;margin:auto;border:2px solid var(--ink)}#sd button{aspect-ratio:1;border:1px solid var(--line);background:var(--card);color:var(--accent);font:700 18px system-ui;padding:0}#sd button.giv{color:var(--ink)}#sd button.sel{background:color-mix(in srgb,var(--accent) 25%,var(--card))}#sd button.bad{color:#e5484d}#sd button:nth-child(9n+3),#sd button:nth-child(9n+6){border-right:2px solid var(--ink)}#sd button:nth-child(n+19):nth-child(-n+27),#sd button:nth-child(n+46):nth-child(-n+54){border-bottom:2px solid var(--ink)}#nums{display:flex;gap:4px;justify-content:center;margin:10px 0}#nums button{width:38px;height:42px;font-weight:700}</style></head>
+<body data-app="sudoku" data-cat="games" data-title="Daily sudoku"><main>
+<p class="sub">A new sudoku every day, the same for everyone. Tap a square, then a number.</p>
+<p class="arc-hud" id="hud"></p><div id="sd"></div><div id="nums"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const day=isoDay(),r=ARC.rng('sudoku'+day);let sol=Array(81).fill(0),g,sel=-1,t0=Date.now();
+const ok=(s,i,v)=>{const y=i/9|0,x=i%9;for(let k=0;k<9;k++){if(s[y*9+k]===v||s[k*9+x]===v)return false}const by=y-y%3,bx=x-x%3;for(let a=0;a<3;a++)for(let b=0;b<3;b++)if(s[(by+a)*9+bx+b]===v)return false;return true};
+(function fill(i){if(i===81)return true;for(const v of ARC.shuffle([1,2,3,4,5,6,7,8,9],r)){if(ok(sol,i,v)){sol[i]=v;if(fill(i+1))return true;sol[i]=0}}return false})(0);
+const given=sol.map(()=>r()<.42);const saved=load('day',{});g=saved.day===day?saved.g:sol.map((v,i)=>given[i]?v:0);
+function draw(){$('sd').innerHTML=g.map((v,i)=>{const bad=v&&!given[i]&&(()=>{const s=g.slice();s[i]=0;return!ok(s,i,v)})();return`<button data-i="${i}" class="${given[i]?'giv':''} ${i===sel?'sel':''} ${bad?'bad':''}">${v||''}</button>`}).join('');
+  $('nums').innerHTML=[1,2,3,4,5,6,7,8,9,0].map(n=>`<button class="g" data-n="${n}">${n||'⌫'}</button>`).join('');save('day',{day,g});
+  const full=g.every((v,i)=>v&&(()=>{const s=g.slice();s[i]=0;return ok(s,i,v)})());$('hud').textContent=full?'🎉 Solved!':`Puzzle for ${day}`;
+  if(full&&load('solved','')!==day){save('solved',day);const m=Math.round((Date.now()-t0)/60000);save('count',load('count',0)+1);ARC.best(load('count',0));ARC.over(`🔢 Solved today’s sudoku! Come back tomorrow for a new one.`)}}
+$('sd').onclick=e=>{const b=e.target.closest('[data-i]');if(!b||given[+b.dataset.i])return;sel=+b.dataset.i;draw()};
+const put=n=>{if(sel<0)return;g[sel]=n;tone(400+n*40,.04);draw()};$('nums').onclick=e=>{const b=e.target.closest('[data-n]');if(b)put(+b.dataset.n)};
+addEventListener('keydown',e=>{if(/^[0-9]$/.test(e.key))put(+e.key);if(e.key==='Backspace')put(0)});draw();ARC.board('sudoku',{key:'count',unit:' solved',title:'🌍 Most days solved'});
+}
+</script></body></html>

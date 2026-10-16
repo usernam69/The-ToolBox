@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lights out</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#lo{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:340px;margin:auto}#lo button{aspect-ratio:1;border-radius:10px;border:2px solid var(--line);background:#333}#lo button.on{background:#ffd400;box-shadow:0 0 14px #ffd400}</style></head>
+<body data-app="lightsout" data-cat="games" data-title="Lights out"><main>
+<p class="sub">Tapping a light flips it and its neighbours. Turn every light off in as few taps as you can.</p>
+<p class="arc-hud" id="hud"></p><div id="lo"></div><p style="text-align:center"><button class="g" id="go">New puzzle</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let L,moves;const flip=i=>{const x=i%5,y=i/5|0;[[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{const a=x+dx,b=y+dy;if(a>=0&&a<5&&b>=0&&b<5)L[b*5+a]^=1})};
+function start(){ARC.hideOver();L=Array(25).fill(0);for(let k=0;k<12;k++)flip(rnd(25));if(L.every(v=>!v))flip(12);moves=0;draw()}
+function draw(){$('lo').innerHTML=L.map((v,i)=>`<button data-i="${i}" class="${v?'on':''}" aria-label="Light ${v?'on':'off'}"></button>`).join('');$('hud').textContent='Taps '+moves}
+$('lo').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;flip(+b.dataset.i);moves++;tone(L[+b.dataset.i]?700:400,.04);draw();if(L.every(v=>!v)){const r=ARC.best(moves,{lower:true});ARC.over(`💡 All off in ${moves} taps${r.isNew?' · new best!':''}`,start)}};
+$('go').onclick=start;start();ARC.board('lightsout',{lower:true,unit:' taps',title:'🌍 Fewest taps'});
+}
+</script></body></html>

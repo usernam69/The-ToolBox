@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pixel breakout</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="breakout" data-cat="games" data-title="Pixel breakout"><main>
+<p class="sub">Bounce the ball and break the bricks. The bricks are coloured from your latest Pixel wall snapshot. Mouse, touch or ←/→.</p>
+<canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',480,560);let px=200,bx,by,vx,vy,bricks,score,lives,run=false;
+function colors(){const d=[];try{const g=JSON.parse(localStorage.getItem('app_pixelwall_gallery')||'[]');if(g[0]){const im=new Image();im.src=g[0].img;const k=document.createElement('canvas');k.width=12;k.height=8;const kx=k.getContext('2d');kx.drawImage(im,0,0,12,8);const p=kx.getImageData(0,0,12,8).data;for(let i=0;i<96;i++)d.push(`rgb(${p[i*4]},${p[i*4+1]},${p[i*4+2]})`)}}catch{}return d.length===96&&d.some(v=>v!=='rgb(0,0,0)')?d:null}
+function start(){ARC.hideOver();const col=colors();bricks=[];for(let r=0;r<8;r++)for(let k=0;k<12;k++)bricks.push({x:k*40,y:60+r*18,c:col?col[r*12+k]:`hsl(${r*40},80%,60%)`});score=0;lives=3;serve()}
+function serve(){bx=240;by=420;vx=180*(Math.random()<.5?-1:1);vy=-300;run=true}
+c.onpointermove=e=>px=ARC.pos(c,e).x-40;c.onpointerdown=e=>{if(!run&&(!$('arcOver')||$('arcOver').hidden))start()};
+ARC.loop(dt=>{if(keys.has('arrowleft'))px-=420*dt;if(keys.has('arrowright'))px+=420*dt;const p=ARC.pad()[0];if(p)px+=p.x*420*dt;px=Math.max(0,Math.min(400,px));
+  x.fillStyle='#111';x.fillRect(0,0,480,560);
+  if(run){bx+=vx*dt;by+=vy*dt;if(bx<6||bx>474)vx*=-1;if(by<6)vy=Math.abs(vy);
+    if(by>520&&by<532&&bx>px&&bx<px+80&&vy>0){vy=-Math.abs(vy)*1.02;vx=(bx-px-40)*7;tone(400,.03)}
+    for(const b of bricks)if(!b.hit&&bx>b.x&&bx<b.x+40&&by>b.y&&by<b.y+18){b.hit=true;vy*=-1;score+=10;tone(700+b.y,.03,'square',.04);break}
+    if(by>560){lives--;if(lives>0)serve();else{run=false;const r=ARC.best(score);ARC.over(`🧱 ${score} points${r.isNew?' · new best!':''}`,start)}}
+    if(bricks.every(b=>b.hit)){run=false;const r=ARC.best(score+lives*100);ARC.over(`🏆 Cleared! ${score+lives*100} points`,start)}}
+  (bricks||[]).forEach(b=>{if(!b.hit){x.fillStyle=b.c;x.fillRect(b.x+1,b.y+1,38,16)}});x.fillStyle='#fff';x.fillRect(px,524,80,10);if(run){x.beginPath();x.arc(bx,by,6,0,7);x.fill()}
+  x.font='16px system-ui';x.fillText(`${score||0} · ${'❤️'.repeat(lives||0)}`,10,24);if(!bricks){x.font='24px system-ui';x.fillText('Click to start',170,300)}});
+ARC.board('breakout');
+}
+</script></body></html>

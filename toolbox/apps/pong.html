@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pong</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="pong" data-cat="games" data-title="Pong"><main>
+<p class="sub">Player 1: W / S. Player 2: ↑ / ↓ (or play the computer). Game controllers work too. First to 7.</p>
+<div class="row" style="justify-content:center"><select id="mode"><option value="cpu">vs computer</option><option value="2p">2 players</option></select><button class="b" id="go">Start</button></div><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const x=ARC.canvas('c',640,400);let a=170,b=170,bx,by,vx,vy,s=[0,0],run=false;
+function serve(d){bx=320;by=200;vx=260*d;vy=(Math.random()-.5)*260}
+function start(){ARC.hideOver();s=[0,0];a=b=170;serve(1);run=true}
+ARC.loop(dt=>{const p=ARC.pad();if(keys.has('w'))a-=360*dt;if(keys.has('s'))a+=360*dt;if(p[0])a+=p[0].y*360*dt;
+  if($('mode').value==='2p'){if(keys.has('arrowup'))b-=360*dt;if(keys.has('arrowdown'))b+=360*dt;if(p[1])b+=p[1].y*360*dt}else b+=Math.max(-250*dt,Math.min(250*dt,(by||200)-b-30));
+  a=Math.max(0,Math.min(340,a));b=Math.max(0,Math.min(340,b));
+  if(run){bx+=vx*dt;by+=vy*dt;if(by<6||by>394)vy*=-1;
+    if(bx<26&&bx>14&&by>a&&by<a+60&&vx<0){vx=-vx*1.06;vy+=(by-a-30)*6;tone(500,.03)}if(bx>614&&bx<626&&by>b&&by<b+60&&vx>0){vx=-vx*1.06;vy+=(by-b-30)*6;tone(500,.03)}
+    if(bx<0||bx>640){s[bx<0?1:0]++;tone(200,.15);if(s[0]>=7||s[1]>=7){run=false;if(s[0]>=7&&$('mode').value==='cpu')save('wins',load('wins',0)+1);ARC.over(`🏓 ${s[0]>=7?'Player 1':($('mode').value==='cpu'?'Computer':'Player 2')} wins ${s[0]}–${s[1]}`,start)}else serve(bx<0?1:-1)}}
+  x.fillStyle='#111';x.fillRect(0,0,640,400);x.fillStyle='#fff';x.fillRect(14,a,10,60);x.fillRect(616,b,10,60);for(let i=0;i<400;i+=20)x.fillRect(319,i,2,10);
+  if(run)x.fillRect(bx-5,by-5,10,10);x.font='bold 40px monospace';x.fillText(s[0],260,50);x.fillText(s[1],360,50)});
+$('go').onclick=start;addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown'].includes(e.key))e.preventDefault()});ARC.board('pong',{key:'wins',unit:' wins'});
+}
+</script></body></html>

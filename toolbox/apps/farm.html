@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pocket farm</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#plots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:440px;margin:auto}#plots button{aspect-ratio:1;border-radius:12px;border:2px solid #7a5232;background:#a5713f;font-size:34px;position:relative;color:#fff}#plots button small{position:absolute;bottom:3px;left:0;right:0;font-size:10px}#plots button.wet{background:#6b4423}#shop{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:10px 0}#shop button.on{outline:2px solid var(--accent)}</style></head>
+<body data-app="farm" data-cat="games" data-title="Pocket farm"><main>
+<p class="sub">Plant seeds, water them, and harvest when they’re ready. Crops grow in real time, even when the app is closed. Sell harvests for coins and unlock better seeds.</p>
+<p class="arc-hud" id="hud"></p><div id="shop"></div><div id="plots"></div><p class="muted" style="text-align:center">Tap an empty plot to plant, a growing one to water (twice as fast for an hour), a ripe one to harvest.</p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const SEEDS=[{e:'🥕',n:'Carrot',cost:2,sell:5,min:5},{e:'🍓',n:'Strawberry',cost:5,sell:14,min:20},{e:'🌽',n:'Corn',cost:10,sell:30,min:60},{e:'🎃',n:'Pumpkin',cost:25,sell:90,min:240},{e:'🍉',n:'Melon',cost:50,sell:220,min:720}];
+let F=load('farm',{coins:10,plots:Array(12).fill(null),sold:0}),seed=0;
+// growth: minutes of real time, doubled while watered (watering lasts an hour)
+const grown=p=>{const now=Date.now(),wetEnd=p.wet||0,base=(now-p.at)/60000,bonus=Math.max(0,Math.min(now,wetEnd)-Math.max(p.at,wetEnd-3600000))/60000;return(base+bonus)/SEEDS[p.k].min};
+function draw(){$('hud').textContent=`🪙 ${F.coins} · ${F.sold} harvested`;
+  $('shop').innerHTML=SEEDS.map((s,i)=>`<button class="g ${i===seed?'on':''}" data-s="${i}" ${F.sold<i*8?'disabled title="Harvest '+i*8+' crops to unlock"':''}>${s.e} ${s.n} · ${s.cost}🪙 · ${s.min<60?s.min+' min':s.min/60+' h'}</button>`).join('');
+  $('plots').innerHTML=F.plots.map((p,i)=>{if(!p)return`<button data-i="${i}" aria-label="Empty plot">＋</button>`;const g=grown(p),ripe=g>=1;return`<button data-i="${i}" class="${p.wet>Date.now()?'wet':''}">${ripe?SEEDS[p.k].e:g>.5?'🌿':'🌱'}<small>${ripe?'ripe!':Math.round(g*100)+'%'}</small></button>`}).join('')}
+$('shop').onclick=e=>{const b=e.target.closest('[data-s]');if(b&&!b.disabled){seed=+b.dataset.s;draw()}};
+$('plots').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;const i=+b.dataset.i,p=F.plots[i];
+  if(!p){const s=SEEDS[seed];if(F.coins<s.cost)return toast('Not enough coins.');F.coins-=s.cost;F.plots[i]={k:seed,at:Date.now(),wet:0};tone(400,.05)}
+  else if(grown(p)>=1){F.coins+=SEEDS[p.k].sell;F.sold++;F.plots[i]=null;tone(900,.1,'triangle');ARC.best(F.sold)}
+  else if(!(p.wet>Date.now())){p.wet=Date.now()+3600000;tone(600,.08,'sine')}else toast('Already watered.');
+  if(F.coins<2&&F.plots.every(p=>!p)){F.coins=2;toast('🌱 A neighbour gave you 2 coins.')}save('farm',F);draw()};
+draw();setInterval(draw,5000);ARC.board('farm',{unit:' harvests'});
+}
+</script></body></html>

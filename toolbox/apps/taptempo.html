@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tap tempo</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#pad{display:block;margin:10px auto;width:220px;height:220px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font:800 26px system-ui;touch-action:manipulation}#pad.hit{transform:scale(.95)}</style></head>
+<body data-app="taptempo" data-cat="games" data-title="Tap tempo"><main>
+<p class="sub">Listen to 4 clicks, then keep tapping on the beat for 16 more (any key or tap). Your score is how close you stay.</p>
+<p class="arc-hud" id="hud">Press Start</p><button id="pad">TAP</button><p style="text-align:center"><select id="bpm"><option>70</option><option selected>90</option><option>120</option></select> BPM <button class="b" id="go">Start</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let beat,t0,taps=[],on=false;
+function start(){ARC.hideOver();beat=60/+$('bpm').value;const a=AC();a.resume();t0=a.currentTime+.5;taps=[];on=true;for(let i=0;i<4;i++)tone(i?800:1200,.05,'square',.12,.5+i*beat-0);$('hud').textContent='Listen…';setTimeout(()=>$('hud').textContent='Now tap along!',(.5+3*beat)*1000)}
+function tap(){if(!on)return;$('pad').classList.add('hit');setTimeout(()=>$('pad').classList.remove('hit'),80);const t=AC().currentTime-t0;if(t<3.5*beat)return;taps.push(t);tone(500,.03,'sine',.06);
+  if(taps.length>=16){on=false;const err=taps.map(t=>{const n=Math.round(t/beat);return Math.abs(t-n*beat)*1000});const avg=err.reduce((a,b)=>a+b,0)/err.length,score=Math.max(0,Math.round(100-avg/2));const r=ARC.best(score);ARC.over(`🥁 Off by ${Math.round(avg)} ms on average · score ${score}${r.isNew?' · new best!':''}`,start)}else $('hud').textContent=(16-taps.length)+' taps to go'}
+$('pad').onpointerdown=tap;addEventListener('keydown',e=>{if(!e.repeat&&e.target.tagName!=='SELECT'){if(e.key===' ')e.preventDefault();tap()}});$('go').onclick=start;ARC.board('taptempo',{unit:'%'});
+}
+</script></body></html>

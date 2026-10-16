@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bug sweeper</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#ms{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;max-width:420px;margin:auto;user-select:none}#ms button{aspect-ratio:1;border:0;border-radius:4px;background:var(--accent);font:700 15px system-ui;padding:0;touch-action:manipulation}#ms button.o{background:var(--card);color:var(--ink)}</style></head>
+<body data-app="minesweeper" data-cat="games" data-title="Bug sweeper"><main>
+<p class="sub">Minesweeper with bugs. Numbers tell how many bugs touch a square. Right-click or long-press to flag. Your first tap is always safe.</p>
+<p class="arc-hud" id="hud">🐞 15 · 0s</p><div id="ms"></div><p style="text-align:center"><button class="g" id="go">New game</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const N=10,M=15;let bug,open,flag,first,t0,over,tick;
+const nb=i=>{const x=i%N,y=i/N|0,r=[];for(let dy=-1;dy<2;dy++)for(let dx=-1;dx<2;dx++){const a=x+dx,b=y+dy;if((dx||dy)&&a>=0&&b>=0&&a<N&&b<N)r.push(b*N+a)}return r};
+const count=i=>nb(i).filter(j=>bug[j]).length;
+function start(){ARC.hideOver();bug=Array(N*N).fill(false);open=Array(N*N).fill(false);flag=Array(N*N).fill(false);first=true;over=false;t0=0;draw()}
+function place(safe){const no=new Set([safe,...nb(safe)]);let k=0;while(k<M){const i=rnd(N*N);if(!bug[i]&&!no.has(i)){bug[i]=true;k++}}}
+function reveal(i){if(open[i]||flag[i])return;open[i]=true;if(!bug[i]&&!count(i))nb(i).forEach(reveal)}
+function draw(){$('ms').innerHTML=bug.map((b,i)=>`<button data-i="${i}" class="${open[i]?'o':''}">${open[i]?(b?'🐞':count(i)||''):flag[i]?'🚩':''}</button>`).join('');$('hud').textContent=`🐞 ${M-flag.filter(Boolean).length} · ${t0?Math.floor((Date.now()-t0)/1000):0}s`}
+function tap(i){if(over||flag[i])return;if(first){first=false;place(i);t0=Date.now();clearInterval(tick);tick=setInterval(()=>!over&&draw(),1000)}
+  if(bug[i]){over=true;bug.forEach((b,j)=>{if(b)open[j]=true});draw();tone(90,.6,'sawtooth',.1);ARC.over('💥 A bug got out!',start);return}
+  reveal(i);tone(600,.03);draw();if(open.filter(Boolean).length===N*N-M){over=true;const s=Math.floor((Date.now()-t0)/1000),r=ARC.best(s,{lower:true});ARC.over(`🧹 All clear in ${s}s${r.isNew?' · new best!':' · best '+r.best+'s'}`,start)}}
+function toggle(i){if(over||open[i])return;flag[i]=!flag[i];draw()}
+let press=null;$('ms').onpointerdown=e=>{const b=e.target.closest('[data-i]');if(!b)return;if(e.button===2)return;press=setTimeout(()=>{press='long';toggle(+b.dataset.i)},450)};
+$('ms').onpointerup=e=>{const b=e.target.closest('[data-i]');if(press==='long'){press=null;return}clearTimeout(press);press=null;if(b&&e.button===0)tap(+b.dataset.i)};
+$('ms').oncontextmenu=e=>{e.preventDefault();const b=e.target.closest('[data-i]');if(b)toggle(+b.dataset.i)};
+$('go').onclick=start;start();ARC.board('minesweeper',{lower:true,unit:'s',title:'🌍 Fastest clears'});
+}
+</script></body></html>

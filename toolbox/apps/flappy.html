@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Flappy pixel</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="flappy" data-cat="games" data-title="Flappy pixel"><main>
+<p class="sub">Tap, click or press Space to flap through the gaps.</p>
+<canvas id="c" class="arc-c" style="background:#7ec8f0"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',360,540);let y,v,pipes=[],score,alive=false,t=0;
+function start(){ARC.hideOver();y=250;v=0;pipes=[];score=0;alive=true;t=0}
+function flap(){if(!alive){if(!$('arcOver')||$('arcOver').hidden)start();return}v=-330;tone(660,.04,'square',.04)}
+c.onpointerdown=flap;addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();flap()}});
+ARC.loop(dt=>{x.fillStyle='#7ec8f0';x.fillRect(0,0,360,540);x.fillStyle='#5ab552';x.fillRect(0,510,360,30);
+  if(alive){t+=dt;v+=900*dt;y+=v*dt;if(t>1.4){t=0;pipes.push({x:380,gap:120+Math.random()*260,done:false})}
+    pipes.forEach(p=>{p.x-=150*dt;if(!p.done&&p.x<70){p.done=true;score++;tone(880,.05)}if(p.x<96&&p.x>14&&(y-12<p.gap-70||y+12>p.gap+70))alive=false});pipes=pipes.filter(p=>p.x>-60);if(y>498||y<0)alive=false;
+    if(!alive){const r=ARC.best(score);ARC.over(`🐤 ${score} pipes${r.isNew?' · new best!':' · best '+r.best}`,start)}}
+  x.fillStyle='#2c8a2c';pipes.forEach(p=>{x.fillRect(p.x,0,52,p.gap-70);x.fillRect(p.x,p.gap+70,52,540)});
+  x.fillStyle='#ffd400';x.fillRect(66,(y||250)-12,24,24);x.fillStyle='#000';x.fillRect(82,(y||250)-6,4,4);x.fillStyle='#fff';x.font='bold 32px system-ui';x.fillText(score||0,170,60);
+  if(!alive&&y===undefined){x.fillText('Tap to start',90,280)}});
+ARC.board('flappy',{unit:' pipes'});
+}
+</script></body></html>

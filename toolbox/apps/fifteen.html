@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>15 puzzle</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#fp{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;max-width:360px;margin:auto}#fp button{aspect-ratio:1;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);font:800 24px system-ui;background-size:400% 400%}#fp button.e{visibility:hidden}</style></head>
+<body data-app="fifteen" data-cat="games" data-title="15 puzzle"><main>
+<p class="sub">Slide the tiles back into order. Use numbers, or pick your own photo.</p>
+<p class="arc-hud" id="hud"></p><div id="fp"></div><p style="text-align:center"><button class="g" id="go">Shuffle</button> <label class="g" style="cursor:pointer">📷 Use a photo<input type="file" id="ph" accept="image/*" hidden></label></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let T,moves,img=null;
+function start(){ARC.hideOver();T=[...Array(15)].map((_,i)=>i+1).concat(0);let e=15;for(let k=0;k<300;k++){const n=[e-4,e+4,e%4?e-1:-1,e%4<3?e+1:-1].filter(i=>i>=0&&i<16);const j=n[rnd(n.length)];T[e]=T[j];T[j]=0;e=j}moves=0;draw()}
+function draw(){$('fp').innerHTML=T.map((v,i)=>`<button data-i="${i}" class="${v?'':'e'}" style="${img&&v?`background-image:url(${img});background-position:${(v-1)%4*33.33}% ${((v-1)/4|0)*33.33}%;color:transparent`:''}">${v||''}</button>`).join('');$('hud').textContent='Moves '+moves}
+$('fp').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;const i=+b.dataset.i,e0=T.indexOf(0);if(Math.abs(i-e0)===4||(Math.abs(i-e0)===1&&(i/4|0)===(e0/4|0))){T[e0]=T[i];T[i]=0;moves++;tone(500,.03);draw();
+  if(T.every((v,k)=>v===(k+1)%16)){const r=ARC.best(moves,{lower:true});ARC.over(`🧩 Solved in ${moves} moves${r.isNew?' · new best!':''}`,start)}}};
+$('ph').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const k=document.createElement('canvas'),s=Math.min(im.width,im.height);k.width=k.height=400;k.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,400,400);img=k.toDataURL('image/jpeg',.8);draw()};im.src=rd.result};rd.readAsDataURL(f)};
+$('go').onclick=start;start();ARC.board('fifteen',{lower:true,unit:' moves',title:'🌍 Fewest moves'});
+}
+</script></body></html>

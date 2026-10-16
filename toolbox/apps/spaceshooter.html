@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Space shooter</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="spaceshooter" data-cat="games" data-title="Space shooter"><main>
+<p class="sub">Dodge and blast the asteroids. Mouse or touch to move (it fires by itself), or arrow keys and a game controller, which rumbles when you’re hit.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',400,560);let sx=200,shots,rocks,parts,score,hp,cool,run=false,t=0;const stars=Array.from({length:60},()=>[Math.random()*400,Math.random()*560,Math.random()*2+.5]);
+function start(){ARC.hideOver();shots=[];rocks=[];parts=[];score=0;hp=3;cool=0;run=true;t=0}
+function rumble(){for(const g of navigator.getGamepads?navigator.getGamepads():[])g?.vibrationActuator?.playEffect?.('dual-rumble',{duration:200,strongMagnitude:.8,weakMagnitude:.4}).catch(()=>{});navigator.vibrate?.(120)}
+c.onpointermove=e=>sx=ARC.pos(c,e).x;c.onpointerdown=e=>{sx=ARC.pos(c,e).x;if(!run&&(!$('arcOver')||$('arcOver').hidden))start()};addEventListener('keydown',e=>{if(e.key===' '&&!run&&(!$('arcOver')||$('arcOver').hidden))start()});
+ARC.loop(dt=>{x.fillStyle='#05050f';x.fillRect(0,0,400,560);x.fillStyle='#fff';stars.forEach(s=>{s[1]=(s[1]+s[2]*40*dt)%560;x.fillRect(s[0],s[1],s[2],s[2])});
+  if(!run){if(!shots){x.font='20px system-ui';x.fillText('Tap or press Space',110,280)}return}t+=dt;const p=ARC.pad()[0];if(keys.has('arrowleft'))sx-=320*dt;if(keys.has('arrowright'))sx+=320*dt;if(p)sx+=p.x*320*dt;sx=Math.max(16,Math.min(384,sx));
+  cool-=dt;if(cool<=0){cool=.22;shots.push({x:sx,y:510});tone(1200,.02,'square',.02)}if(Math.random()<dt*(1+t/20))rocks.push({x:Math.random()*380+10,y:-20,r:10+Math.random()*18,v:80+Math.random()*80+t*2});
+  shots.forEach(s=>s.y-=500*dt);rocks.forEach(r=>r.y+=r.v*dt);
+  rocks.forEach(r=>shots.forEach(s=>{if(!s.gone&&!r.gone&&Math.hypot(s.x-r.x,s.y-r.y)<r.r){s.gone=r.gone=true;score+=Math.round(40-r.r);tone(200,.08,'sawtooth',.04);for(let i=0;i<8;i++)parts.push({x:r.x,y:r.y,vx:(Math.random()-.5)*200,vy:(Math.random()-.5)*200,t:.5})}}));
+  rocks.forEach(r=>{if(!r.gone&&Math.hypot(r.x-sx,r.y-520)<r.r+12){r.gone=true;hp--;rumble();tone(80,.3,'sawtooth',.1);if(hp<=0){run=false;const b=ARC.best(score);ARC.over(`🚀 ${score} points${b.isNew?' · new best!':''}`,start)}}});
+  shots=shots.filter(s=>!s.gone&&s.y>-10);rocks=rocks.filter(r=>!r.gone&&r.y<600);parts=parts.filter(q=>(q.t-=dt)>0);
+  x.fillStyle='#ffd400';shots.forEach(s=>x.fillRect(s.x-2,s.y-8,4,10));x.fillStyle='#8a7f73';rocks.forEach(r=>{x.beginPath();x.arc(r.x,r.y,r.r,0,7);x.fill()});x.fillStyle='#ff8c00';parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;x.fillRect(q.x,q.y,3,3)});
+  x.fillStyle='#4cc9f0';x.beginPath();x.moveTo(sx,500);x.lineTo(sx-14,535);x.lineTo(sx+14,535);x.fill();$('hud').textContent=`${score} points · ${'❤️'.repeat(Math.max(0,hp))}`});
+ARC.board('spaceshooter');
+}
+</script></body></html>

@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Typing racer</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#line{font:20px/1.6 monospace;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}#line .ok{color:#2fb344}#line .bad{background:#ffd6d6;color:#c00}#line .cur{border-bottom:2px solid var(--accent)}#in{width:100%;font:18px monospace;margin-top:8px}</style></head>
+<body data-app="typeracer" data-cat="games" data-title="Typing racer"><main>
+<p class="sub">Type a line from The ToolBox’s “What’s new” list as fast and accurately as you can.</p>
+<div id="line"></div><input id="in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Start typing…"><p class="arc-hud" id="hud"></p><p style="text-align:center"><button class="g" id="go">New line</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let text,t0=0;
+function start(){ARC.hideOver();const lines=(window.TB_NEWS||[]).flatMap(([,t])=>t.split(/[.,]\s+/)).map(s=>s.trim()).filter(s=>s.length>25&&s.length<90);text=(lines.length?lines[rnd(lines.length)]:'the quick brown fox jumps over the lazy dog').replace(/[“”]/g,'"').replace(/[’]/g,"'");$('in').value='';$('in').disabled=false;t0=0;draw();$('in').focus()}
+function draw(){const v=$('in').value;$('line').innerHTML=[...text].map((c,i)=>`<span class="${i<v.length?(v[i]===c?'ok':'bad'):i===v.length?'cur':''}">${esc(c)}</span>`).join('');
+  const min=t0?(Date.now()-t0)/60000:0,wpm=min?Math.round(v.length/5/min):0;$('hud').textContent=`${wpm} WPM`;
+  if(v===text){$('in').disabled=true;const r=ARC.best(wpm);ARC.over(`⌨️ ${wpm} words a minute${r.isNew?' · new best!':' · best '+r.best}`,start)}}
+$('in').oninput=()=>{if(!t0)t0=Date.now();draw()};$('go').onclick=start;(function w(){if(!window.TB_NEWS&&!w.n){w.n=1;return setTimeout(w,300)}start()})();ARC.board('typeracer',{unit:' WPM'});
+}
+</script></body></html>

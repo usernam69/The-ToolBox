@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Merge conflict</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.ln{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0}.ln button{font:14px monospace;text-align:left;padding:8px;border-radius:8px;border:2px solid var(--line);background:var(--card);color:var(--ink);white-space:pre-wrap}.ln button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--card))}.same{font:14px monospace;padding:4px 8px;color:var(--muted)}#tests{font:14px monospace}</style></head>
+<body data-app="mergeconflict" data-cat="games" data-title="Merge conflict"><main>
+<p class="sub">Two people changed the same code. For each line, keep “ours” or “theirs” so the tests pass. 6 puzzles.</p>
+<p class="arc-hud" id="hud"></p><p id="goal" class="muted"></p><div class="row"><b style="flex:1">Ours</b><b style="flex:1">Theirs</b></div><div id="code"></div><p style="text-align:center"><button class="b" id="run">▶ Run tests</button></p><pre id="tests"></pre>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+// each puzzle: lines are either a string (same on both sides) or [ours, theirs]; tests run the merged function
+const P=[{goal:'add(a,b) should add two numbers, and treat missing numbers as 0.',name:'add',lines:['function add(a, b) {',['  a = a || 0;','  a = a ?? 1;'],['  b = b ?? 1;','  b = b || 0;'],['  return a - b;','  return a + b;'],'}'],tests:[['add(2,3)',5],['add(4)',4],['add()',0]]},
+ {goal:'max(list) returns the biggest number, or null for an empty list.',name:'max',lines:['function max(list) {',['  if (!list.length) return null;','  if (!list) return 0;'],['  let m = 0;','  let m = list[0];'],'  for (const v of list) if (v > m) m = v;','  return m;','}'],tests:[['max([3,9,2])',9],['max([-5,-2])',-2],['max([])',null]]},
+ {goal:'greet(name) says hello, or hello friend with no name.',name:'greet',lines:['function greet(name) {',['  if (!name) name = "friend";','  if (name) name = "friend";'],['  return "hello " + name;','  return "hello" + name;'],'}'],tests:[['greet("Sam")','hello Sam'],['greet("")','hello friend']]},
+ {goal:'count(text, ch) counts how often a letter appears.',name:'count',lines:['function count(text, ch) {','  let n = 0;',['  for (let i = 0; i <= text.length; i++)','  for (let i = 0; i < text.length; i++)'],['    if (text[i] == ch) n++;','    if (text[i] = ch) n++;'],'  return n;','}'],tests:[['count("banana","a")',3],['count("","a")',0]]},
+ {goal:'clamp(v, lo, hi) keeps v between lo and hi.',name:'clamp',lines:['function clamp(v, lo, hi) {',['  if (v < lo) return hi;','  if (v < lo) return lo;'],['  if (v > hi) return hi;','  if (v >= hi) return lo;'],'  return v;','}'],tests:[['clamp(5,0,10)',5],['clamp(-3,0,10)',0],['clamp(99,0,10)',10]]},
+ {goal:'avg(list) returns the average, and 0 for an empty list.',name:'avg',lines:['function avg(list) {',['  if (list.length === 0) return 0;','  if (list.length === 0) return NaN;'],['  const s = list.reduce((a, b) => a + b);','  const s = list.reduce((a, b) => a + b, 0);'],['  return s / list.length;','  return s / list.length - 1;'],'}'],tests:[['avg([2,4,6])',4],['avg([])',0],['avg([5])',5]]}];
+let n=0,pickd,solved=load('solved',0);
+function show(){ARC.hideOver();const p=P[n];pickd=p.lines.map(l=>Array.isArray(l)?-1:null);$('hud').textContent=`Puzzle ${n+1}/${P.length}`;$('goal').textContent=p.goal;$('tests').textContent='';
+  $('code').innerHTML=p.lines.map((l,i)=>Array.isArray(l)?`<div class="ln">${l.map((s,k)=>`<button data-i="${i}" data-k="${k}">${esc(s)}</button>`).join('')}</div>`:`<div class="same">${esc(l)}</div>`).join('')}
+$('code').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;pickd[b.dataset.i]=+b.dataset.k;b.parentNode.querySelectorAll('button').forEach(z=>z.classList.toggle('on',z===b))};
+$('run').onclick=()=>{const p=P[n];if(pickd.includes(-1))return toast('Pick a side for every conflict.');const src=p.lines.map((l,i)=>Array.isArray(l)?l[pickd[i]]:l).join('\n');let out=[],pass=0;
+  try{const f=new Function(src+'; return '+p.name)();for(const [call,want] of p.tests){let got;try{got=new Function(p.name,'return '+call)(f)}catch(err){got='error: '+err.message}const ok=Object.is(got,want)||got===want;if(ok)pass++;out.push((ok?'✓ ':'✗ ')+call+' → '+JSON.stringify(got)+(ok?'':' (wanted '+JSON.stringify(want)+')'))}}catch(err){out.push('✗ the code doesn’t run: '+err.message)}
+  $('tests').textContent=out.join('\n');if(pass===p.tests.length){tone(800,.1,'triangle');if(++n>=P.length){n=0;solved++;save('solved',solved);ARC.best(solved);ARC.over('🔀 All conflicts merged!',show)}else setTimeout(show,900)}else tone(160,.2,'sawtooth',.06)};
+show();
+}
+</script></body></html>

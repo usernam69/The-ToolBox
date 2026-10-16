@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Falling blocks</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="blocks" data-cat="games" data-title="Falling blocks"><main>
+<p class="sub">Fit the falling blocks into full lines. ←/→ move, ↑ rotate, ↓ drop faster, Space drops. Swipe and tap on phones.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',240,480),W=10,H=20,Z=24;const SH=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[1,1,0],[0,1,1]],[[0,1,1],[1,1,0]]],COL=['#4cc9f0','#ffd400','#b15cff','#3e63dd','#ff8c00','#2fb344','#e5484d'];
+let G,P,score,lines,t,run=false;
+const fits=(s,px,py)=>s.every((r,y)=>r.every((v,xx)=>!v||(px+xx>=0&&px+xx<W&&py+y<H&&(py+y<0||!G[py+y][px+xx]))));
+function spawn(){const k=rnd(7);P={s:SH[k],k,x:3,y:-1};if(!fits(P.s,P.x,P.y+1)){run=false;const r=ARC.best(score);ARC.over(`🟦 ${score} points · ${lines} lines${r.isNew?' · new best!':''}`,start)}}
+function start(){ARC.hideOver();G=Array.from({length:H},()=>Array(W).fill(0));score=0;lines=0;t=0;run=true;spawn()}
+function lock(){P.s.forEach((r,y)=>r.forEach((v,xx)=>{if(v&&P.y+y>=0)G[P.y+y][P.x+xx]=P.k+1}));let n=0;G=G.filter(r=>{if(r.every(Boolean)){n++;return false}return true});while(G.length<H)G.unshift(Array(W).fill(0));
+  if(n){lines+=n;score+=[0,100,300,500,800][n];tone(600+n*100,.1,'triangle')}else tone(200,.03);spawn()}
+const act={left:()=>fits(P.s,P.x-1,P.y)&&P.x--,right:()=>fits(P.s,P.x+1,P.y)&&P.x++,down:()=>{if(fits(P.s,P.x,P.y+1))P.y++;else lock()},rot:()=>{const r=P.s[0].map((_,i)=>P.s.map(row=>row[i]).reverse());for(const k of[0,-1,1,-2,2])if(fits(r,P.x+k,P.y)){P.s=r;P.x+=k;break}},drop:()=>{while(fits(P.s,P.x,P.y+1)){P.y++;score+=1}lock()}};
+addEventListener('keydown',e=>{if(!run){if(e.key===' '&&(!$('arcOver')||$('arcOver').hidden))start();return}const k={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'down',ArrowUp:'rot',' ':'drop'}[e.key];if(k){e.preventDefault();act[k]()}});
+let sx,sy;c.onpointerdown=e=>{sx=e.clientX;sy=e.clientY;if(!run&&(!$('arcOver')||$('arcOver').hidden))start()};c.onpointerup=e=>{if(!run)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)<15&&Math.abs(dy)<15)act.rot();else if(Math.abs(dx)>Math.abs(dy))act[dx>0?'right':'left']();else act[dy>0?'drop':'rot']()};
+ARC.loop(dt=>{if(run){t+=dt;if(t>Math.max(.12,.7-lines*.02)){t=0;act.down()}}x.fillStyle='#111';x.fillRect(0,0,240,480);
+  (G||[]).forEach((r,y)=>r.forEach((v,xx)=>{if(v){x.fillStyle=COL[v-1];x.fillRect(xx*Z+1,y*Z+1,Z-2,Z-2)}}));if(run&&P){x.fillStyle=COL[P.k];P.s.forEach((r,y)=>r.forEach((v,xx)=>{if(v)x.fillRect((P.x+xx)*Z+1,(P.y+y)*Z+1,Z-2,Z-2)}))}
+  else if(!G){x.fillStyle='#fff';x.font='18px system-ui';x.fillText('Space or tap to start',30,240)}$('hud').textContent=`${score||0} points · ${lines||0} lines`});
+ARC.board('blocks');
+}
+</script></body></html>

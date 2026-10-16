@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pinball</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="pinball" data-cat="games" data-title="Pinball"><main>
+<p class="sub">Left flipper: Z, ← or tap the left half. Right flipper: M, → or tap the right half. Space launches. 3 balls.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c" style="background:#1a1033"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',360,600);let b,score,balls,run=false,L=false,Rf=false,la=0,ra=0,touch={};
+const BUMP=[[120,180,22,100],[240,180,22,100],[180,270,26,150],[90,330,16,50],[270,330,16,50]];const LP=[110,520],RP=[250,520],FL=62;
+function launch(){b={x:340,y:540,vx:0,vy:-900-Math.random()*150};tone(200,.2,'sawtooth',.05)}
+function start(){ARC.hideOver();score=0;balls=3;run=true;launch()}
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='z'||k==='arrowleft')L=true;if(k==='m'||k==='arrowright')Rf=true;if(k===' '){e.preventDefault();if(!run&&(!$('arcOver')||$('arcOver').hidden))start()}});addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(k==='z'||k==='arrowleft')L=false;if(k==='m'||k==='arrowright')Rf=false});
+c.onpointerdown=e=>{if(!run&&(!$('arcOver')||$('arcOver').hidden))return start();const left=ARC.pos(c,e).x<180;touch[e.pointerId]=left;if(left)L=true;else Rf=true};c.onpointerup=c.onpointercancel=e=>{if(touch[e.pointerId])L=false;else Rf=false;delete touch[e.pointerId]};
+function flip(px,py,ang,side){const ex=px+Math.cos(ang)*FL*side,ey=py+Math.sin(ang)*FL,dx=ex-px,dy=ey-py,u=Math.max(0,Math.min(1,((b.x-px)*dx+(b.y-py)*dy)/(dx*dx+dy*dy))),cx=px+dx*u,cy=py+dy*u,d=Math.hypot(b.x-cx,b.y-cy);
+  if(d<10){const nx=(b.x-cx)/d||0,ny=(b.y-cy)/d||-1;b.x=cx+nx*10;b.y=cy+ny*10;const dot=b.vx*nx+b.vy*ny;if(dot<0){b.vx-=1.6*dot*nx;b.vy-=1.6*dot*ny}if((side<0?L:Rf)){b.vy-=500*u;b.vx+=side*-120*u}}return[ex,ey]}
+ARC.loop(dt=>{x.fillStyle='#1a1033';x.fillRect(0,0,360,600);la+=((L?-.5:.45)-la)*Math.min(1,dt*30);ra+=((Rf?-.5:.45)-ra)*Math.min(1,dt*30);
+  if(run&&b){for(let s=0;s<4;s++){const h=dt/4;b.vy+=700*h;b.x+=b.vx*h;b.y+=b.vy*h;if(b.x<10){b.x=10;b.vx*=-.8}if(b.x>350){b.x=350;b.vx*=-.8}if(b.y<10){b.y=10;b.vy*=-.8}
+      BUMP.forEach(q=>{const d=Math.hypot(b.x-q[0],b.y-q[1]);if(d<q[2]+8){const nx=(b.x-q[0])/d,ny=(b.y-q[1])/d;b.x=q[0]+nx*(q[2]+8);b.y=q[1]+ny*(q[2]+8);const dot=b.vx*nx+b.vy*ny;b.vx-=2*dot*nx;b.vy-=2*dot*ny;b.vx+=nx*120;b.vy+=ny*120;score+=q[3];q.f=.15;tone(500+q[3]*2,.05,'square',.04)}});
+      // slanted walls lead to the flippers
+      if(b.y>440&&b.x<LP[0]&&b.y>440+(b.x-10)*.8){b.vx=Math.abs(b.vx)*.8+40}if(b.y>440&&b.x>RP[0]&&b.y>440+(350-b.x)*.8&&b.x<330){b.vx=-Math.abs(b.vx)*.8-40}
+      flip(LP[0],LP[1],la,1);flip(RP[0],RP[1],ra,-1)}
+    if(b.y>620){balls--;if(balls>0)launch();else{run=false;b=null;const r=ARC.best(score);ARC.over(`🎯 ${score} points${r.isNew?' · new best!':''}`,start)}}}
+  BUMP.forEach(q=>{q.f=Math.max(0,(q.f||0)-dt);x.fillStyle=q.f?'#fff':`hsl(${q[3]*2},80%,60%)`;x.beginPath();x.arc(q[0],q[1],q[2],0,7);x.fill();x.fillStyle='#111';x.font='12px system-ui';x.fillText(q[3],q[0]-9,q[1]+4)});
+  x.strokeStyle='#b15cff';x.lineWidth=4;x.beginPath();x.moveTo(10,440);x.lineTo(LP[0],LP[1]);x.moveTo(350,440);x.lineTo(RP[0],RP[1]);x.stroke();
+  x.strokeStyle='#ffd400';x.lineWidth=9;x.lineCap='round';x.beginPath();x.moveTo(...LP);x.lineTo(LP[0]+Math.cos(la)*FL,LP[1]+Math.sin(la)*FL);x.moveTo(...RP);x.lineTo(RP[0]-Math.cos(ra)*FL,RP[1]+Math.sin(ra)*FL);x.stroke();
+  if(b){x.fillStyle='#ddd';x.beginPath();x.arc(b.x,b.y,8,0,7);x.fill()}if(!run&&!b){x.fillStyle='#fff';x.font='20px system-ui';x.fillText('Space or tap to start',85,300)}$('hud').textContent=`${score||0} points · balls ${balls??3}`});
+ARC.board('pinball');
+}
+</script></body></html>
