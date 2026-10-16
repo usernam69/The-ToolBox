@@ -1,12 +1,13 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.6.0';
+var TB_VERSION='1.6.1';
 // release date and the apps changed in this release (both written by the release script)
-var TB_DATE='2026-10-16';var TB_CHANGED=[];
+var TB_DATE='2026-10-16';var TB_CHANGED=['emojiguess'];
 // every version gets a fun codename, worked out from its number
 function TB_CODENAME(v){let h=0;for(const c of v)h=h*31+c.charCodeAt(0)>>>0;const A=['Sneaky','Bouncy','Cosmic','Fuzzy','Turbo','Sleepy','Shiny','Brave','Wobbly','Zippy','Quiet','Mighty'],B=['Sam','Otter','Comet','Pickle','Badger','Noodle','Falcon','Muffin','Gecko','Pixel','Walrus','Taco'];return A[h%A.length]+' '+B[(h>>4)%B.length]};
 
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.6.1','Games and the Arcade are now one section, Games & Arcade, with all 84 games in one place.'],
  ['1.6.0','Music everywhere: soft background music made live on every page, in a style that fits it (chiptune in games, calm pads in tools, dreamy keys in creative apps). Turn it off or change the volume with 🎵 in the corner. It pauses in apps that make their own music.'],
  ['1.5.1','The AI study buddy, AI app maker and AI dungeon master now work with a key from almost any AI service: Claude, OpenAI, Google Gemini, OpenRouter, Groq, xAI, Mistral, DeepSeek, or a model on your own computer (Ollama, LM Studio). The service is recognised from the key, and if a model name is out of date a working one is picked for you.'],
  ['1.5.0','30 more Arcade games (70 in all): Who knows who?, charades, hot potato, Would you rather with live votes, Spoons on everyone’s phones, story chain, musical chairs, Playable changelog, Bug pet battles, Git gud dungeon, Pixel wall bounce, Radio rhythm, Codename quiz, Haiku battle, Weather racer, Chore arcade that earns screen time, Reverse snake, Gravity Wordle, Voice runner, Bubble pop cam, Slow riddles, Chess by link, Gamepad party, One-button arcade, AI dungeon master, Daily mix, Mirror world, Wi-Fi arena, Paper level maker and Seasonal fun. Bracket matches can now be played in Pong, Reaction duel, Tic-tac-toe or Connect Four, and Ghost kart has a world ghost to race.'],

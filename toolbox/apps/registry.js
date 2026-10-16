@@ -15,7 +15,7 @@ const CATEGORIES=[
   ['eat','What should I eat?','🍕','Spin the wheel and dinner is decided.','apps/eat.html'],
   ['ascii','ASCII art','🔤','Turn a picture or a word into text art.','apps/ascii.html'],
   ['countdown','Big countdown','⏳','A full-screen countdown to a birthday, holiday or trip.','apps/countdown.html']]},
- {id:'games',name:'Games',emoji:'🎮',blurb:'Ten games to play right here.',apps:[
+ {id:'games',name:'Games & Arcade',emoji:'🎮',blurb:'84 games: platformers, puzzles, classics, party games and odd experiments.',apps:[
   ['parkour','Parkour platformer','🏃','Tight jumps, timed runs and a ghost of your best run.','apps/parkour.html'],
   ['parkouredit','Parkour level editor','✏️','Paint your own Parkour level and share it as a link.','apps/parkour-edit.html'],
   ['speedrun','ToolBox speedrun','⏱️','How fast can you open 10 different apps?','apps/speedrun.html'],
@@ -29,8 +29,7 @@ const CATEGORIES=[
   ['escape','Escape room','🚪','Look around, find clues and get the door open.','apps/escape.html'],
   ['escapemaker','Escape room builder','🗝️','Make your own escape room and share it as a link.','apps/escape-maker.html'],
   ['idle','Idle clicker','🍪','Numbers go up and upgrades unlock.','apps/idle.html'],
-  ['maze','Maze maker','🌀','Watch a maze get built, then solved, or solve it yourself.','apps/maze.html']]},
- {id:'arcade',name:'Arcade',emoji:'🕹️',blurb:'70 quick games: classics, party games and odd experiments.',apps:[
+  ['maze','Maze maker','🌀','Watch a maze get built, then solved, or solve it yourself.','apps/maze.html'],
   ['whackbug','Whack-a-bug','🔨','Bugs pop out of the code.','apps/whackbug.html'],
   ['reaction','Reaction duel','⚡','Two players, one screen.','apps/reaction.html'],
   ['memory','Memory match','🃏','Flip two cards at a time and find all the pairs in as few moves as you can..','apps/memory.html'],

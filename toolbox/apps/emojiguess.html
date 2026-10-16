@@ -6,7 +6,7 @@
 <div id="world"></div>
 </main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
 {
-let round,score,ans;const apps=ALL_APPS.filter(a=>a.cat!=='community'&&a.cat!=='arcade');
+let round,score,ans;const apps=ALL_APPS.filter(a=>a.cat!=='community');
 function next(){if(round>=10){const r=ARC.best(score);return ARC.over(`🤔 ${score}/10${r.isNew?' · new best!':''}`,start)}round++;const opts=ARC.shuffle(apps).slice(0,4);ans=opts[0];
   $('q').textContent=ans.emoji;$('hint').textContent=ans.name.replace(/[A-Za-z]/g,(c,i)=>i%3===0?c:'_');$('hud').textContent=`Round ${round}/10 · score ${score}`;
   $('opts').innerHTML=ARC.shuffle(opts).map(o=>`<button class="g" data-id="${o.id}">${esc(o.name)}</button>`).join('')}
