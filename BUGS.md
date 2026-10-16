@@ -2,6 +2,10 @@
 
 A log of bugs found and fixed, newest first. Severity: crash, wrong result, data loss, security, cosmetic.
 
+## 2026-10-16 (v1.6.4)
+- **wrong result** `.github/workflows/pages.yml`: a `run:` line had "run: " inside it, which is invalid YAML, so GitHub rejected the file and the live site stayed at 1.2.2. The command is now a block.
+- **wrong result** `playwright.config.js`: screenshots saved on Windows (Edge) were compared on Linux in CI, so the browser tests failed on every push since 1.3.0. Screenshots are now saved per system.
+
 ## 2026-10-16 (v1.6.3)
 - **wrong result** `scripts/release.js`: every release since 1.2.1 copied the desktop package.json from the working folder, which only builds on that one PC. The GitHub builds of the Windows exe and Linux AppImages failed for every release since then. The repo now keeps its own package.json and only the version is updated.
 

@@ -42,4 +42,5 @@ jobs:
       - name: Open an issue if the live site is broken
         if: failure()
         env: { GH_TOKEN: '${{ github.token }}' }
-        run: gh issue create --repo "${{ github.repository }}" --title "Live site check failed after ${GITHUB_SHA::7}" --body "The pages check after deploying ${{ github.sha }} found errors. Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. To roll back, run: node scripts/release.js <next version> --rollback"
+        run: |
+          gh issue create --repo "${{ github.repository }}" --title "Live site check failed after ${GITHUB_SHA::7}" --body "The pages check after deploying ${{ github.sha }} found errors. Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. To roll back, run: node scripts/release.js <next version> --rollback"
