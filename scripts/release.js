@@ -44,8 +44,12 @@ if (rollback) {
 if (from && !rollback) for (const dir of ['toolbox', 'toolbox-desktop', 'toolbox-extension']) {
   const src = path.resolve(from, dir), dst = path.join(REPO, dir);
   if (!fs.existsSync(src)) continue;
+  // the repo's desktop package.json is set up for the GitHub builds (its own electron, Linux AppImages);
+  // the working copy's one points at a node_modules folder that only exists on that PC, so keep the repo's
+  const pkg = path.join(dst, 'package.json'), keep = dir === 'toolbox-desktop' && fs.existsSync(pkg) && fs.readFileSync(pkg, 'utf8');
   fs.rmSync(dst, { recursive: true, force: true });
   fs.cpSync(src, dst, { recursive: true, filter: s => !/[\\/](node_modules|dist|app)([\\/]|$)/.test(path.relative(src, s) ? '/' + path.relative(src, s) : '') });
+  if (keep) fs.writeFileSync(pkg, keep);
   console.log(`synced ${dir}`);
 }
 const changed = () => out('git', ['status', '--porcelain']).split('\n').filter(Boolean).map(l => l.slice(3).replace(/^"|"$/g, ''));

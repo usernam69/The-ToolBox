@@ -2,21 +2,21 @@
   "name": "useful-toolbox",
   "productName": "Useful Toolbox",
   "version": "1.6.2",
-  "description": "64 small everyday tools in one window",
+  "description": "Apps, games and tools in one window",
   "author": "Dovi",
   "private": true,
   "main": "main.js",
   "scripts": {
     "copy": "node -e \"const fs=require('fs');fs.rmSync('app',{recursive:true,force:true});fs.cpSync('../toolbox','app',{recursive:true})\"",
-    "start": "npm run copy && ..\\node_modules\\.bin\\electron .",
-    "build": "npm run copy && ..\\node_modules\\.bin\\electron-builder --win portable --x64",
-    "lan": "node -e \"require('./lan-server').createLanServer(require('path').resolve('../toolbox')).start().then(i=>{console.log('ToolBox is hosting on your Wi-Fi. Open one of these in any browser:');i.ips.concat('localhost').forEach(ip=>console.log('  http://'+ip+':'+i.port+'/'))})\""
+    "start": "npm run copy && electron .",
+    "build": "npm run copy && electron-builder --win portable --x64",
+    "lan": "node -e \"require('./lan-server').createLanServer(require('path').resolve('../toolbox')).start().then(i=>{console.log('ToolBox is hosting on your Wi-Fi. Open one of these in any browser:');i.ips.concat('localhost').forEach(ip=>console.log('  http://'+ip+':'+i.port+'/'))})\"",
+    "build:linux": "npm run copy && electron-builder --linux AppImage --x64 --arm64"
   },
   "build": {
     "appId": "local.dovi.useful-toolbox",
     "productName": "Useful Toolbox",
     "electronVersion": "44.7.0",
-    "electronDist": "../node_modules/electron/dist",
     "directories": {
       "output": "dist"
     },
@@ -33,6 +33,19 @@
     },
     "portable": {
       "artifactName": "UsefulToolbox.exe"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icon.png",
+      "category": "Utility",
+      "synopsis": "Apps, games and tools in one window"
+    },
+    "appImage": {
+      "artifactName": "TheToolBox-${arch}.AppImage"
     }
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
   }
 }
