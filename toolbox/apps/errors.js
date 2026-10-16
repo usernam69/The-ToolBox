@@ -1,5 +1,5 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.6.3';
+var TB_VERSION='1.6.4';
 // release date and the apps changed in this release (both written by the release script)
 var TB_DATE='2026-10-16';var TB_CHANGED=[];
 // every version gets a fun codename, worked out from its number
@@ -7,6 +7,7 @@ function TB_CODENAME(v){let h=0;for(const c of v)h=h*31+c.charCodeAt(0)>>>0;cons
 
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.6.4','Fix: the website updates again. It had been stuck on 1.2.2, so everything since then (the games, the Arcade, music, any AI key) is now live.'],
  ['1.6.3','Fix: the Windows and Linux downloads on GitHub build again.'],
  ['1.6.2','Fixes: Daily mix finds its games again, and music now starts on your first tap even in a page that opened in the background.'],
  ['1.6.1','Games and the Arcade are now one section, Games & Arcade, with all 84 games in one place.'],

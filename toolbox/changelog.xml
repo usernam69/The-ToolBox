@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel><title>The ToolBox releases</title><link>https://usernam69.github.io/The-ToolBox/apps/changelog.html</link><description>What changed in each version of The ToolBox</description>
+<item><title>The ToolBox 1.6.4</title><link>https://github.com/usernam69/The-ToolBox/releases/tag/v1.6.4</link><guid>v1.6.4</guid><description>Fix: the website updates again. It had been stuck on 1.2.2, so everything since then (the games, the Arcade, music, any AI key) is now live.</description></item>
 <item><title>The ToolBox 1.6.3</title><link>https://github.com/usernam69/The-ToolBox/releases/tag/v1.6.3</link><guid>v1.6.3</guid><description>Fix: the Windows and Linux downloads on GitHub build again.</description></item>
 <item><title>The ToolBox 1.6.2</title><link>https://github.com/usernam69/The-ToolBox/releases/tag/v1.6.2</link><guid>v1.6.2</guid><description>Fixes: Daily mix finds its games again, and music now starts on your first tap even in a page that opened in the background.</description></item>
 <item><title>The ToolBox 1.6.1</title><link>https://github.com/usernam69/The-ToolBox/releases/tag/v1.6.1</link><guid>v1.6.1</guid><description>Games and the Arcade are now one section, Games &amp; Arcade, with all 84 games in one place.</description></item>
