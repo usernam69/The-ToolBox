@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Playable changelog</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#tc{display:flex;gap:8px;justify-content:center;margin-top:6px}#tc button{width:70px;height:56px;font-size:24px;touch-action:none}</style></head>
+<body data-app="changelogrun" data-cat="games" data-title="Playable changelog"><main>
+<p class="sub">Every version of The ToolBox is a level. Run and jump to collect the features that version added, then reach the flag. ←/→ or A/D to move, Space/↑ to jump (or tap the buttons).</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c" style="background:#87ceeb"></canvas><div id="tc"><button class="g" data-key="arrowleft">◀</button><button class="b" data-key=" ">⤒</button><button class="g" data-key="arrowright">▶</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+bindTouch($('tc'));const x=ARC.canvas('c',640,360);let lv=0,P,plat,coins,camX,levels=[];
+function build(i){const [v,t]=levels[i],r=ARC.rng(v),words=t.split(/,\s+|\.\s+|: /).map(s=>s.replace(/\.$/,'').trim()).filter(s=>s.length>2).slice(0,8);plat=[];coins=[];let px=0;
+  for(let k=0;k<14;k++){const w=120+r()*160,y=260-r()*120;plat.push({x:px,y,w});if(k&&k<=words.length)coins.push({x:px+w/2,y:y-40,w:words[k-1],got:false});px+=w+40+r()*70}plat[0].y=280;
+  P={x:30,y:200,vx:0,vy:0,on:false};camX=0;levels.end=px-60}
+function start(i=0){ARC.hideOver();lv=i;build(lv)}
+ARC.loop(dt=>{if(!levels.length){if(window.TB_NEWS){levels=TB_NEWS.slice().reverse();start(Math.min(load('reached',0),levels.length-1))}return}
+  const left=keys.has('arrowleft')||keys.has('a'),right=keys.has('arrowright')||keys.has('d'),jump=keys.has(' ')||keys.has('arrowup')||keys.has('w');
+  P.vx=(right-left)*220;if(jump&&P.on){P.vy=-520;P.on=false;tone(500,.04,'square',.04)}P.vy+=1300*dt;P.x+=P.vx*dt;const oy=P.y;P.y+=P.vy*dt;P.on=false;
+  for(const p of plat)if(P.x+12>p.x&&P.x-12<p.x+p.w&&oy<=p.y-16&&P.y>=p.y-16&&P.vy>=0){P.y=p.y-16;P.vy=0;P.on=true}P.x=Math.max(12,P.x);
+  coins.forEach(c=>{if(!c.got&&Math.abs(P.x-c.x)<30&&Math.abs(P.y-c.y)<30){c.got=true;tone(990,.08,'triangle',.06)}});
+  if(P.y>420){tone(150,.2,'sawtooth',.06);build(lv)}
+  if(P.x>levels.end){const all=coins.every(c=>c.got);if(all||P.x>levels.end+40){if(lv+1>=levels.length){ARC.best(levels.length);ARC.over('📜 You played through every version of The ToolBox!',()=>start(0))}else{save('reached',Math.max(load('reached',0),lv+1));ARC.best(lv+1);toast(`🚩 Version ${levels[lv][0]} done${all?' with every feature!':''}`);start(lv+1)}}}
+  camX+=((P.x-200)-camX)*Math.min(1,dt*6);x.fillStyle='#87ceeb';x.fillRect(0,0,640,360);x.save();x.translate(-camX,0);
+  x.fillStyle='#4a8a3a';plat.forEach(p=>x.fillRect(p.x,p.y,p.w,360-p.y));x.font='12px system-ui';coins.forEach(c=>{if(c.got)return;x.fillStyle='#ffd400';x.beginPath();x.arc(c.x,c.y,9,0,7);x.fill();x.fillStyle='#222';x.fillText(c.w.slice(0,24),c.x-30,c.y-14)});
+  x.fillStyle='#e5484d';x.fillRect(levels.end,140,6,140);x.fillRect(levels.end+6,140,30,20);x.fillStyle='#3e63dd';x.fillRect(P.x-12,P.y-16,24,32);x.restore();
+  $('hud').textContent=`Version ${levels[lv][0]} (${lv+1}/${levels.length}) · features ${coins.filter(c=>c.got).length}/${coins.length}`});
+ARC.board('changelogrun',{unit:' versions'});
+}
+</script></body></html>

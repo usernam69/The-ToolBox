@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Weather racer</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#tc{display:flex;gap:8px;justify-content:center;margin-top:6px}#tc button{width:80px;height:56px;font-size:24px;touch-action:none}</style></head>
+<body data-app="weatherracer" data-cat="games" data-title="Weather racer"><main>
+<p class="sub">Dodge the traffic on a road that matches your real weather: rain makes it slippery, snow slows you down, wind pushes you, and night is dark. ←/→ or tilt the buttons.</p>
+<div class="row" style="justify-content:center"><button class="g" id="wx">📍 Use my weather</button><select id="pick"><option value="">or choose…</option><option value="sun">☀️ Sunny</option><option value="rain">🌧️ Rain</option><option value="snow">❄️ Snow</option><option value="wind">💨 Windy</option><option value="night">🌙 Night</option></select></div><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas><div id="tc"><button class="g" data-key="arrowleft">◀</button><button class="g" data-key="arrowright">▶</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+bindTouch($('tc'));const c=$('c'),x=ARC.canvas('c',360,560);let W=load('wx','sun'),car=180,vx=0,cars=[],dist=0,run=false,drops=[],wind=0;
+$('wx').onclick=()=>{if(!navigator.geolocation)return toast('Location isn’t available here.');navigator.geolocation.getCurrentPosition(async p=>{try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.coords.latitude.toFixed(2)}&longitude=${p.coords.longitude.toFixed(2)}&current=weather_code,wind_speed_10m,is_day`);const j=await r.json(),cw=j.current||{},code=cw.weather_code|0;
+  W=!cw.is_day?'night':code>=71&&code<=86?'snow':code>=51?'rain':(cw.wind_speed_10m||0)>30?'wind':'sun';save('wx',W);toast('Weather: '+W)}catch{toast('Couldn’t get the weather.')}},()=>toast('Location was not allowed.'))};
+$('pick').onchange=()=>{if($('pick').value){W=$('pick').value;save('wx',W)}};
+function start(){ARC.hideOver();car=180;vx=0;cars=[];dist=0;run=true}c.onpointerdown=()=>{if(!run&&(!$('arcOver')||$('arcOver').hidden))start()};addEventListener('keydown',e=>{if(e.key===' '&&!run)start()});
+ARC.loop(dt=>{const grip=W==='rain'?.04:W==='snow'?.06:.25,top=W==='snow'?240:340;x.fillStyle=W==='night'?'#0b0b18':'#3d8b3d';x.fillRect(0,0,360,560);x.fillStyle=W==='night'?'#222':'#555';x.fillRect(40,0,280,560);
+  if(run){dist+=dt*(W==='snow'?70:100);const want=((keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0))*top;vx+=(want-vx)*Math.min(1,grip*60*dt);if(W==='wind'){wind=Math.sin(dist/40)*90;vx+=wind*dt}car+=vx*dt;
+    if(car<56||car>304){car=Math.max(56,Math.min(304,car));vx*=-.4;dist-=dt*40}if(Math.random()<dt*(.8+dist/1500))cars.push({x:60+rnd(5)*52,y:-60,v:120+Math.random()*80});cars.forEach(o=>o.y+=(260-o.v+dist/20)*dt);cars=cars.filter(o=>o.y<620);
+    if(cars.some(o=>Math.abs(o.x+16-car)<28&&Math.abs(o.y+25-480)<44)){run=false;tone(90,.4,'sawtooth',.1);const s=Math.round(dist),r=ARC.best(s);ARC.over(`🌦️ ${s} m in the ${W}${r.isNew?' · new best!':''}`,start)}}
+  x.fillStyle='#fff';for(let y=-40+(dist*6)%40;y<560;y+=40)x.fillRect(178,y,4,20);x.fillStyle='#ffd400';cars.forEach(o=>x.fillRect(o.x,o.y,32,50));x.fillStyle='#e5484d';x.fillRect(car-16,455,32,50);
+  if(W==='night'){const g=x.createRadialGradient(car,380,20,car,380,200);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.92)');x.fillStyle=g;x.fillRect(0,0,360,560)}
+  if(W==='rain'||W==='snow'){if(drops.length<120)drops.push([Math.random()*360,0]);x.fillStyle=W==='rain'?'#9cc4ff':'#fff';drops.forEach(d=>{d[1]+=(W==='rain'?600:120)*dt;d[0]+=(W==='snow'?Math.sin(d[1]/30)*20*dt:0);if(d[1]>560){d[1]=0;d[0]=Math.random()*360}x.fillRect(d[0],d[1],2,W==='rain'?10:3)})}
+  if(!run&&!dist){x.fillStyle='#fff';x.font='18px system-ui';x.fillText('Tap or press Space to drive',60,280)}$('hud').textContent=`${{sun:'☀️ Sunny',rain:'🌧️ Rain',snow:'❄️ Snow',wind:'💨 Windy',night:'🌙 Night'}[W]} · ${Math.round(dist||0)} m`});
+ARC.board('weatherracer',{unit:' m'});
+}
+</script></body></html>

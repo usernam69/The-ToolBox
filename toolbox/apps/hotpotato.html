@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hot potato</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#pot{font-size:120px;text-align:center;user-select:none;transition:transform .1s}#cat{font-size:22px;text-align:center;font-weight:700}#pass{display:block;margin:10px auto;font-size:24px;padding:16px 40px}</style></head>
+<body data-app="hotpotato" data-cat="games" data-title="Hot potato"><main>
+<p class="sub">Start the timer and pass the phone around. Whoever holds it when it explodes loses! The ticking gets faster. Answer the category before you pass (e.g. name a fruit).</p>
+<p id="cat"></p><div id="pot">🥔</div><p class="arc-hud" id="hud"></p><button class="b" id="pass">Start</button>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const CATS=['Name a fruit','Name an animal','Name a country','Name a colour','Name a ToolBox app','Name a sport','Something in the kitchen','A word that rhymes with cat','Name a vegetable','A movie or show','Something cold','Something you wear'];
+let end=0,run=false,passes=0,tick=0;$('cat').textContent=CATS[rnd(CATS.length)];
+$('pass').onclick=()=>{if(!run){ARC.hideOver();run=true;passes=0;end=Date.now()+10000+Math.random()*30000;$('pass').textContent='Pass it! 👉';$('cat').textContent=CATS[rnd(CATS.length)];return}passes++;tone(500,.04);$('hud').textContent=passes+' passes'};
+ARC.loop(dt=>{if(!run)return;const left=end-Date.now();tick-=dt;if(tick<=0){tick=Math.max(.12,Math.min(1,left/8000));tone(1000,.03,'square',.06);$('pot').style.transform=`rotate(${rnd(20)-10}deg) scale(${1+Math.random()*.1})`}
+  if(left<=0){run=false;$('pot').textContent='💥';navigator.vibrate?.(400);[110,90,70].forEach((f,i)=>tone(f,.3,'sawtooth',.12,i*.1));$('pass').textContent='Start';ARC.over(`💥 BOOM! The holder is out after ${passes} passes.`,()=>{$('pot').textContent='🥔';$('pass').click()})}});
+}
+</script></body></html>

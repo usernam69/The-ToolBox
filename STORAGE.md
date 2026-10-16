@@ -12,6 +12,8 @@ Keys built in code (like `best`+level) show their fixed start.
 | Key | Written by |
 |---|---|
 | `app_` | apps/common.js |
+| `app_aidungeon_done` | apps/aidungeon.html |
+| `app_aidungeon_turns` | apps/aidungeon.html |
 | `app_battleship_wins` | apps/battleship.html |
 | `app_boredom_done` | apps/boredom.html |
 | `app_bracket_bracket` | apps/bracket.html |
@@ -26,8 +28,11 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_cardbattle_wins` | apps/cardbattle.html |
 | `app_changelog_countMe` | apps/changelog.html |
 | `app_changelog_pollId` | apps/changelog.html |
+| `app_changelogrun_reached` | apps/changelogrun.html |
 | `app_checkers_wins` | apps/checkers.html |
 | `app_chess_wins` | apps/chess.html |
+| `app_chorearcade_chores` | apps/chorearcade.html |
+| `app_chorearcade_done` | apps/chorearcade.html |
 | `app_classroom_draft` | apps/classroom.html |
 | `app_codegarden_garden` | apps/codegarden.html |
 | `app_comic_c` | apps/comic.html |
@@ -40,17 +45,20 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_connect4_wins` | apps/connect4.html |
 | `app_countdown_cur` | apps/countdown.html |
 | `app_countdown_list` | apps/countdown.html |
+| `app_dailymix_streak` | apps/dailymix.html |
 | `app_decay_t` | apps/decay.html |
 | `app_discord_custom` | apps/discord.html |
 | `app_discord_picked` | apps/discord.html |
 | `app_eat_opts` | apps/eat.html |
 | `app_escape_best` | apps/escape.html |
 | `app_escapemaker_draft` | apps/escape-maker.html |
+| `app_familytrivia_names` | apps/familytrivia.html |
 | `app_farm_farm` | apps/farm.html |
 | `app_genart_kept` | apps/genart.html |
 | `app_ghostkart_ghost` | apps/ghostkart.html |
 | `app_graveyard_flowers` | apps/graveyard.html |
 | `app_graveyard_visited` | apps/graveyard.html |
+| `app_gravitywordle_streak` | apps/gravitywordle.html |
 | `app_hangman_streak` | apps/hangman.html |
 | `app_idle_g` | apps/idle.html |
 | `app_journal_entries` | apps/journal.html |
@@ -64,6 +72,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_moodmusic_t` | apps/moodmusic.html |
 | `app_museum_faves` | apps/museum.html |
 | `app_museum_x` | apps/museum.html |
+| `app_musicalchairs_names` | apps/musicalchairs.html |
 | `app_os_` | apps/os.html |
 | `app_palette_saved` | apps/palette.html |
 | `app_parkour_best` | apps/parkour.html |
@@ -73,6 +82,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_parkouredit_draft` | apps/parkour-edit.html |
 | `app_parkouredit_mine` | apps/parkour-edit.html |
 | `app_party_mine` | apps/party.html |
+| `app_petbattle_wins` | apps/petbattle.html |
 | `app_petfocus_pet` | apps/petfocus.html |
 | `app_petfocus_pet` | js/menu.js |
 | `app_pixel_n` | apps/pixel.html |
@@ -96,16 +106,20 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_rogue_week_` | apps/rogue.html |
 | `app_secret_found` | apps/secret.html |
 | `app_secret_wins` | apps/secret.html |
+| `app_slowriddles_state` | apps/slowriddles.html |
 | `app_snakeroyale_wins` | apps/snakeroyale.html |
 | `app_soundboard_custom` | apps/soundboard.html |
 | `app_speedrun_best` | apps/common.js |
 | `app_speedrun_run` | apps/common.js |
 | `app_speedrun_run` | apps/speedrun.html |
+| `app_spoons_wins` | apps/spoons.html |
 | `app_sticky_notes` | apps/open.html |
 | `app_sticky_notes` | apps/sticky.html |
 | `app_story_ends` | apps/story.html |
 | `app_story_mine` | apps/story.html |
 | `app_story_which` | apps/story.html |
+| `app_storychain_story` | apps/storychain.html |
+| `app_storychain_told` | apps/storychain.html |
 | `app_sudoku_count` | apps/sudoku.html |
 | `app_sudoku_day` | apps/sudoku.html |
 | `app_sudoku_solved` | apps/sudoku.html |
@@ -113,6 +127,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `app_typerain_best` | apps/typerain.html |
 | `app_voxel_meta` | apps/voxel.html |
 | `app_voxel_player` | apps/voxel.html |
+| `app_weatherracer_wx` | apps/weatherracer.html |
 | `app_website_ghRepo` | apps/website.html |
 | `app_website_s` | apps/website.html |
 | `app_wordle_custom` | apps/classroom.html |
@@ -146,6 +161,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `tb_bills` | js/money.js |
 | `tb_birthdays` | js/daily.js |
 | `tb_birthdays` | js/life.js |
+| `tb_bracketResult` | apps/arcade.js |
 | `tb_budgetLimits` | js/money.js |
 | `tb_calcHist` | js/text.js |
 | `tb_cardDeck` | js/study.js |
@@ -242,4 +258,5 @@ Keys built in code (like `best`+level) show their fixed start.
 | `tb_weekNotes` | js/review.js |
 | `tb_wins` | js/daily.js |
 | `tb_worldName` | apps/scores.js |
+| `tb_worldName` | apps/spoons.html |
 | `tb_zones` | js/text.js |

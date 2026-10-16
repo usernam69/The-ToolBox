@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Seasonal fun</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#eg{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;max-width:420px;margin:auto}#eg button{aspect-ratio:1;border:0;border-radius:6px;background:#5fb55f;font-size:22px}</style></head>
+<body data-app="seasonal" data-cat="games" data-title="Seasonal fun"><main>
+<p class="sub">A game that changes with the season: snowball fight in winter, egg hunt in spring, beach-ball keepy-uppy in summer, and pumpkin toss in autumn. You can also pick any season.</p>
+<div class="row" style="justify-content:center"><select id="ss"><option value="">This season</option><option value="winter">❄️ Snowball fight</option><option value="spring">🥚 Egg hunt</option><option value="summer">🏐 Keepy-uppy</option><option value="autumn">🎃 Pumpkin toss</option></select><button class="b" id="go">Play</button></div><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas><div id="eg" hidden></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',480,360),m=new Date().getMonth(),NOW=m===11||m<2?'winter':m<5?'spring':m<8?'summer':'autumn';let S,G={},run=false;
+function season(){return $('ss').value||NOW}
+$('go').onclick=()=>{ARC.hideOver();S=season();run=true;G={score:0,end:Date.now()+40000,targets:[],shots:[],ball:{x:240,y:100,vx:60,vy:0}};$('eg').hidden=S!=='spring';c.hidden=S==='spring';
+  if(S==='spring'){const eggs=new Set();while(eggs.size<10)eggs.add(rnd(64));G.eggs=eggs;G.tries=0;$('eg').innerHTML=Array.from({length:64},(_,i)=>`<button data-i="${i}">🌿</button>`).join('')}};
+$('eg').onclick=e=>{const b=e.target.closest('[data-i]');if(!b||!run||b.disabled)return;b.disabled=true;G.tries++;const i=+b.dataset.i;if(G.eggs.has(i)){b.textContent='🥚';G.score++;tone(900,.08,'triangle');if(G.score>=10)finish()}else{b.textContent='🌱';tone(300,.04)}
+  const near=[...G.eggs].filter(j=>Math.abs(j%8-i%8)<=1&&Math.abs((j/8|0)-(i/8|0))<=1).length;if(!G.eggs.has(i)&&near)b.textContent=['','👀','👀👀','👀👀👀'][Math.min(3,near)]};
+c.onpointerdown=e=>{if(!run)return;const p=ARC.pos(c,e);if(S==='winter'||S==='autumn')G.shots.push({x:240,y:350,tx:p.x,ty:p.y,t:0});if(S==='summer'&&Math.hypot(p.x-G.ball.x,p.y-G.ball.y)<50){G.ball.vy=-420;G.ball.vx=(G.ball.x-p.x)*6;G.score++;tone(500+G.score*10,.05)}};
+function finish(){run=false;const s=S==='spring'?Math.max(0,100-G.tries):G.score,r=ARC.best(s,{key:'best_'+S});ARC.over(`${{winter:'❄️',spring:'🥚',summer:'🏐',autumn:'🎃'}[S]} ${s} points${r.isNew?' · new best!':''}`,()=>$('go').click())}
+ARC.loop(dt=>{if(!S){x.fillStyle='#223';x.fillRect(0,0,480,360);x.fillStyle='#fff';x.font='18px system-ui';x.fillText('Press Play ('+NOW+' game this time of year)',90,180);return}if(S==='spring'){$('hud').textContent=run?`Eggs ${G.score}/10 · tries ${G.tries}`:'';return}
+  x.fillStyle={winter:'#dfefff',summer:'#7ed3f7',autumn:'#f4c27a'}[S];x.fillRect(0,0,480,360);const left=Math.ceil((G.end-Date.now())/1000);
+  if(S==='winter'||S==='autumn'){if(run&&Math.random()<dt*1.4)G.targets.push({x:40+Math.random()*400,y:60+Math.random()*180,t:2.2});G.targets.forEach(t=>t.t-=dt);G.targets=G.targets.filter(t=>t.t>0);
+    G.shots.forEach(s=>{s.t+=dt*3;if(s.t>=1&&!s.done){s.done=true;const hit=G.targets.find(t=>Math.hypot(t.x-s.tx,t.y-s.ty)<34);if(hit){hit.t=0;G.score++;tone(800,.06,'triangle')}else tone(200,.03)}});G.shots=G.shots.filter(s=>s.t<1.2);
+    x.font='40px system-ui';G.targets.forEach(t=>x.fillText(S==='winter'?'⛄':'🪣',t.x-20,t.y+14));x.font='20px system-ui';G.shots.forEach(s=>{const k=Math.min(1,s.t);x.fillText(S==='winter'?'⚪':'🎃',240+(s.tx-240)*k-10,350+(s.ty-350)*k-Math.sin(k*Math.PI)*80)})}
+  if(S==='summer'){const b=G.ball;if(run){b.vy+=500*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.x<30||b.x>450)b.vx*=-1;if(b.y>380)finish()}x.font='60px system-ui';x.fillText('🏐',b.x-30,b.y+20);x.fillStyle='#f0d890';x.fillRect(0,330,480,30)}
+  if(run&&S!=='summer'&&left<=0)finish();$('hud').textContent=`${G.score} points${S!=='summer'&&run?' · '+Math.max(0,left)+'s':''}`});
+}
+</script></body></html>

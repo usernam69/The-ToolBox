@@ -3,6 +3,9 @@
 // ARC.loop(fn) runs fn(dt) every frame · ARC.over(text,again) shows a game-over card · ARC.rng(seed) gives repeatable randoms
 // ARC.daily(score) records today's score for the Daily mix · ARC.WORDS a word list · ARC.pad() reads a game controller
 const ARC={
+  // opened from the Tournament bracket (?bracket=<match>&p1=&p2=): show who is playing, and send the winner back
+  match:(()=>{const q=new URLSearchParams(location.search);return q.get('bracket')?{key:q.get('bracket'),p:[(q.get('p1')||'Player 1').slice(0,40),(q.get('p2')||'Player 2').slice(0,40)]}:null})(),
+  report(k){if(!ARC.match||(k!==0&&k!==1))return;try{localStorage.setItem('tb_bracketResult',JSON.stringify({key:ARC.match.key,p:ARC.match.p,k}))}catch{}toast(`🏆 ${ARC.match.p[k]} goes through! Back to the bracket…`);setTimeout(()=>location.href='bracket.html',2200)},
   best(score,{lower=false,key='best'}={}){const b=load(key,null),isNew=b===null||(lower?score<b:score>b);if(isNew)save(key,score);ARC.daily(score);return{best:isNew?score:b,isNew}},
   board(id,opts={}){const el=$('world');if(el&&typeof worldBoard==='function')worldBoard(el,'arc-'+id,{getScore:()=>load(opts.key||'best',0),...opts})},
   // today's scores, read by the Daily mix and by Wrapped
@@ -30,3 +33,4 @@ const ARC={
     el.querySelector('[data-a=join]').onclick=()=>{const c=el.querySelector('[data-a=code]').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length<3)return toast('Type the code your friend sees.');go(c,false)};
     return R}
 };
+if(ARC.match){const b=document.createElement('p');b.className='box';b.style.textAlign='center';b.innerHTML=`🏆 Bracket match: <b>${esc(ARC.match.p[0])}</b> (player 1) vs <b>${esc(ARC.match.p[1])}</b> (player 2)`;document.querySelector('main')?.prepend(b)}

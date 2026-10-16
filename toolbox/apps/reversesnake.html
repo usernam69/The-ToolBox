@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Reverse snake</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="reversesnake" data-cat="games" data-title="Reverse snake"><main>
+<p class="sub">This time you’re the apple! Run from the hungry snake. It grows every few seconds. Survive as long as you can. Arrow keys / WASD / swipe.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',400,400),N=20,Z=20;let A,S,step,t,grow,run=false,ad=[0,0];
+function start(){ARC.hideOver();A=[15,15];S=[[3,3],[2,3],[1,3]];t=0;step=0;grow=0;run=true}
+addEventListener('keydown',e=>{const d={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]}[e.key.toLowerCase()];if(d){e.preventDefault();ad=d;if(!run&&(!$('arcOver')||$('arcOver').hidden))start()}});
+let sx,sy;c.onpointerdown=e=>{sx=e.clientX;sy=e.clientY;if(!run&&(!$('arcOver')||$('arcOver').hidden))start()};c.onpointerup=e=>{const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))>20)ad=Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]};
+const free=(p,body)=>p[0]>=0&&p[1]>=0&&p[0]<N&&p[1]<N&&!body.some(q=>q[0]===p[0]&&q[1]===p[1]);
+ARC.loop(dt=>{x.fillStyle='#111';x.fillRect(0,0,400,400);if(run){t+=dt;step+=dt;if(step>.14){step=0;const na=[A[0]+ad[0],A[1]+ad[1]];if(free(na,S))A=na;ad=[0,0];
+      // the snake takes the step that gets it closest to the apple
+      const h=S[0],opts=[[1,0],[-1,0],[0,1],[0,-1]].map(d=>[h[0]+d[0],h[1]+d[1]]).filter(p=>free(p,S.slice(0,-1)));if(!opts.length){const s=+t.toFixed(1),r=ARC.best(s);run=false;ARC.over(`🐍 The snake trapped itself! You survived ${s}s${r.isNew?' · new best!':''}`,start);return}
+      const nh=opts.sort((a,b)=>Math.hypot(a[0]-A[0],a[1]-A[1])-Math.hypot(b[0]-A[0],b[1]-A[1])+(Math.random()<.15?3:0))[0];S.unshift(nh);// it grows by one every 4 seconds
+      if(t>grow){grow=t+4}else S.pop();
+      if(nh[0]===A[0]&&nh[1]===A[1]){run=false;tone(100,.4,'sawtooth',.08);const s=+t.toFixed(1),r=ARC.best(s);ARC.over(`🍎 Gobbled after ${s}s${r.isNew?' · new best!':''}`,start)}}}
+  if(S){x.fillStyle='#2fb344';S.forEach((p,i)=>x.fillRect(p[0]*Z+1,p[1]*Z+1,Z-2,Z-2));x.font='18px system-ui';x.fillText('🍎',A[0]*Z,A[1]*Z+17)}else{x.fillStyle='#fff';x.font='18px system-ui';x.fillText('Press an arrow key or tap to start',60,200)}
+  $('hud').textContent=`${(t||0).toFixed(1)}s · snake length ${S?S.length:0}`});
+ARC.board('reversesnake',{unit:'s'});
+}
+</script></body></html>

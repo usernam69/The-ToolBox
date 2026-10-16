@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Daily mix</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.dm{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:var(--card)}.dm .e{font-size:34px}.dm .n{flex:1}.dm.done{border-color:#2fb344}</style></head>
+<body data-app="dailymix" data-cat="games" data-title="Daily mix"><main>
+<p class="sub">Three Arcade games picked for today, the same for everyone. Play all three and come back tomorrow for a new mix. Your daily streak grows each day you finish.</p>
+<script src="registry.js"></script><p class="arc-hud" id="hud"></p><div id="mix"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const day=isoDay(),r=ARC.rng('mix'+day),games=(CATEGORIES.find(c=>c.id==='arcade')||{apps:[]}).apps.filter(a=>!['dailymix','chorearcade','aidungeon','chessmail','slowriddles','storychain','leveljam','familytrivia','charades','spoons','musicalchairs','wouldyourather','hotpotato','bubblecam','padparty'].includes(a[0]));
+const pick3=ARC.shuffle(games,r).slice(0,3);function draw(){let d={};try{d=JSON.parse(localStorage.getItem('tb_arcadeDay')||'{}')}catch{}const s=d.day===day?d.s||{}:{};const done=pick3.filter(g=>g[0] in s).length;
+  $('mix').innerHTML=pick3.map(([id,name,e,desc,href])=>`<div class="dm ${id in s?'done':''}"><span class="e">${e}</span><span class="n"><b>${esc(name)}</b><br><small class="muted">${esc(desc)}</small></span>${id in s?`✅ ${s[id]}`:`<a class="b" href="${esc(href.replace('apps/',''))}" style="padding:8px 12px;border-radius:8px;text-decoration:none">Play</a>`}</div>`).join('');
+  let st=load('streak',{n:0,last:''});if(done===3&&st.last!==day){const y=isoDay(new Date(Date.now()-864e5));st={n:st.last===y?st.n+1:1,last:day};save('streak',st);ARC.best(st.n);[523,659,784,1047].forEach((f,k)=>tone(f,.15,'triangle',.08,k*.1))}
+  $('hud').textContent=`Today: ${done}/3 played · 🔥 ${st.n}-day streak`}
+draw();addEventListener('pageshow',draw);addEventListener('focus',draw);ARC.board('dailymix',{unit:' days'});
+}
+</script></body></html>

@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Musical chairs</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#chairs{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}#chairs button{height:110px;border-radius:14px;border:0;font-size:18px;color:#fff;touch-action:manipulation}#chairs button:disabled{opacity:.25}#st{font-size:28px;text-align:center;font-weight:800;margin:10px}</style></head>
+<body data-app="musicalchairs" data-cat="games" data-title="Musical chairs"><main>
+<p class="sub">Music plays. When it stops, tap your chair fast! The slowest player is out each round. 2 to 6 players on one screen.</p>
+<div class="row"><input id="names" class="grow" placeholder="Players, separated by commas (e.g. Mum, Sam, Ava)"></div><p style="text-align:center"><button class="b" id="go">Start</button></p><div id="st"></div><div id="chairs"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const COL=['#e5484d','#3e63dd','#2fb344','#ff8c00','#b15cff','#0aa5a5'];let P=[],out=new Set(),phase='idle',taps=[],music=null;$('names').value=load('names','');
+function play(){const a=AC();a.resume();let i=0;const notes=[262,330,392,523,392,330];music=setInterval(()=>{tone(notes[i++%6],.18,'triangle',.08);if(i%2)tone(131,.2,'sine',.06)},220)}
+function draw(){$('chairs').innerHTML=P.map((p,i)=>`<button data-i="${i}" style="background:${COL[i%6]}" ${out.has(i)?'disabled':''}>${esc(p)}</button>`).join('')}
+function round(){const live=P.map((_,i)=>i).filter(i=>!out.has(i));if(live.length<2){const w=P[live[0]];return ARC.over(`🪑 ${esc(w)} wins musical chairs!`,start)}phase='music';taps=[];$('st').textContent='🎵 Dance! 🎵';play();setTimeout(()=>{clearInterval(music);phase='stop';$('st').textContent='SIT!';tone(150,.3,'square',.1)},3000+Math.random()*6000)}
+$('chairs').onpointerdown=e=>{const b=e.target.closest('[data-i]');if(!b||b.disabled)return;const i=+b.dataset.i;if(taps.includes(i))return;
+  if(phase==='music'){out.add(i);draw();toast(`${P[i]} sat too early and is out!`);return}if(phase!=='stop')return;taps.push(i);b.style.outline='4px solid #fff';
+  const live=P.map((_,k)=>k).filter(k=>!out.has(k));if(taps.length>=live.length-1){const loser=live.find(k=>!taps.includes(k));out.add(loser);phase='idle';$('st').textContent=`${P[loser]} is out!`;draw();setTimeout(round,1800)}};
+function start(){ARC.hideOver();P=$('names').value.split(',').map(s=>s.trim()).filter(Boolean).slice(0,6);if(P.length<2)return toast('Add at least two players.');save('names',$('names').value);out=new Set();draw();round()}
+$('go').onclick=start;
+}
+</script></body></html>

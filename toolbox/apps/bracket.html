@@ -47,7 +47,7 @@ function choose(which,r,i,k){const B=which==='g'?null:S[which],m=which==='g'?S.g
 const winner=()=>S&&(S.wantSecond?(S.grand&&S.grand[2]):champOf(S.main));
 const label=(B,r)=>r===B.length-1?'Final':r===B.length-2&&B.length>2?'Semi-finals':NAMES[r];
 function matchHtml(which,r,i,m,first){return`<div class="match">${[0,1].map(k=>{const p=m[k];
-  return`<button data-w="${which}" data-r="${r}" data-i="${i}" data-k="${k}" class="${m[2]!==null&&p!==null?(m[2]===p?'win':'lose'):''}" ${p===null||watching?'disabled':''}>${p===null?(first?'<i class="muted">bye</i>':'<span class="muted">…</span>'):esc(p)}</button>`}).join('')}${!watching&&m[0]!==null&&m[1]!==null&&m[2]===null?`<button class="duel" data-duel="${which},${r},${i}">⚡ Settle it with a tap race</button>`:''}</div>`}
+  return`<button data-w="${which}" data-r="${r}" data-i="${i}" data-k="${k}" class="${m[2]!==null&&p!==null?(m[2]===p?'win':'lose'):''}" ${p===null||watching?'disabled':''}>${p===null?(first?'<i class="muted">bye</i>':'<span class="muted">…</span>'):esc(p)}</button>`}).join('')}${!watching&&m[0]!==null&&m[1]!==null&&m[2]===null?`<button class="duel" data-duel="${which},${r},${i}">⚡ Settle it with a tap race</button><select class="duel" data-game="${which},${r},${i}" aria-label="Play a game for this match"><option value="">🎮 …or play a game</option><option value="reaction">Reaction duel</option><option value="pong">Pong</option><option value="tictactoe">Tic-tac-toe</option><option value="connect4">Connect Four</option></select>`:''}</div>`}
 function bracketHtml(which,B){return B.map((round,r)=>`<div class="round"><h4>${label(B,r)}</h4>${round.map((m,i)=>matchHtml(which,r,i,m,r===0)).join('')}</div>`).join('')}
 function draw(){const has=!!S;['reset','share','live','undo'].forEach(id=>$(id).hidden=!has||!!watching);if(has)$('undo').hidden=!HIST.length||!!watching;
   if(!has){$('br').innerHTML=$('br2').innerHTML=$('gf').innerHTML='';$('champ').textContent='';$('h2').hidden=true;return}
@@ -55,6 +55,9 @@ function draw(){const has=!!S;['reset','share','live','undo'].forEach(id=>$(id).
   $('br').innerHTML=bracketHtml('main',S.main);$('h2').hidden=!S.second;$('br2').innerHTML=S.second?bracketHtml('second',S.second):'';
   $('gf').innerHTML=S.grand?`<h3>Grand final</h3><div style="max-width:220px">${matchHtml('g',0,0,S.grand,false)}</div>`:'';
   document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>choose(b.dataset.w,+b.dataset.r,+b.dataset.i,+b.dataset.k));
+  // a two-player Arcade game decides the match: it opens with both names and sends the winner back here
+  document.querySelectorAll('[data-game]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const [w,r,i]=sel.dataset.game.split(','),m=w==='g'?S.grand:S[w][r][i];
+    location.href=`${sel.value}.html?bracket=${encodeURIComponent(sel.dataset.game)}&p1=${encodeURIComponent(m[0])}&p2=${encodeURIComponent(m[1])}`});
   document.querySelectorAll('[data-duel]').forEach(b=>b.onclick=()=>{const [w,r,i]=b.dataset.duel.split(','),m=w==='g'?S.grand:S[w][r][i];duel(m,k=>choose(w,+r,+i,k))});
   if(fin&&!draw.cheered){draw.cheered=1;[523,659,784,1047].forEach((f,k)=>tone(f,.18,'triangle',.1,k*.1))}if(!fin)draw.cheered=0}
 // a quick game to decide a match: first to 15 taps on their side wins
@@ -81,5 +84,9 @@ if(watching){$('names').closest('.row').hidden=true;document.querySelectorAll('m
 else{// brackets saved before "second chance" existed
   const old=load('bracket',null);if(!S&&old){S={main:old,second:null,grand:null,wantSecond:false};save('bracket2',S);save('bracket',null)}
   if(liveCode&&S)WORLD.connect().then(()=>{publish();showLive()}).catch(()=>{})}
+// a result sent back from an Arcade game
+try{const res=JSON.parse(localStorage.getItem('tb_bracketResult')||'null');localStorage.removeItem('tb_bracketResult');
+  if(res&&S&&!watching&&typeof res.key==='string'){const [w,r,i]=res.key.split(','),m=w==='g'?S.grand:S[w]&&S[w][r]&&S[w][r][i];
+    if(m&&m[0]===res.p[0]&&m[1]===res.p[1]&&(res.k===0||res.k===1)&&m[2]===null){choose(w,+r,+i,res.k);toast(`🏆 ${m[res.k]} wins the match!`)}}}catch{}
 draw();
 </script></body></html>

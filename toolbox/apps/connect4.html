@@ -13,11 +13,11 @@ const at=(x,y)=>x<0||x>6||y<0||y>5?-1:g[y*7+x];
 function winner(s=g){for(let y=0;y<6;y++)for(let x=0;x<7;x++){const p=s[y*7+x];if(!p)continue;for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){let k=1;while(k<4){const a=x+dx*k,b=y+dy*k;if(a<0||a>6||b<0||b>5||s[b*7+a]!==p)break;k++}if(k===4)return p}}return s.every(Boolean)?3:0}
 function rowFor(c,s=g){for(let y=5;y>=0;y--)if(!s[y*7+c])return y;return -1}
 function draw(){$('c4').innerHTML=g.map((p,i)=>`<div data-c="${i%7}" style="${p?'background:'+C[p]:''}"></div>`).join('');const w=winner();$('hud').textContent=w?(w===3?'Draw!':(w===1?'🔴':'🟡')+' wins!'):($('mode').value==='net'?(turn===me?'Your turn':'Their turn'):(turn===1?'🔴':'🟡')+' to play');
-  if(w&&!done){done=1;if(w===me&&$('mode').value!=='local')save('wins',load('wins',0)+1)}}
+  if(w&&!done){done=1;if(w===me&&$('mode').value!=='local')save('wins',load('wins',0)+1);if($('mode').value==='local'&&w!==3)ARC.report(w-1)}}
 function drop(c,remote){if(done)return;const mode=$('mode').value;if(mode==='net'&&!remote&&turn!==me)return;const y=rowFor(c);if(y<0)return;g[y*7+c]=turn;turn=3-turn;tone(200+y*40,.06);if(mode==='net'&&!remote)R.send({t:'drop',c});draw();
   if(mode==='cpu'&&turn===2&&!winner())setTimeout(()=>drop(cpu()),350)}
 function cpu(){const ok=[0,1,2,3,4,5,6].filter(c=>rowFor(c)>=0);for(const p of [2,1])for(const c of ok){const s=g.slice();s[rowFor(c)*7+c]=p;if(winner(s)===p)return c}
   const safe=ok.filter(c=>{const s=g.slice();s[rowFor(c)*7+c]=2;const y=rowFor(c,s);if(y<0)return true;s[y*7+c]=1;return winner(s)!==1});const pool=safe.length?safe:ok;return pool.sort((a,b)=>Math.abs(3-a)-Math.abs(3-b)+Math.random()-.5)[0]}
-$('c4').onclick=e=>{const d=e.target.closest('[data-c]');if(d)drop(+d.dataset.c)};$('mode').onchange=()=>{$('room').hidden=$('mode').value!=='net';me=1;reset();draw()};$('go').onclick=()=>{reset();me=1;if($('mode').value==='net')R.send({t:'new'});draw()};reset();draw();ARC.board('connect4',{key:'wins',unit:' wins'});
+$('c4').onclick=e=>{const d=e.target.closest('[data-c]');if(d)drop(+d.dataset.c)};$('mode').onchange=()=>{$('room').hidden=$('mode').value!=='net';me=1;reset();draw()};$('go').onclick=()=>{reset();me=1;if($('mode').value==='net')R.send({t:'new'});draw()};if(ARC.match)$('mode').value='local';reset();draw();ARC.board('connect4',{key:'wins',unit:' wins'});
 }
 </script></body></html>

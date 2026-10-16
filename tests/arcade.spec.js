@@ -29,3 +29,21 @@ test('puzzles: 2048, sudoku, sweeper, merge conflict, escape the CI, bisect', as
   await page.goto('/apps/bisect.html'); await page.click('#cm [data-i="5"]'); await page.click('#test'); await expect(page.locator('#hud')).toContainText('test runs 1');
   expect(e).toEqual([]);
 });
+test('bracket sends a match to Tic-tac-toe and gets the winner back', async ({ page }) => {
+  const e = errs(page); page.on('dialog', d => d.accept());
+  await page.goto('/apps/bracket.html'); await page.fill('#names', 'Ann\nBen'); await page.uncheck('#shuffle'); await page.click('#make');
+  await page.selectOption('#br select[data-game]', 'tictactoe'); await page.waitForURL(/tictactoe\.html\?bracket=/);
+  await expect(page.locator('main')).toContainText('Bracket match');
+  for (const i of [0, 3, 1, 4, 2]) await page.click(`#t [data-i="${i}"]`); // X (Ann) wins the top row
+  await page.waitForURL(/bracket\.html/, { timeout: 8000 }); await expect(page.locator('#champ')).toContainText('Ann wins');
+  expect(e).toEqual([]);
+});
+test('chess by link, daily mix, chores and the one-button arcade', async ({ page }) => {
+  const e = errs(page);
+  await page.goto('/apps/chessmail.html'); await page.click('#cb [data-i="52"]'); await page.click('#cb [data-i="36"]');
+  expect(page.url()).toMatch(/#g=.*\.b\./); await expect(page.locator('#send')).toBeEnabled();
+  await page.goto('/apps/dailymix.html'); expect(await page.locator('.dm').count()).toBe(3);
+  await page.goto('/apps/chorearcade.html'); await page.click('#list [data-i="0"]'); await expect(page.locator('#hud')).toContainText('Earned today: 5');
+  await page.goto('/apps/onebutton.html'); await page.click('#big'); await page.waitForTimeout(300); await expect(page.locator('#hud')).toContainText('points');
+  expect(e).toEqual([]);
+});

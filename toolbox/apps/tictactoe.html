@@ -11,10 +11,10 @@ const win=s=>{for(const [a,c,d] of W)if(s[a]&&s[a]===s[c]&&s[a]===s[d])return s[
 const R=ARC.room('ttt',m=>{if(m.t==='move'){put(m.i,true)}if(m.t==='new'){reset();me='O';draw()}},{onJoin:()=>{if(R.host){reset();me='X';R.send({t:'new'});draw()}}});
 function reset(){ARC.hideOver();b=Array(9).fill('');turn='X';done=false}
 function draw(){$('t').innerHTML=b.map((v,i)=>`<button data-i="${i}">${v}</button>`).join('');const w=win(b);
-  $('hud').textContent=w?(w==='draw'?'Draw!':w+' wins!'):($('mode').value==='net'?(turn===me?'Your turn ('+me+')':'Their turn'):turn+' to play');if(w&&!done){done=true;if(w===me&&$('mode').value!=='local')save('wins',load('wins',0)+1)}}
+  $('hud').textContent=w?(w==='draw'?'Draw!':w+' wins!'):($('mode').value==='net'?(turn===me?'Your turn ('+me+')':'Their turn'):turn+' to play');if(w&&!done){done=true;if(w===me&&$('mode').value!=='local')save('wins',load('wins',0)+1);if($('mode').value==='local'&&w!=='draw')ARC.report(w==='X'?0:1)}}
 function best(s,p){const w=win(s);if(w==='O')return 1;if(w==='X')return -1;if(w)return 0;let v=p==='O'?-2:2;s.forEach((x,i)=>{if(x)return;s[i]=p;const r=best(s,p==='O'?'X':'O');s[i]='';v=p==='O'?Math.max(v,r):Math.min(v,r)});return v}
 function put(i,remote){if(done||b[i])return;const mode=$('mode').value;if(mode==='net'&&!remote&&turn!==me)return;b[i]=turn;turn=turn==='X'?'O':'X';tone(500,.05);if(mode==='net'&&!remote)R.send({t:'move',i});draw();
   if(mode==='cpu'&&turn==='O'&&!win(b)){let bi=-1,bv=-3;b.forEach((x,j)=>{if(x)return;b[j]='O';const v=best(b,'X')+Math.random()*.1;b[j]='';if(v>bv){bv=v;bi=j}});setTimeout(()=>put(bi),300)}}
-$('t').onclick=e=>{const x=e.target.closest('[data-i]');if(x)put(+x.dataset.i)};$('mode').onchange=()=>{$('room').hidden=$('mode').value!=='net';me='X';reset();draw()};$('go').onclick=()=>{reset();if($('mode').value==='net')R.send({t:'new'});me='X';draw()};reset();draw();ARC.board('tictactoe',{key:'wins',unit:' wins'});
+$('t').onclick=e=>{const x=e.target.closest('[data-i]');if(x)put(+x.dataset.i)};$('mode').onchange=()=>{$('room').hidden=$('mode').value!=='net';me='X';reset();draw()};$('go').onclick=()=>{reset();if($('mode').value==='net')R.send({t:'new'});me='X';draw()};if(ARC.match)$('mode').value='local';reset();draw();ARC.board('tictactoe',{key:'wins',unit:' wins'});
 }
 </script></body></html>

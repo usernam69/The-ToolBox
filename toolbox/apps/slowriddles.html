@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Slow riddles</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#rd{font-size:22px;text-align:center;margin:16px 0;line-height:1.5}#lock{font-size:18px;text-align:center}</style></head>
+<body data-app="slowriddles" data-cat="games" data-title="Slow riddles"><main>
+<p class="sub">A riddle quest that takes 8 weeks. Solve a riddle and the next one unlocks a week later. No rushing!</p>
+<p class="arc-hud" id="hud"></p><div id="rd"></div><div class="row" id="ansRow"><input id="ans" class="grow" placeholder="Your answer"><button class="b" id="try">Try</button></div><p id="lock" class="muted"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const R=[['I have keys but open no locks. I have space but no room. What am I?','keyboard'],['The more you take, the more you leave behind. What are they?','footsteps'],['What has to be broken before you can use it?','egg'],['I’m tall when I’m young and short when I’m old. What am I?','candle'],['What has hands but can’t clap?','clock'],['What gets wetter the more it dries?','towel'],['I follow you all day but disappear at night. What am I?','shadow'],['What can travel around the world while staying in a corner?','stamp']];
+let S=load('state',{n:0,at:0});const WEEK=7*864e5,norm=s=>s.toLowerCase().replace(/[^a-z]/g,'').replace(/^(a|an|the)/,'').replace(/s$/,'');
+function draw(){if(S.n>=R.length){$('rd').textContent='🏆 You solved every slow riddle. Patience master!';$('ansRow').hidden=true;$('lock').textContent='';return}
+  $('hud').textContent=`Riddle ${S.n+1} of ${R.length}`;const wait=S.at+WEEK-Date.now();
+  if(S.n>0&&wait>0){$('rd').textContent='🔒 The next riddle is still sealed.';$('ansRow').hidden=true;const d=Math.floor(wait/864e5),h=Math.floor(wait%864e5/36e5);$('lock').textContent=`It unlocks in ${d} days and ${h} hours.`;return}
+  $('rd').textContent=R[S.n][0];$('ansRow').hidden=false;$('lock').textContent=''}
+$('try').onclick=()=>{const a=norm($('ans').value);if(!a)return;if(a===norm(R[S.n][1])){S={n:S.n+1,at:Date.now()};save('state',S);ARC.best(S.n);$('ans').value='';[523,659,784].forEach((f,k)=>tone(f,.15,'triangle',.08,k*.1));toast('🎉 Solved! The next riddle unlocks in a week.');draw()}else{tone(160,.2,'sawtooth',.05);toast('Not quite. Think about it for a while!')}};
+$('ans').onkeydown=e=>{if(e.key==='Enter')$('try').click()};draw();setInterval(draw,60000);
+}
+</script></body></html>

@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mirror world</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="mirrorworld" data-cat="games" data-title="Mirror world"><main>
+<p class="sub">Dodge the falling blocks. But every 10 seconds the world flips, and left becomes right! ←/→ or tap the sides.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',360,520);let px,blocks,t,flip,run=false,touch=0;
+function start(){ARC.hideOver();px=180;blocks=[];t=0;flip=false;run=true}
+c.onpointerdown=e=>{if(!run&&(!$('arcOver')||$('arcOver').hidden))return start();touch=ARC.pos(c,e).x<180?-1:1};c.onpointerup=()=>touch=0;addEventListener('keydown',e=>{if(e.key===' '&&!run)start()});
+ARC.loop(dt=>{x.fillStyle=flip?'#2a1030':'#102a30';x.fillRect(0,0,360,520);if(run){const prev=Math.floor(t/10);t+=dt;if(Math.floor(t/10)!==prev){flip=!flip;tone(flip?300:600,.3,'triangle',.1);navigator.vibrate?.(80)}
+    let d=(keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0)+touch;if(flip)d=-d;px=Math.max(15,Math.min(345,px+d*260*dt));
+    if(Math.random()<dt*(1.5+t/15))blocks.push({x:Math.random()*330,y:-20,w:20+Math.random()*30,v:150+Math.random()*100+t*3});blocks.forEach(b=>b.y+=b.v*dt);blocks=blocks.filter(b=>b.y<540);
+    if(blocks.some(b=>b.y+20>470&&b.y<500&&px+12>b.x&&px-12<b.x+b.w)){run=false;tone(90,.4,'sawtooth',.08);const s=+t.toFixed(1),r=ARC.best(s);ARC.over(`🪞 ${s}s in the mirror world${r.isNew?' · new best!':''}`,start)}
+    const warn=10-t%10;if(warn<2){x.fillStyle='rgba(255,255,255,'+(.15*(2-warn))+')';x.fillRect(0,0,360,520)}}
+  x.fillStyle=flip?'#ff4fa3':'#4cc9f0';(blocks||[]).forEach(b=>x.fillRect(b.x,b.y,b.w,20));x.fillStyle='#ffd400';if(run)x.fillRect(px-12,474,24,24);
+  x.fillStyle='#fff';x.font='16px system-ui';x.fillText(flip?'🪞 FLIPPED: controls are reversed':'Normal controls',90,30);if(!run&&!blocks){x.fillText('Tap or press Space to start',80,260)}$('hud').textContent=`${(t||0).toFixed(1)}s`});
+ARC.board('mirrorworld',{unit:'s'});
+}
+</script></body></html>

@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Gravity Wordle</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#slots{display:flex;gap:6px;justify-content:center}#slots div{width:44px;height:50px;border:2px solid var(--line);border-radius:8px;font:800 26px system-ui;display:flex;align-items:center;justify-content:center;text-transform:uppercase}#slots div.ok{background:#2fb344;color:#fff;border-color:#2fb344}</style></head>
+<body data-app="gravitywordle" data-cat="games" data-title="Gravity Wordle"><main>
+<p class="sub">Letters rain down. Catch the letters of the hidden 5-letter word in your basket. Wrong letters cost a life (6 lives). ←/→, mouse or touch.</p>
+<div id="slots"></div><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',360,480);let word,got,lives,fall,bx=180,run=false,streak=load('streak',0);
+function start(){ARC.hideOver();const W=ARC.WORDS.filter(w=>w.length===5);word=W[rnd(W.length)];got=Array(5).fill(false);lives=6;fall=[];run=true;draw()}
+function draw(){$('slots').innerHTML=[...word].map((ch,i)=>`<div class="${got[i]?'ok':''}">${got[i]?ch:''}</div>`).join('');$('hud').textContent=`${'❤️'.repeat(lives)} · streak ${streak}`}
+c.onpointermove=e=>bx=ARC.pos(c,e).x;c.onpointerdown=e=>{bx=ARC.pos(c,e).x;if(!run&&(!$('arcOver')||$('arcOver').hidden))start()};
+ARC.loop(dt=>{x.fillStyle='#111';x.fillRect(0,0,360,480);if(keys.has('arrowleft'))bx-=300*dt;if(keys.has('arrowright'))bx+=300*dt;bx=Math.max(30,Math.min(330,bx));
+  if(run){if(Math.random()<dt*1.6){const need=[...word].filter((_,i)=>!got[i]),ch=Math.random()<.5&&need.length?need[rnd(need.length)]:String.fromCharCode(97+rnd(26));fall.push({ch,x:20+Math.random()*320,y:-10,v:90+Math.random()*60})}
+    fall.forEach(f=>{f.y+=f.v*dt;if(f.y>440&&f.y<470&&Math.abs(f.x-bx)<34&&!f.done){f.done=true;const i=[...word].findIndex((w,k)=>w===f.ch&&!got[k]);if(i>=0){got[i]=true;tone(800,.06)}else{lives--;tone(150,.1,'sawtooth',.05)}draw();
+      if(got.every(Boolean)){run=false;streak++;save('streak',streak);ARC.best(streak);ARC.over(`🔤 “${word}”! Streak ${streak}`,start)}else if(lives<=0){run=false;streak=0;save('streak',0);ARC.over(`🔤 The word was “${word}”`,start)}}});fall=fall.filter(f=>!f.done&&f.y<500)}
+  x.font='bold 24px system-ui';x.fillStyle='#fff';(fall||[]).forEach(f=>x.fillText(f.ch.toUpperCase(),f.x-8,f.y));x.fillStyle='#a06a42';x.fillRect(bx-34,450,68,18);
+  if(!run&&!word){x.font='18px system-ui';x.fillText('Tap to start',130,240)}});
+ARC.board('gravitywordle',{key:'best',unit:' in a row'});
+}
+</script></body></html>

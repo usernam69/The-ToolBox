@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Story chain</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#prev{font-size:20px;font-style:italic;text-align:center;margin:14px 0}#full{white-space:pre-wrap;font-size:18px;line-height:1.6;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}</style></head>
+<body data-app="storychain" data-cat="games" data-title="Story chain"><main>
+<p class="sub">Pass the phone. Each person adds a line to the story, but you only see the line just before yours. At the end, read the whole silly story out loud.</p>
+<p class="arc-hud" id="hud"></p><div id="prev"></div><div class="row"><input id="line" class="grow" maxlength="160" placeholder="Add the next line…"><button class="b" id="add">Add and pass</button></div><p style="text-align:center"><button class="g" id="end">The end: read it!</button> <button class="g" id="new">New story</button></p><div id="full" hidden></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const STARTS=['Once upon a time, a toaster wanted to be a rock star.','The day the cat learned to talk, it had only one complaint.','Nobody expected the school bus to start flying.','Grandma’s new robot had a strange habit.','The map led to a door in the middle of the ocean.'];
+let S=load('story',null)||[STARTS[rnd(STARTS.length)]];
+function draw(){$('hud').textContent=S.length+' lines so far';$('prev').textContent='“…'+S[S.length-1]+'”';$('full').hidden=true}
+$('add').onclick=()=>{const v=$('line').value.trim();if(!v)return toast('Write a line first.');S.push(v);save('story',S);$('line').value='';tone(600,.06);draw();toast('Now pass the phone 👉')};
+$('line').onkeydown=e=>{if(e.key==='Enter')$('add').click()};
+$('end').onclick=()=>{$('full').hidden=false;$('full').textContent=S.join(' ');save('told',load('told',0)+1);if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(S.join(' '));u.rate=.95;speechSynthesis.cancel();speechSynthesis.speak(u)}};
+$('new').onclick=()=>{if(S.length>1&&!confirm('Start a new story?'))return;S=[STARTS[rnd(STARTS.length)]];save('story',S);draw()};draw();
+}
+</script></body></html>

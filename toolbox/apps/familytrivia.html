@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Who knows who?</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#q{font-size:22px;text-align:center;margin:12px 0}#who{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}#score{text-align:center}</style></head>
+<body data-app="familytrivia" data-cat="games" data-title="Who knows who?"><main>
+<p class="sub">A pass-the-phone quiz about each other. One player answers a question about themselves in secret, then everyone else guesses out loud. Tap who got it right.</p>
+<div class="row"><input id="names" class="grow" placeholder="Players, separated by commas (e.g. Mum, Sam, Ava)"></div><p style="text-align:center"><button class="b" id="go">Start</button></p><div id="stage"></div><p id="score"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const Q=['What’s {n}’s favourite food?','Where would {n} love to go on holiday?','What’s {n}’s favourite game or app?','What scares {n} the most?','What would {n} buy with a million?','What’s {n}’s favourite animal?','What did {n} want to be when they were little?','What song does {n} sing the most?','What’s {n}’s secret talent?','Which superpower would {n} pick?','What’s {n}’s least favourite chore?','What’s {n}’s favourite colour?'];
+let P=[],pts={},turn=0,qs;$('names').value=load('names','');
+function sc(){$('score').innerHTML=P.map(p=>`<b>${esc(p)}</b> ${pts[p]||0}`).join(' · ')}
+function round(){const n=P[turn%P.length],q=qs[turn%qs.length].replace('{n}',n);
+  $('stage').innerHTML=`<p id="q">${esc(q)}</p><p style="text-align:center">Pass the phone to <b>${esc(n)}</b>. Type your answer in secret:</p><div class="row"><input id="ans" type="password" class="grow" placeholder="${esc(n)}’s answer"><button class="b" id="lock">Lock it in</button></div>`;
+  $('lock').onclick=()=>{const a=$('ans').value.trim();if(!a)return toast('Type an answer first.');$('stage').innerHTML=`<p id="q">${esc(q)}</p><p style="text-align:center">Everyone else: guess out loud! Then reveal.</p><p style="text-align:center"><button class="b" id="rev">Reveal</button></p>`;
+    $('rev').onclick=()=>{$('stage').innerHTML=`<p id="q">${esc(n)} said: <b>${esc(a)}</b></p><p style="text-align:center">Who got it right?</p><div id="who">${P.filter(p=>p!==n).map(p=>`<button class="g" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div><p style="text-align:center"><button class="b" id="next">Next question</button></p>`;
+      $('who').onclick=e=>{const b=e.target.closest('[data-p]');if(!b||b.disabled)return;pts[b.dataset.p]=(pts[b.dataset.p]||0)+1;b.disabled=true;tone(800,.08);sc()};$('next').onclick=()=>{turn++;if(turn>=P.length*3){const w=P.reduce((a,b)=>(pts[b]||0)>(pts[a]||0)?b:a);ARC.over(`🏆 ${esc(w)} knows everyone best!`,start)}else round()}}}}
+function start(){ARC.hideOver();P=$('names').value.split(',').map(s=>s.trim()).filter(Boolean);if(P.length<2)return toast('Add at least two players.');save('names',$('names').value);pts={};turn=0;qs=ARC.shuffle(Q);sc();round()}
+$('go').onclick=start;
+}
+</script></body></html>

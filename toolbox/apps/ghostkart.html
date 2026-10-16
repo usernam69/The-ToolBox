@@ -10,7 +10,11 @@ bindTouch($('tc'));const c=$('c'),x=ARC.canvas('c',600,420);
 // the track is a loop of points; the car must stay within 45px of the centre line
 const TR=[[100,90],[300,60],[500,90],[540,200],[470,300],[330,250],[230,340],[100,330],[60,210]];
 const near=(px,py)=>{let best=1e9,seg=0,t=0;for(let i=0;i<TR.length;i++){const [ax,ay]=TR[i],[bx,by]=TR[(i+1)%TR.length],dx=bx-ax,dy=by-ay,u=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy))),d=Math.hypot(ax+dx*u-px,ay+dy*u-py);if(d<best){best=d;seg=i;t=u}}return{d:best,prog:seg+t}};
-let car,lap,lapStart,ghost=load('ghost',null),rec,run=false,cp;
+let car,lap,lapStart,ghost=load('ghost',null),rec,run=false,cp,world=null,useWorld=false;
+// the world's fastest lap is a retained message; beat it and your lap becomes everyone's ghost
+const GT='the-toolbox/v1/ghost/kart',okGhost=g=>g&&typeof g.t==='number'&&g.t>3&&Array.isArray(g.p)&&g.p.length>10&&g.p.length<4000&&g.p.every(q=>Array.isArray(q)&&q.length===3&&q.every(Number.isFinite));
+WORLD.connect().then(cl=>{cl.on('message',(t,buf)=>{if(t!==GT)return;try{const g=JSON.parse(new TextDecoder().decode(buf));if(okGhost(g))world={t:g.t,p:g.p,n:String(g.n||'someone').slice(0,16)}}catch{}});cl.subscribe(GT)}).catch(()=>{});
+{const b=document.createElement('button');b.className='g';b.textContent='🌍 Race the world ghost: off';b.style.cssText='display:block;margin:6px auto';b.onclick=()=>{useWorld=!useWorld;b.textContent='🌍 Race the world ghost: '+(useWorld?(world?'on ('+world.t+'s by '+world.n+')':'on (none yet)'):'off')};$('tc').before(b)}
 function start(){ARC.hideOver();car={x:100,y:90,a:-.15,v:0};lap=0;cp=0;lapStart=performance.now();rec=[];run=true}
 ARC.loop(dt=>{x.fillStyle='#2d6a2d';x.fillRect(0,0,600,420);x.lineJoin='round';x.lineCap='round';x.strokeStyle='#555';x.lineWidth=90;x.beginPath();TR.forEach((p,i)=>x[i?'lineTo':'moveTo'](...p));x.closePath();x.stroke();
   x.strokeStyle='#fff';x.lineWidth=2;x.setLineDash([10,10]);x.stroke();x.setLineDash([]);x.fillStyle='#fff';x.fillRect(96,45,6,90);
@@ -19,9 +23,9 @@ ARC.loop(dt=>{x.fillStyle='#2d6a2d';x.fillRect(0,0,600,420);x.lineJoin='round';x
   car.v+=(gas?260:-120)*dt;const n=near(car.x,car.y),off=n.d>45;car.v=Math.max(0,Math.min(off?90:260,car.v));car.a+=steer*2.6*dt*Math.min(1,car.v/80);car.x+=Math.cos(car.a)*car.v*dt;car.y+=Math.sin(car.a)*car.v*dt;
   const t=(performance.now()-lapStart)/1000;rec.push([car.x|0,car.y|0,+car.a.toFixed(2)]);
   // a lap counts when you reach the last stretch of track and then cross the start line
-  if(Math.floor(n.prog)===TR.length-1)rec.half=true;if(rec.half&&n.prog<.5){rec.half=false;lap++;tone(880,.1,'triangle');const lt=+t.toFixed(2);if(!ghost||lt<ghost.t){ghost={t:lt,p:rec.filter((_,i)=>i%2===0)};save('ghost',ghost);ARC.best(lt,{lower:true})}lapStart=performance.now();rec=[];
+  if(Math.floor(n.prog)===TR.length-1)rec.half=true;if(rec.half&&n.prog<.5){rec.half=false;lap++;tone(880,.1,'triangle');const lt=+t.toFixed(2);if(!ghost||lt<ghost.t){ghost={t:lt,p:rec.filter((_,i)=>i%2===0)};save('ghost',ghost);ARC.best(lt,{lower:true})}if((!world||lt<world.t)&&WORLD.client&&rec.length<8000){const g={t:lt,p:rec.filter((_,i)=>i%2===0),n:loadTb('worldName','')||'someone'};WORLD.client.publish(GT,JSON.stringify(g),{retain:true,qos:1});world=g;toast('🌍 New world record lap! You are now the world ghost.')}lapStart=performance.now();rec=[];
     if(lap>=3){run=false;ARC.over(`🏁 Finished! Best lap ${ghost.t}s`,start)}}
-  if(ghost){const gi=Math.min(ghost.p.length-1,Math.floor(rec.length/2)),g=ghost.p[gi];if(g){x.save();x.globalAlpha=.4;x.translate(g[0],g[1]);x.rotate(g[2]);x.fillStyle='#4cc9f0';x.fillRect(-12,-7,24,14);x.restore()}}
+  const gh=useWorld&&world?world:ghost;if(gh){const gi=Math.min(gh.p.length-1,Math.floor(rec.length/2)),g=gh.p[gi];if(g){x.save();x.globalAlpha=.4;x.translate(g[0],g[1]);x.rotate(g[2]);x.fillStyle='#4cc9f0';x.fillRect(-12,-7,24,14);x.restore()}}
   x.save();x.translate(car.x,car.y);x.rotate(car.a);x.fillStyle='#e5484d';x.fillRect(-12,-7,24,14);x.fillStyle='#ffd400';x.fillRect(6,-5,5,10);x.restore();
   $('hud').textContent=`Lap ${Math.min(3,lap+1)}/3 · ${t.toFixed(1)}s${ghost?' · ghost '+ghost.t+'s':''}`});
 ARC.board('ghostkart',{lower:true,unit:'s',title:'🌍 Fastest laps'});

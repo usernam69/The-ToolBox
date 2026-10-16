@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Gamepad party</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="padparty" data-cat="games" data-title="Gamepad party"><main>
+<p class="sub">Up to 4 game controllers on one screen (plus 2 keyboard players: WASD and arrows). Grab the most coins in 60 seconds, and bump each other out of the way!</p>
+<p class="arc-hud" id="hud">Connect controllers and press any button, or use WASD / arrow keys</p><canvas id="c" class="arc-c" style="background:#20203a"></canvas><p style="text-align:center"><button class="b" id="go">Start</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const x=ARC.canvas('c',640,420),COL=['#e5484d','#3e63dd','#2fb344','#ffd400','#b15cff','#ff8c00'];let P=[],coins=[],end=0,run=false;
+function players(){const pads=ARC.pad(),L=[];pads.forEach((p,i)=>L.push({src:'pad',i,name:'🎮 '+(i+1)}));L.push({src:'wasd',name:'⌨️ WASD'},{src:'arrows',name:'⌨️ Arrows'});return L.slice(0,6)}
+function input(p){if(p.src==='pad'){const g=ARC.pad()[p.i]||{x:0,y:0};return[g.x,g.y]}if(p.src==='wasd')return[(keys.has('d')?1:0)-(keys.has('a')?1:0),(keys.has('s')?1:0)-(keys.has('w')?1:0)];return[(keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0),(keys.has('arrowdown')?1:0)-(keys.has('arrowup')?1:0)]}
+$('go').onclick=()=>{ARC.hideOver();P=players().map((p,k)=>({...p,x:80+k*90,y:210,vx:0,vy:0,s:0,c:COL[k]}));coins=Array.from({length:6},()=>({x:40+Math.random()*560,y:40+Math.random()*340}));end=Date.now()+60000;run=true};
+addEventListener('keydown',e=>{if(e.key.startsWith('Arrow'))e.preventDefault()});
+ARC.loop(dt=>{x.fillStyle='#20203a';x.fillRect(0,0,640,420);if(run){P.forEach(p=>{const [ix,iy]=input(p);p.vx+=ix*900*dt;p.vy+=iy*900*dt;p.vx*=.9;p.vy*=.9;p.x=Math.max(16,Math.min(624,p.x+p.vx*dt));p.y=Math.max(16,Math.min(404,p.y+p.vy*dt));
+      coins.forEach(c=>{if(Math.hypot(c.x-p.x,c.y-p.y)<24){p.s++;tone(900+p.s*10,.05,'square',.04);c.x=40+Math.random()*560;c.y=40+Math.random()*340}})});
+    for(let a=0;a<P.length;a++)for(let b=a+1;b<P.length;b++){const A=P[a],B=P[b],d=Math.hypot(A.x-B.x,A.y-B.y);if(d<32&&d>0){const nx=(A.x-B.x)/d,ny=(A.y-B.y)/d;A.vx+=nx*200;A.vy+=ny*200;B.vx-=nx*200;B.vy-=ny*200}}
+    if(Date.now()>end){run=false;const w=P.reduce((a,b)=>b.s>a.s?b:a);ARC.over(`🏆 ${w.name} wins with ${w.s} coins!`,()=>$('go').click())}}
+  x.font='20px system-ui';coins.forEach(c=>x.fillText('🪙',c.x-10,c.y+7));P.forEach(p=>{x.fillStyle=p.c;x.beginPath();x.arc(p.x,p.y,16,0,7);x.fill();x.fillStyle='#fff';x.font='11px system-ui';x.fillText(p.name,p.x-24,p.y-22)});
+  if(run)$('hud').textContent=P.map(p=>`${p.name}: ${p.s}`).join(' · ')+` · ${Math.ceil((end-Date.now())/1000)}s`;else if(!P.length)$('hud').textContent=`${players().length} players ready. Press Start.`});
+}
+</script></body></html>

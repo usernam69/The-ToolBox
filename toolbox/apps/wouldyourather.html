@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Would you rather</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#wq{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}#wq button{min-height:140px;font-size:19px;border-radius:16px;border:0;color:#fff;padding:12px;position:relative}#wq button small{display:block;font-size:30px;font-weight:800;margin-top:8px}</style></head>
+<body data-app="wouldyourather" data-cat="games" data-title="Would you rather"><main>
+<p class="sub">Pick one! Play on one screen, or make an online room and everyone votes from their own phone and sees the results live.</p>
+<div id="room"></div><div id="wq"></div><p style="text-align:center"><button class="g" id="next">Next question</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const Q=[['be able to fly','be invisible'],['live in space','live under the sea'],['have no homework ever','have no chores ever'],['talk to animals','speak every language'],['always be 10 minutes late','always be 20 minutes early'],['eat only pizza','eat only ice cream'],['have a pet dragon','have a pet dinosaur'],['be the funniest','be the smartest'],['never use a phone again','never watch TV again'],['live in a treehouse','live in a castle'],['explore the jungle','explore the Arctic'],['have super speed','have super strength'],['be a famous singer','be a famous athlete'],['only whisper','only shout']];
+let qi=0,votes={},me=uid();const R=ARC.room('wyr',m=>{if(m.t==='v'&&(m.v===0||m.v===1)&&m.q===qi){votes[m.from]=m.v;draw()}if(m.t==='q'&&Number.isInteger(m.q)&&Q[m.q]){qi=m.q;votes={};draw()}},{onJoin:()=>{if(R.host)R.send({t:'q',q:qi})}});
+function draw(){const q=Q[qi],n=[0,1].map(k=>Object.values(votes).filter(v=>v===k).length),tot=n[0]+n[1];
+  $('wq').innerHTML=q.map((s,k)=>`<button data-k="${k}" style="background:${k?'#3e63dd':'#e5484d'}">Would you rather ${esc(s)}?${tot?`<small>${Math.round(n[k]/tot*100)}% · ${n[k]}</small>`:''}</button>`).join('')}
+$('wq').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;const v=+b.dataset.k;if(R.code){votes[me]=v;R.send({t:'v',v,q:qi})}else votes[uid()]=v;tone(v?600:400,.06);draw()};
+$('next').onclick=()=>{qi=(qi+1+rnd(Q.length-1))%Q.length;votes={};if(R.code)R.send({t:'q',q:qi});draw()};qi=rnd(Q.length);draw();
+}
+</script></body></html>

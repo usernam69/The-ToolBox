@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bubble pop cam</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#wrap{position:relative;max-width:640px;margin:auto}#wrap video,#wrap canvas{width:100%;display:block;border-radius:12px;transform:scaleX(-1)}#wrap canvas{position:absolute;inset:0}</style></head>
+<body data-app="bubblecam" data-cat="games" data-title="Bubble pop cam"><main>
+<p class="sub">Wave your hands in front of the camera to pop the bubbles! The video never leaves your device: it’s only checked for movement, right here.</p>
+<p class="arc-hud" id="hud"></p><div id="wrap"><video id="v" playsinline muted></video><canvas id="c" width="640" height="480"></canvas></div><p style="text-align:center"><button class="b" id="go">📷 Start the camera</button></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const v=$('v'),c=$('c'),x=c.getContext('2d'),S=document.createElement('canvas');S.width=64;S.height=48;const sx=S.getContext('2d',{willReadFrequently:true});let prev=null,bubbles=[],score=0,end=0,run=false;
+$('go').onclick=async()=>{try{const st=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480},audio:false});v.srcObject=st;await v.play();score=0;bubbles=[];end=Date.now()+45000;run=true;ARC.hideOver()}catch{toast('The camera isn’t available or wasn’t allowed.')}};
+ARC.loop(dt=>{x.clearRect(0,0,640,480);if(!run)return;sx.drawImage(v,0,0,64,48);const f=sx.getImageData(0,0,64,48).data,motion=new Uint8Array(64*48);
+  if(prev)for(let i=0;i<64*48;i++){const d=Math.abs(f[i*4]-prev[i*4])+Math.abs(f[i*4+1]-prev[i*4+1])+Math.abs(f[i*4+2]-prev[i*4+2]);motion[i]=d>60?1:0}prev=f;
+  if(Math.random()<dt*2.2&&bubbles.length<10)bubbles.push({x:60+Math.random()*520,y:500,r:22+Math.random()*24,v:40+Math.random()*50});
+  bubbles.forEach(b=>{b.y-=b.v*dt;let n=0;const cx=b.x/10|0,cy=b.y/10|0,r=Math.ceil(b.r/10);for(let yy=cy-r;yy<=cy+r;yy++)for(let xx=cx-r;xx<=cx+r;xx++)if(xx>=0&&yy>=0&&xx<64&&yy<48&&motion[yy*64+xx])n++;
+    if(n>3&&b.y<470){b.pop=true;score++;tone(700+Math.random()*500,.05,'sine',.08)}});bubbles=bubbles.filter(b=>!b.pop&&b.y>-60);
+  bubbles.forEach(b=>{x.strokeStyle='rgba(120,200,255,.9)';x.lineWidth=3;x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.stroke();x.fillStyle='rgba(180,230,255,.25)';x.fill()});
+  const left=Math.ceil((end-Date.now())/1000);$('hud').textContent=`🫧 ${score} popped · ${Math.max(0,left)}s`;if(left<=0){run=false;v.srcObject?.getTracks().forEach(t=>t.stop());const r=ARC.best(score);ARC.over(`🫧 ${score} bubbles popped${r.isNew?' · new best!':''}`,()=>$('go').click())}});
+ARC.board('bubblecam',{unit:' bubbles'});
+}
+</script></body></html>

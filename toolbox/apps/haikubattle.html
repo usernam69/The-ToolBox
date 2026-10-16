@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Haiku battle</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.tiles{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.tiles button{padding:6px 10px;border-radius:8px}.poem{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:90px;font-size:18px;white-space:pre-line}.poem .ln{display:block}.poem .ln small{color:var(--muted)}</style></head>
+<body data-app="haikubattle" data-cat="games" data-title="Haiku battle"><main>
+<p class="sub">Two poets, the same word tiles. Build a haiku: 5 syllables, then 7, then 5. Correct syllables score points, then you both vote for the best poem.</p>
+<p class="arc-hud" id="hud"></p><div class="poem" id="poem"></div><div class="tiles" id="tiles"></div><p style="text-align:center"><button class="g" id="back">⌫</button> <button class="g" id="nl">↵ Next line</button> <button class="b" id="done">Done</button></p><div id="vote"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const WORDS='moon river quiet morning snow falls softly old pond frog jumps in the cherry blossom wind whispers light my code compiles at last a bug sleeps tonight green tea steams warm cat stretches slowly autumn leaves drift down rain on paper roof summer heat cicada sings over mountains far away silent screen glows bright a robot dreams of'.split(' ');
+const syl=w=>Math.max(1,(w.toLowerCase().replace(/e$/,'').match(/[aeiouy]+/g)||[]).length);let tiles,poems,cur,lines;
+function start(){ARC.hideOver();tiles=ARC.shuffle([...new Set(WORDS)]).slice(0,28);poems=[];turn()}
+function turn(){cur=poems.length;lines=[[]];$('vote').innerHTML='';$('hud').textContent=`Poet ${cur+1}: build your haiku (the other poet looks away!)`;draw()}
+function draw(){$('poem').innerHTML=lines.map((l,i)=>{const n=l.reduce((a,w)=>a+syl(w),0);return`<span class="ln">${esc(l.join(' '))||'…'} <small>(${n}/${[5,7,5][i]})</small></span>`}).join('');$('tiles').innerHTML=tiles.map(w=>`<button class="g" data-w="${esc(w)}">${esc(w)}</button>`).join('')}
+$('tiles').onclick=e=>{const b=e.target.closest('[data-w]');if(b){lines[lines.length-1].push(b.dataset.w);draw()}};$('back').onclick=()=>{const l=lines[lines.length-1];if(l.length)l.pop();else if(lines.length>1)lines.pop();draw()};
+$('nl').onclick=()=>{if(lines.length<3){lines.push([]);draw()}};
+$('done').onclick=()=>{const pts=lines.reduce((a,l,i)=>a+(l.reduce((s,w)=>s+syl(w),0)===[5,7,5][i]?2:0),0)+(lines.length===3?1:0);poems.push({lines:lines.map(l=>l.join(' ')),pts});if(poems.length<2)return turn();
+  $('poem').innerHTML='';$('tiles').innerHTML='';$('hud').textContent='Both poems are in! Vote for the best one (+3).';
+  $('vote').innerHTML=poems.map((p,i)=>`<div class="poem" style="margin:6px 0">${p.lines.map(esc).join('<br>')}<br><small class="muted">Poet ${i+1} · syllable points ${p.pts}</small><br><button class="b" data-v="${i}">Vote for this one</button></div>`).join('');
+  $('vote').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;poems[+b.dataset.v].pts+=3;const w=poems[0].pts===poems[1].pts?-1:poems[0].pts>poems[1].pts?0:1;tone(880,.15,'triangle');ARC.over(w<0?`🎋 A tie! ${poems[0].pts} each`:`🎋 Poet ${w+1} wins ${poems[w].pts}–${poems[1-w].pts}`,start)}};
+start();
+}
+</script></body></html>

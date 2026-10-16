@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Voice runner</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="voicerunner" data-cat="games" data-title="Voice runner"><main>
+<p class="sub">Steer with your voice! Say “left”, “right” or “middle” to change lanes and dodge the blocks. (Arrow keys work too.) Your voice is handled by your browser’s speech recognition.</p>
+<p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas><p style="text-align:center"><button class="b" id="go">🎤 Start</button> <span id="heard" class="muted"></span></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const x=ARC.canvas('c',360,520);let lane=1,obs=[],dist=0,run=false,rec=null;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function listen(){if(!SR){$('heard').textContent='Voice isn’t supported in this browser: use the arrow keys.';return}rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
+  rec.onresult=e=>{const t=e.results[e.results.length-1][0].transcript.toLowerCase().trim(),w=t.split(/\s+/).pop();$('heard').textContent='Heard: '+w;if(/left|lift/.test(w))lane=Math.max(0,lane-1);if(/right|write/.test(w))lane=Math.min(2,lane+1);if(/middle|centre|center/.test(w))lane=1};
+  rec.onend=()=>{if(run)try{rec.start()}catch{}};try{rec.start()}catch{}}
+function start(){ARC.hideOver();lane=1;obs=[];dist=0;run=true;if(!rec)listen()}
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')lane=Math.max(0,lane-1);if(e.key==='ArrowRight')lane=Math.min(2,lane+1)});$('go').onclick=start;
+ARC.loop(dt=>{x.fillStyle='#1b2838';x.fillRect(0,0,360,520);for(let l=1;l<3;l++){x.fillStyle='#345';x.fillRect(l*120-2,0,4,520)}
+  if(run){dist+=dt*60;if(Math.random()<dt*(.5+dist/2000))obs.push({l:rnd(3),y:-40});obs.forEach(o=>o.y+=(120+dist/10)*dt);obs=obs.filter(o=>o.y<560);
+    if(obs.some(o=>o.l===lane&&o.y>400&&o.y<470)){run=false;rec&&rec.stop();tone(100,.4,'sawtooth',.08);const s=Math.round(dist),r=ARC.best(s);ARC.over(`🗣️ ${s} m${r.isNew?' · new best!':''}`,start)}}
+  x.fillStyle='#e5484d';obs.forEach(o=>x.fillRect(o.l*120+20,o.y,80,36));x.fillStyle='#4cc9f0';x.beginPath();x.arc(lane*120+60,450,22,0,7);x.fill();$('hud').textContent=`${Math.round(dist)} m · lane ${['left','middle','right'][lane]}`});
+ARC.board('voicerunner',{unit:' m'});
+}
+</script></body></html>

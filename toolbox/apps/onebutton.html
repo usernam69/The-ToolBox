@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>One-button arcade</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#modes{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}#modes button.on{outline:3px solid var(--accent)}#big{display:block;margin:10px auto;width:min(90vw,360px);height:80px;font-size:24px}</style></head>
+<body data-app="onebutton" data-cat="games" data-title="One-button arcade"><main>
+<p class="sub">Three games you play with just one button: Space, Enter, a click, a tap or an accessibility switch. Every game here works with that single button.</p>
+<div id="modes"><button class="g on" data-m="jump">🦘 Jumper</button><button class="g" data-m="stop">🎯 Stop the bar</button><button class="g" data-m="scan">⭐ Star catcher</button></div><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c"></canvas><button class="b" id="big">PRESS</button>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const x=ARC.canvas('c',480,300);let mode='jump',G={},score=0,run=false;
+$('modes').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;mode=b.dataset.m;$('modes').querySelectorAll('button').forEach(z=>z.classList.toggle('on',z===b));reset()};
+function reset(){ARC.hideOver();score=0;run=true;G={y:0,vy:0,obs:[],t:0,bar:0,dir:1,zone:[180,260],sel:0,scanT:0,star:rnd(4),lives:3}}
+function press(){if(!run){reset();return}tone(500,.04);
+  if(mode==='jump'&&G.y===0)G.vy=520;
+  if(mode==='stop'){const hit=G.bar>=G.zone[0]&&G.bar<=G.zone[1];if(hit){score++;const w=Math.max(20,80-score*5),s=40+Math.random()*(360-w);G.zone=[s,s+w];tone(900,.08,'triangle')}else end()}
+  if(mode==='scan'){if(G.sel===G.star){score++;G.star=rnd(4);tone(900,.08,'triangle')}else{G.lives--;tone(150,.15,'sawtooth',.05);if(G.lives<=0)end()}}}
+function end(){run=false;ARC.best(score,{key:'best_'+mode});ARC.daily(score);ARC.over(`🔘 ${score} points`,reset)}
+$('big').onclick=press;addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&document.activeElement!==$('big')){e.preventDefault();press()}});$('c').onpointerdown=press;
+ARC.loop(dt=>{x.fillStyle='#14142a';x.fillRect(0,0,480,300);if(!run&&!G.obs){x.fillStyle='#fff';x.font='18px system-ui';x.fillText('Press the button to start',140,150);return}
+  if(mode==='jump'){if(run){G.vy-=1400*dt;G.y=Math.max(0,G.y+G.vy*dt);if(G.y===0)G.vy=0;G.t-=dt;if(G.t<=0){G.t=1+Math.random()*1.2;G.obs.push(500)}G.obs=G.obs.map(o=>o-(220+score*4)*dt).filter(o=>{if(o<-20){score++;return false}return true});if(G.obs.some(o=>o>50&&o<90&&G.y<30))end()}
+    x.fillStyle='#4a8a3a';x.fillRect(0,250,480,50);x.fillStyle='#ffd400';x.fillRect(60,220-G.y,30,30);x.fillStyle='#e5484d';G.obs.forEach(o=>x.fillRect(o,220,20,30))}
+  if(mode==='stop'){if(run){G.bar+=G.dir*(200+score*25)*dt;if(G.bar>400||G.bar<0)G.dir*=-1}x.fillStyle='#333';x.fillRect(40,130,400,40);x.fillStyle='#2fb344';x.fillRect(40+G.zone[0],130,G.zone[1]-G.zone[0],40);x.fillStyle='#fff';x.fillRect(40+G.bar-3,120,6,60)}
+  if(mode==='scan'){if(run){G.scanT+=dt;if(G.scanT>Math.max(.45,1.2-score*.05)){G.scanT=0;G.sel=(G.sel+1)%4}}for(let i=0;i<4;i++){x.fillStyle=i===G.sel?'#ffd400':'#333';x.fillRect(30+i*110,90,100,120);x.font='50px system-ui';if(i===G.star)x.fillText('⭐',50+i*110,170)}x.fillStyle='#fff';x.font='14px system-ui';x.fillText('Press when the highlight is on the star · '+'❤️'.repeat(G.lives),90,250)}
+  $('hud').textContent=`${score} points · best ${load('best_'+mode,0)}`});reset();run=false;
+}
+</script></body></html>

@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pixel wall bounce</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="wallbounce" data-cat="games" data-title="Pixel wall bounce"><main>
+<p class="sub">The shared Pixel wall becomes the playfield! Every coloured pixel is a block the ball bounces off. Keep the ball up with the paddle and rack up points.</p>
+<p class="arc-hud" id="hud">Loading the wall…</p><canvas id="c" class="arc-c"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',384,520),N=32,Z=12,COL=['#ffffff','#e4e4e4','#888888','#222222','#ffa7d1','#e50000','#e59500','#a06a42','#e5d900','#94e044','#02be01','#00d3dd','#0083c7','#0000ea','#cf6ee4','#820080'];
+const cells=new Uint8Array(N*N);let px=150,b=null,score=0,lives=3,flash={};
+WORLD.connect().then(cl=>{cl.on('message',(t,buf)=>{const m=t.match(/^the-toolbox\/v1\/wall\/(\d+)-(\d+)$/);if(!m)return;const v=+new TextDecoder().decode(buf);if(+m[1]<N&&+m[2]<N&&v>=0&&v<16)cells[+m[2]*N+ +m[1]]=v});cl.subscribe('the-toolbox/v1/wall/+')}).catch(()=>{for(let i=0;i<N*N;i++)if(Math.random()<.15)cells[i]=1+rnd(15);toast('Offline: playing on a random wall.')});
+function start(){ARC.hideOver();score=0;lives=3;serve()}function serve(){b={x:192,y:440,vx:150,vy:-260}}
+c.onpointermove=e=>px=ARC.pos(c,e).x-40;c.onpointerdown=()=>{if(!b&&(!$('arcOver')||$('arcOver').hidden))start()};addEventListener('keydown',e=>{if(e.key===' '&&!b)start()});
+ARC.loop(dt=>{if(keys.has('arrowleft'))px-=400*dt;if(keys.has('arrowright'))px+=400*dt;px=Math.max(0,Math.min(304,px));x.fillStyle='#fff';x.fillRect(0,0,384,520);
+  for(let i=0;i<N*N;i++)if(cells[i]){x.fillStyle=flash[i]>0?'#fff176':COL[cells[i]];x.fillRect(i%N*Z,(i/N|0)*Z,Z,Z)}
+  if(b){for(let s=0;s<3;s++){const h=dt/3,nx=b.x+b.vx*h,ny=b.y+b.vy*h;const cell=(X,Y)=>X>=0&&Y>=0&&X<384&&Y<384&&cells[(Y/Z|0)*N+(X/Z|0)];
+      if(cell(nx,b.y)){b.vx*=-1;const i=(b.y/Z|0)*N+(nx/Z|0);flash[i]=.2;score+=cells[i];tone(300+cells[i]*40,.03,'square',.03)}else b.x=nx;
+      if(cell(b.x,ny)){b.vy*=-1;const i=(ny/Z|0)*N+(b.x/Z|0);flash[i]=.2;score+=cells[i];tone(300+cells[i]*40,.03,'square',.03)}else b.y=ny}
+    if(b.x<5||b.x>379)b.vx*=-1;if(b.y<5)b.vy=Math.abs(b.vy);if(b.y>480&&b.y<492&&b.x>px&&b.x<px+80&&b.vy>0){b.vy=-Math.abs(b.vy)*1.01;b.vx=(b.x-px-40)*6}
+    if(b.y>520){lives--;if(lives>0)serve();else{b=null;const r=ARC.best(score);ARC.over(`🧱 ${score} points${r.isNew?' · new best!':''}`,start)}}
+    x.fillStyle='#111';x.beginPath();x.arc(b.x,b.y,5,0,7);x.fill()}else{x.fillStyle='#111';x.font='18px system-ui';x.fillText('Tap or press Space to start',80,450)}
+  for(const k in flash)if((flash[k]-=dt)<=0)delete flash[k];x.fillStyle='#3e63dd';x.fillRect(px,486,80,8);$('hud').textContent=`${score} points · ${'❤️'.repeat(lives)}`});
+ARC.board('wallbounce');
+}
+</script></body></html>

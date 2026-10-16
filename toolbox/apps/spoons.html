@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Spoons</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#table{text-align:center;font-size:24px;min-height:120px}#grab{display:block;margin:10px auto;width:240px;height:240px;border-radius:50%;font-size:80px;border:0;background:var(--accent)}#grab:disabled{opacity:.3}#plist{text-align:center}</style></head>
+<body data-app="spoons" data-cat="games" data-title="Spoons"><main>
+<p class="sub">For 3 to 8 players, each on their own phone. Join the same room code. When the spoons appear, grab one fast. There’s always one spoon too few: the last player is out!</p>
+<div class="row"><input id="nm" maxlength="12" placeholder="Your name"></div><div id="room"></div><p style="text-align:center"><button class="b" id="start">Start a round (host)</button></p><div id="table">Waiting for players…</div><button id="grab" disabled>🥄</button><p id="plist"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let names={},me=null,alive=new Set(),grabs=[],phase='lobby',myGrab=false;$('nm').value=loadTb('worldName','');
+const R=ARC.room('spoons',m=>{if(m.t==='name'&&typeof m.n==='string'){names[m.from]=m.n.slice(0,12);if(phase==='lobby')alive.add(m.from);list()}
+  if(m.t==='round'&&Array.isArray(m.alive)){alive=new Set(m.alive);phase='wait';myGrab=false;$('grab').disabled=true;$('table').textContent='Watch the table…';list()}
+  if(m.t==='spoons'){phase='grab';$('grab').disabled=!alive.has(R.me);$('table').textContent=`🥄 ${m.n} spoons! GRAB!`;tone(900,.15,'square',.12)}
+  if(m.t==='grab'&&R.host&&phase==='grab'&&!grabs.includes(m.from))hostGrab(m.from);
+  if(m.t==='out'){phase='lobby';alive.delete(m.who);$('grab').disabled=true;$('table').textContent=m.who===R.me?'😵 You’re out!':`😵 ${esc(names[m.who]||'Someone')} is out!`;if(m.win){$('table').textContent=m.win===R.me?'🏆 You win Spoons!':`🏆 ${esc(names[m.win]||'Someone')} wins!`;if(m.win===R.me){save('wins',load('wins',0)+1);ARC.best(load('wins',0))}}list()}},
+  {onJoin:()=>R.send({t:'name',n:$('nm').value.trim()||'Player'})});
+function list(){$('plist').innerHTML=[...new Set([R.me,...Object.keys(names)])].map(id=>`<span style="opacity:${alive.has(id)||phase==='lobby'&&!alive.size?1:.35}">${id===R.me?'⭐ ':''}${esc(id===R.me?($('nm').value.trim()||'You'):names[id]||'Player')}</span>`).join(' · ')}
+$('nm').onchange=()=>{saveTb('worldName',$('nm').value.trim());R.send({t:'name',n:$('nm').value.trim()||'Player'});list()};
+function hostGrab(id){grabs.push(id);const need=alive.size-1;if(grabs.length>=need){const out=[...alive].find(p=>!grabs.includes(p));alive.delete(out);const win=alive.size===1?[...alive][0]:null;const msg={t:'out',who:out,win};R.send(msg);handleLocal(msg)}}
+function handleLocal(m){phase='lobby';$('grab').disabled=true;$('table').textContent=m.who===R.me?'😵 You’re out!':`😵 ${esc(names[m.who]||'Someone')} is out!`;if(m.win)$('table').textContent=m.win===R.me?'🏆 You win Spoons!':`🏆 ${esc(names[m.win]||'Someone')} wins!`;if(m.win===R.me){save('wins',load('wins',0)+1);ARC.best(load('wins',0))}list()}
+$('start').onclick=()=>{if(!R.code||!R.host)return toast('Make a new online game first (you’ll be the host).');if(!alive.size)alive=new Set([R.me,...Object.keys(names)]);if(alive.size<2)return toast('Wait for more players to join.');
+  if(alive.size===1)return;grabs=[];phase='wait';myGrab=false;const a=[...alive];R.send({t:'round',alive:a});$('table').textContent='Watch the table…';$('grab').disabled=true;
+  setTimeout(()=>{phase='grab';R.send({t:'spoons',n:alive.size-1});$('table').textContent=`🥄 ${alive.size-1} spoons! GRAB!`;$('grab').disabled=!alive.has(R.me);tone(900,.15,'square',.12)},2000+Math.random()*5000)};
+$('grab').onclick=()=>{if(phase!=='grab'||myGrab)return;myGrab=true;$('grab').disabled=true;$('table').textContent='Got one! 🥄';tone(1200,.08);if(R.host)hostGrab(R.me);else R.send({t:'grab'})};list();ARC.board('spoons',{key:'wins',unit:' wins'});
+}
+</script></body></html>

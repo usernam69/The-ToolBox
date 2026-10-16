@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Codename quiz</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#cn{font-size:34px;font-weight:800;text-align:center;margin:16px 0}#opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:400px;margin:auto}#opts button{font-size:20px;padding:14px}</style></head>
+<body data-app="codenameguess" data-cat="games" data-title="Codename quiz"><main>
+<p class="sub">Every ToolBox version has a secret codename. Which version is this codename from? Earn a point per right answer; one wrong and the streak ends.</p>
+<p class="arc-hud" id="hud"></p><div id="cn"></div><div id="opts"></div><p id="hint" class="muted" style="text-align:center"></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let streak=0,ans;
+function next(){const real=(window.TB_NEWS||[]).map(n=>n[0]),pool=[...new Set([...real,'0.9.0','1.0.5','1.1.5','2.0.0','1.5.0','0.5.1'])];const opts=ARC.shuffle(pool).slice(0,4);ans=opts[rnd(4)];
+  $('cn').textContent='“'+TB_CODENAME(ans)+'”';$('hint').textContent=real.includes(ans)?'':'(some answers are versions that don’t exist yet)';$('hud').textContent='Streak '+streak;$('opts').innerHTML=opts.map(v=>`<button class="g" data-v="${v}">v${v}</button>`).join('')}
+$('opts').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;if(b.dataset.v===ans){streak++;tone(880,.08);next()}else{tone(150,.3,'sawtooth',.06);const r=ARC.best(streak);ARC.over(`🕵️ It was v${ans}. Streak ${streak}${r.isNew?' · new best!':''}`,()=>{streak=0;next()})}};
+(function w(){if(!window.TB_CODENAME)return setTimeout(w,50);next()})();ARC.board('codenameguess',{unit:' in a row'});
+}
+</script></body></html>

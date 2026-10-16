@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Paper level maker</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#tc{display:flex;gap:8px;justify-content:center;margin-top:6px}#tc button{width:70px;height:56px;font-size:24px;touch-action:none}</style></head>
+<body data-app="paperlevel" data-cat="games" data-title="Paper level maker"><main>
+<p class="sub">Draw a level on paper with a thick dark pen: lines are platforms. Take a photo of it, and play it! Start on the left, reach the right side. ←/→ and Space (or the buttons).</p>
+<p style="text-align:center"><label class="b" style="cursor:pointer;padding:10px 16px;border-radius:10px">📷 Take or pick a photo<input type="file" id="ph" accept="image/*" capture="environment" hidden></label> <button class="g" id="demo">Try a sample level</button></p><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c" style="background:#fffef4"></canvas><div id="tc"><button class="g" data-key="arrowleft">◀</button><button class="b" data-key=" ">⤒</button><button class="g" data-key="arrowright">▶</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+bindTouch($('tc'));const x=ARC.canvas('c',640,360),GW=64,GH=36,Z=10;let grid=null,P,t0,img=null;
+function fromImage(im){const k=document.createElement('canvas');k.width=GW;k.height=GH;const kx=k.getContext('2d');kx.drawImage(im,0,0,GW,GH);const d=kx.getImageData(0,0,GW,GH).data;let sum=0;for(let i=0;i<GW*GH;i++)sum+=d[i*4]+d[i*4+1]+d[i*4+2];const avg=sum/(GW*GH);
+  grid=new Uint8Array(GW*GH);for(let i=0;i<GW*GH;i++)grid[i]=(d[i*4]+d[i*4+1]+d[i*4+2])<avg*.6?1:0;for(let y=0;y<GH;y++)grid[y*GW]=0;img=im;start()}
+function start(){ARC.hideOver();let sy=0;while(sy<GH-1&&!grid[(sy+1)*GW+1])sy++;P={x:15,y:Math.max(10,sy*Z-6),vx:0,vy:0,on:false};t0=performance.now()}
+$('ph').onchange=e=>{const f=e.target.files[0];if(!f)return;createImageBitmap(f).then(fromImage).catch(()=>toast('That photo couldn’t be opened.'))};
+$('demo').onclick=()=>{const k=document.createElement('canvas');k.width=640;k.height=360;const kx=k.getContext('2d');kx.fillStyle='#fff';kx.fillRect(0,0,640,360);kx.strokeStyle='#000';kx.lineWidth=14;kx.lineCap='round';
+  [[0,300,160,300],[200,260,300,260],[340,220,420,220],[460,280,640,280],[260,150,330,150],[520,180,600,180]].forEach(([a,b,cc,d])=>{kx.beginPath();kx.moveTo(a,b);kx.lineTo(cc,d);kx.stroke()});fromImage(k)};
+const solid=(px,py)=>{const gx=px/Z|0,gy=py/Z|0;return gx>=0&&gx<GW&&gy>=0&&gy<GH&&grid[gy*GW+gx]};
+ARC.loop(dt=>{x.fillStyle='#fffef4';x.fillRect(0,0,640,360);if(!grid){x.fillStyle='#555';x.font='18px system-ui';x.fillText('Draw a level on paper, then take a photo of it',130,180);return}
+  x.globalAlpha=.25;if(img)x.drawImage(img,0,0,640,360);x.globalAlpha=1;x.fillStyle='#333';for(let i=0;i<GW*GH;i++)if(grid[i])x.fillRect(i%GW*Z,(i/GW|0)*Z,Z,Z);
+  const L=keys.has('arrowleft')||keys.has('a'),R=keys.has('arrowright')||keys.has('d'),J=keys.has(' ')||keys.has('arrowup')||keys.has('w');P.vx=(R-L)*170;if(J&&P.on){P.vy=-430;P.on=false;tone(500,.04,'square',.04)}P.vy=Math.min(600,P.vy+1100*dt);
+  const nx=P.x+P.vx*dt;if(!solid(nx-6,P.y)&&!solid(nx+6,P.y)&&!solid(nx-6,P.y-10)&&!solid(nx+6,P.y-10))P.x=nx;const ny=P.y+P.vy*dt;P.on=false;
+  if(P.vy>0&&(solid(P.x-5,ny+8)||solid(P.x+5,ny+8))){P.vy=0;P.on=true;P.y=Math.floor((ny+8)/Z)*Z-8.01}else if(P.vy<0&&(solid(P.x-5,ny-12)||solid(P.x+5,ny-12)))P.vy=0;else P.y=ny;P.x=Math.max(6,P.x);
+  if(P.y>380){tone(150,.2,'sawtooth',.06);start()}if(P.x>630){const s=+((performance.now()-t0)/1000).toFixed(1),r=ARC.best(s,{lower:true});ARC.over(`✏️ You beat your paper level in ${s}s${r.isNew?' · new best!':''}`,start)}
+  x.fillStyle='#e5484d';x.fillRect(P.x-6,P.y-12,12,20);x.fillStyle='#2fb344';x.fillRect(630,0,10,360);$('hud').textContent=`${((performance.now()-t0)/1000).toFixed(1)}s`});
+}
+</script></body></html>

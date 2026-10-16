@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Wi-Fi arena</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="lanarena" data-cat="games" data-title="Wi-Fi arena"><main>
+<p class="sub">A top-down blaster for friends on the same Wi-Fi (host from The ToolBox desktop app; no internet needed) or online with a room code. Move with WASD or arrows, aim with the mouse and click (or Space) to fire. Phones: drag to move, tap to fire.</p>
+<div id="lanPanel"></div><p class="arc-hud" id="hud"></p><canvas id="c" class="arc-c" style="background:#151520"></canvas>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script src="lan.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',640,440),COL=['#e5484d','#3e63dd','#2fb344','#ffd400','#b15cff','#ff8c00','#4cc9f0','#ff4fa3'];
+const WALLS=[[150,100,20,120],[470,220,20,120],[260,40,120,20],[260,380,120,20],[300,200,40,40]];let me={id:null,x:60,y:60,a:0,hp:5,k:0,name:'',cd:0},others={},bullets=[],on=false,aim={x:320,y:220},tgt=null,last=0;
+const solid=(px,py)=>px<10||py<10||px>630||py>430||WALLS.some(([a,b,w,h])=>px>a&&px<a+w&&py>b&&py<b+h);
+lanPanel('lanarena.html',(room,name)=>{$('lanPanel').hidden=true;me.name=name||'Player';on=true;spawn();LAN.join(room||'arena',me.name,m=>{if(m.type==='hello'){me.id=m.id;return}if(!m.from||m.from===me.id)return;
+  if(m.type==='p'){others[m.from]={x:+m.x||0,y:+m.y||0,a:+m.a||0,hp:+m.hp||0,k:+m.k||0,name:String(m.name||'').slice(0,16),c:(+m.c|0)%8,at:Date.now()}}
+  if(m.type==='b')bullets.push({x:+m.x,y:+m.y,vx:+m.vx,vy:+m.vy,by:m.from,t:1.2});if(m.type==='hit'&&m.by===me.id){me.k++;tone(900,.08,'triangle')}})});
+function spawn(){do{me.x=40+Math.random()*560;me.y=40+Math.random()*360}while(solid(me.x,me.y));me.hp=5}
+const color=()=>COL[[...String(me.id||'a')].reduce((a,ch)=>a+ch.charCodeAt(0),0)%8];
+function fire(){if(!on||me.cd>0||me.hp<=0)return;me.cd=.3;const vx=Math.cos(me.a)*520,vy=Math.sin(me.a)*520,b={x:me.x+Math.cos(me.a)*18,y:me.y+Math.sin(me.a)*18,vx,vy,by:me.id,t:1.2};bullets.push(b);LAN.send({type:'b',from:me.id,x:b.x,y:b.y,vx,vy});tone(1300,.02,'square',.03)}
+c.onpointermove=e=>{aim=ARC.pos(c,e);if(e.pointerType==='touch'&&e.buttons)tgt=aim};c.onpointerdown=e=>{aim=ARC.pos(c,e);if(e.pointerType==='touch'){tgt=aim;setTimeout(()=>{if(tgt)fire()},120)}else fire()};c.onpointerup=()=>tgt=null;
+addEventListener('keydown',e=>{if(e.key===' '&&on){e.preventDefault();fire()}});
+ARC.loop(dt=>{x.fillStyle='#151520';x.fillRect(0,0,640,440);x.fillStyle='#444';WALLS.forEach(([a,b,w,h])=>x.fillRect(a,b,w,h));if(!on){x.fillStyle='#fff';x.font='18px system-ui';x.fillText('Join a room above to play',220,220);return}
+  me.cd-=dt;let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
+  if(tgt){const d=Math.hypot(tgt.x-me.x,tgt.y-me.y);if(d>8){dx=(tgt.x-me.x)/d;dy=(tgt.y-me.y)/d}}if(me.hp>0){const nx=me.x+dx*200*dt,ny=me.y+dy*200*dt;if(!solid(nx,me.y))me.x=nx;if(!solid(me.x,ny))me.y=ny}me.a=Math.atan2(aim.y-me.y,aim.x-me.x);
+  bullets.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt;b.t-=dt;if(solid(b.x,b.y))b.t=0;if(b.t>0&&b.by!==me.id&&me.hp>0&&Math.hypot(b.x-me.x,b.y-me.y)<14){b.t=0;me.hp--;tone(200,.08,'sawtooth',.05);if(me.hp<=0){LAN.send({type:'hit',from:me.id,by:b.by});setTimeout(spawn,1500)}}});bullets=bullets.filter(b=>b.t>0);
+  if((last+=dt)>.066){last=0;LAN.send({type:'p',from:me.id,x:Math.round(me.x),y:Math.round(me.y),a:+me.a.toFixed(2),hp:me.hp,k:me.k,name:me.name,c:COL.indexOf(color())})}
+  const drawP=(p,col,name)=>{x.globalAlpha=p.hp>0?1:.25;x.fillStyle=col;x.beginPath();x.arc(p.x,p.y,13,0,7);x.fill();x.strokeStyle='#fff';x.lineWidth=3;x.beginPath();x.moveTo(p.x,p.y);x.lineTo(p.x+Math.cos(p.a)*18,p.y+Math.sin(p.a)*18);x.stroke();x.globalAlpha=1;x.fillStyle='#fff';x.font='11px system-ui';x.fillText(name+' '+'♥'.repeat(Math.max(0,p.hp)),p.x-22,p.y-18)};
+  for(const [id,o] of Object.entries(others)){if(Date.now()-o.at>4000){delete others[id];continue}drawP(o,COL[o.c],o.name)}drawP(me,color(),me.name+' (you)');x.fillStyle='#ffd400';bullets.forEach(b=>x.fillRect(b.x-2,b.y-2,4,4));
+  const board=[{name:me.name,k:me.k},...Object.values(others)].sort((a,b)=>b.k-a.k);$('hud').textContent=board.map(p=>`${p.name}: ${p.k}`).join(' · ');if(me.k>load('best',0))ARC.best(me.k)});
+}
+</script></body></html>

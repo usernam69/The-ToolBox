@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Git gud dungeon</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#room{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--card);min-height:150px}#room h3{margin:0 0 6px;font-family:monospace}#acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}#map{font:13px monospace;color:var(--muted);margin-top:8px;word-break:break-all}</style></head>
+<body data-app="gitgud" data-cat="games" data-title="Git gud dungeon"><main>
+<p class="sub">Each room is a commit from The ToolBox’s history. Fight the bugs hiding in them, grab loot, and reach the oldest commit, where the first bug of all waits.</p>
+<p class="arc-hud" id="hud"></p><div id="room"></div><div id="map"></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let rooms=[],at,hp,gold,pots,atk;const FALLBACK=(window.TB_NEWS||[]).map(([v,t])=>({m:'Release '+v+': '+t.split(/[.,]/)[0],h:v.replace(/\./g,'')+'0a1b'}));
+async function getRooms(){try{const r=await fetch('https://api.github.com/repos/usernam69/The-ToolBox/commits?per_page=20');if(r.ok){const j=await r.json();const L=j.map(c=>({m:String(c.commit.message).split('\n')[0].slice(0,70),h:c.sha.slice(0,7)}));if(L.length>3)return L}}catch{}return FALLBACK.length>3?FALLBACK:Array.from({length:10},(_,i)=>({m:'Commit '+(i+1),h:Math.random().toString(16).slice(2,9)}))}
+async function start(){ARC.hideOver();const L=await getRooms(),r=ARC.rng(L.map(c=>c.h).join(''));rooms=L.map((c,i)=>({...c,kind:i===L.length-1?'boss':r()<.55?'bug':r()<.5?'loot':'empty',done:false,bhp:i===L.length-1?40:6+Math.floor(r()*8)+i}));at=0;hp=30;gold=0;pots=1;atk=4;show()}
+function show(){const R=rooms[at];$('hud').textContent=`❤️ ${hp} · 🪙 ${gold} · 🧪 ${pots} · ⚔️ ${atk} · room ${at+1}/${rooms.length}`;$('map').textContent=rooms.map((r,i)=>i===at?'[@]':r.done?'[·]':'[?]').join('-');
+  let html=`<h3>commit ${esc(R.h)}</h3><p class="muted">“${esc(R.m)}”</p>`,acts=[];
+  if(!R.done&&(R.kind==='bug'||R.kind==='boss')){html+=`<p>${R.kind==='boss'?'👹 <b>The first bug of all</b> rises from the oldest code!':'🐞 A bug crawls out of the diff!'} (❤️ ${R.bhp})</p>`;acts=[['atk','⚔️ Fight'],['pot','🧪 Drink a potion'],['run','🏃 Run back']]}
+  else{if(!R.done&&R.kind==='loot'){const g=5+rnd(10);gold+=g;if(Math.random()<.4){pots++;html+='<p>You found a 🧪 potion</p>'}if(Math.random()<.3){atk++;html+='<p>You found a sharper ⚔️ linter (+1 attack)</p>'}html+=`<p>💰 You found ${g} gold in a forgotten branch.</p>`}R.done=true;if(R.kind==='empty')html+='<p>Just tidy code here. Peaceful.</p>';acts=[['next','➡️ Go deeper (older)'],...(pots?[['pot','🧪 Drink a potion']]:[])]}
+  $('room').innerHTML=html+`<div id="acts">${acts.map(([a,t])=>`<button class="${a==='atk'||a==='next'?'b':'g'}" data-a="${a}">${t}</button>`).join('')}</div>`}
+$('room').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const R=rooms[at],a=b.dataset.a;
+  if(a==='next'){if(at<rooms.length-1)at++;return show()}if(a==='pot'){if(!pots)return toast('No potions left.');pots--;hp=Math.min(40,hp+15);tone(700,.1,'sine');return show()}
+  if(a==='run'){if(at>0)at--;hp-=2;return show()}
+  if(a==='atk'){const d=atk+rnd(4);R.bhp-=d;tone(500,.05,'square',.05);if(R.bhp<=0){R.done=true;gold+=R.kind==='boss'?50:4;if(R.kind==='boss'){const r=ARC.best(gold);return ARC.over(`🗝️ You defeated the first bug! ${gold} gold${r.isNew?' · new best!':''}`,start)}toast('🐞 Squashed!');return show()}
+    const hit=(R.kind==='boss'?5:2)+rnd(4);hp-=hit;if(hp<=0){tone(100,.4,'sawtooth',.08);return ARC.over(`💀 Defeated in commit ${esc(R.h)} with ${gold} gold`,start)}show()}};
+start();ARC.board('gitgud',{unit:' gold'});
+}
+</script></body></html>

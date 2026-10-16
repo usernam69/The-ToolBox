@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Radio rhythm</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}</style></head>
+<body data-app="radiorhythm" data-cat="games" data-title="Radio rhythm"><main>
+<p class="sub">The drum beats come from loops people sent to the ToolBox radio. Hit D, F, J and K (or tap the lanes) as the notes cross the line.</p>
+<p class="arc-hud" id="hud">Tuning in…</p><canvas id="c" class="arc-c"></canvas><p style="text-align:center"><button class="b" id="go">Start</button> <span class="muted" id="song"></span></p>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+const c=$('c'),x=ARC.canvas('c',360,520),K='dfjk',NAMES=['Kick','Snare','Hat','Clap'];let loops=[],cur=null,notes,score,combo,miss,t,step,run=false;
+const PRE={name:'Built-in groove',bpm:90,d:['1000001010000000','0000100000001000','1010101010101010','0000000000000010']};
+WORLD.connect().then(cl=>{cl.on('message',(tp,buf)=>{if(!tp.startsWith('the-toolbox/v1/radio/'))return;try{const p=JSON.parse(new TextDecoder().decode(buf));if(p&&Array.isArray(p.d)&&p.d.length===4&&p.d.every(r=>typeof r==='string'&&/^[01]{16}$/.test(r))&&p.d.join('').includes('1'))loops.push({name:String(p.name||'a loop').slice(0,30),bpm:Math.min(120,Math.max(60,+p.bpm||85)),d:p.d})}catch{}});cl.subscribe('the-toolbox/v1/radio/+');setTimeout(()=>$('hud').textContent=loops.length+' radio loops found',1500)}).catch(()=>$('hud').textContent='Offline: built-in groove');
+function start(){ARC.hideOver();cur=loops.length?loops[rnd(loops.length)]:PRE;$('song').textContent='🎵 '+cur.name;notes=[];score=0;combo=0;miss=0;t=0;step=0;run=true}
+const spb=()=>60/cur.bpm/4;
+function hit(l){if(!run)return;const n=notes.filter(n=>!n.done&&n.l===l).sort((a,b)=>Math.abs(a.y-450)-Math.abs(b.y-450))[0];if(!n||Math.abs(n.y-450)>36){combo=0;return}n.done=true;combo++;score+=(Math.abs(n.y-450)<12?100:50)+combo;[()=>tone(60,.12,'sine',.2),()=>tone(200,.08,'triangle',.1),()=>tone(4000,.02,'square',.03),()=>tone(1200,.05,'sawtooth',.05)][l]()}
+addEventListener('keydown',e=>{const l=K.indexOf(e.key.toLowerCase());if(l>=0)hit(l)});c.onpointerdown=e=>hit(Math.min(3,ARC.pos(c,e).x/90|0));$('go').onclick=start;
+ARC.loop(dt=>{x.fillStyle='#111';x.fillRect(0,0,360,520);for(let l=0;l<4;l++){x.fillStyle='#1d1d2b';x.fillRect(l*90+4,0,82,520);x.fillStyle='#777';x.font='14px system-ui';x.fillText(K[l].toUpperCase()+' '+NAMES[l],l*90+14,505)}x.fillStyle='#ffd400';x.fillRect(0,448,360,4);
+  if(run){t+=dt;while(t>=spb()){t-=spb();cur.d.forEach((r,l)=>{if(r[step%16]==='1')notes.push({l,y:-10})});step++;if(step>=16*8){run=false;const r=ARC.best(score);ARC.over(`📻 ${score} points${r.isNew?' · new best!':''}`,start)}}
+    notes.forEach(n=>{n.y+=300*dt;if(!n.done&&n.y>490){n.done=true;n.missed=true;miss++;combo=0}});notes=notes.filter(n=>n.y<530&&!(n.done&&!n.missed));}
+  (notes||[]).forEach(n=>{if(n.done)return;x.fillStyle=['#e5484d','#ffd400','#4cc9f0','#b15cff'][n.l];x.fillRect(n.l*90+10,n.y-10,70,20)});if(run)$('hud').textContent=`${score} points · combo ${combo} · missed ${miss}`});
+ARC.board('radiorhythm');
+}
+</script></body></html>

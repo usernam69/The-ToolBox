@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bug pet battles</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}#ar{display:flex;justify-content:space-around;align-items:center;font-size:70px;margin:10px 0}#ar div{text-align:center}#ar small{display:block;font-size:14px}.hpb{height:8px;background:var(--line);border-radius:4px;width:140px;margin:4px auto}.hpb i{display:block;height:100%;background:#2fb344;border-radius:4px}#log{min-height:44px;text-align:center}#acts{display:flex;gap:8px;justify-content:center}</style></head>
+<body data-app="petbattle" data-cat="games" data-title="Bug pet battles"><main>
+<p class="sub">Your Focus pet battles wild pets! Pets get stronger from focus sessions and from the bugs they eat in updates. Attack, defend or use your special.</p>
+<div id="ar"></div><p id="log"></p><div id="acts"><button class="b" data-a="atk">⚔️ Attack</button><button class="g" data-a="def">🛡️ Defend</button><button class="g" data-a="sp">✨ Special</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let pet;try{pet=JSON.parse(localStorage.getItem('app_petfocus_pet'))}catch{}pet=pet||{name:'Mochi',xp:0};const lvl=1+Math.floor(Math.sqrt((pet.xp||0)/20));
+const WILD=[['🦎','Glitch lizard'],['🐙','Merge octopus'],['🦇','Null bat'],['🐌','Lag snail'],['🦂','Syntax scorpion'],['🐺','Crash wolf']];
+let me,foe,def=false,sp=1,busy=false,wins=load('wins',0);
+function start(){ARC.hideOver();const w=WILD[rnd(WILD.length)],fl=Math.max(1,lvl+rnd(3)-1);me={n:pet.name||'Your pet',e:'🐣',hp:30+lvl*6,max:30+lvl*6,atk:5+lvl*2};foe={n:w[1],e:w[0],hp:26+fl*6,max:26+fl*6,atk:4+fl*2,l:fl};sp=1;def=false;busy=false;log(`A wild ${foe.n} (level ${fl}) appears!`);draw()}
+const log=t=>$('log').textContent=t;
+function draw(){const bar=p=>`<div class="hpb"><i style="width:${Math.max(0,p.hp/p.max*100)}%"></i></div>`;$('ar').innerHTML=`<div>${me.e}<small>${esc(me.n)} · level ${lvl}</small>${bar(me)}</div><b style="font-size:20px">VS</b><div>${foe.e}<small>${esc(foe.n)} · level ${foe.l}</small>${bar(foe)}</div>`;$('acts').querySelector('[data-a=sp]').disabled=!sp}
+$('acts').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||busy||me.hp<=0||foe.hp<=0)return;const a=b.dataset.a;let t='';def=a==='def';
+  if(a==='atk'){const d=me.atk+rnd(5);foe.hp-=d;t=`${me.n} attacks for ${d}!`;tone(600,.08,'square',.06)}if(a==='sp'){sp=0;const d=me.atk*2+rnd(8);foe.hp-=d;t=`✨ Bug-powered blast for ${d}!`;tone(900,.2,'triangle',.08)}if(a==='def')t=`${me.n} braces itself.`;
+  log(t);draw();if(foe.hp<=0){wins++;save('wins',wins);ARC.best(wins);return ARC.over(`🏆 ${esc(me.n)} beat the ${esc(foe.n)}! (${wins} wins)`,start)}busy=true;
+  setTimeout(()=>{const d=Math.max(1,(foe.atk+rnd(5))>>(def?1:0));me.hp-=d;log(`${foe.n} hits back for ${d}${def?' (blocked half)':''}!`);tone(200,.08,'sawtooth',.05);draw();busy=false;if(me.hp<=0)ARC.over(`😵 ${esc(me.n)} needs a rest. More focus sessions make it stronger!`,start)},700)};
+start();ARC.board('petbattle',{key:'wins',unit:' wins'});
+}
+</script></body></html>

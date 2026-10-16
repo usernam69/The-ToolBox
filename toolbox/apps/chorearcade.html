@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chore arcade</title><link rel="stylesheet" href="common.css">
+<style>.arc-c{display:block;margin:8px auto;background:#111;border-radius:10px;max-width:100%;touch-action:none}.arc-hud{text-align:center;font-weight:700;margin:6px 0}.ch{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;margin:6px 0;background:var(--card)}.ch span{flex:1}.ch.done{opacity:.5}</style></head>
+<body data-app="chorearcade" data-cat="games" data-title="Chore arcade"><main>
+<p class="sub">Do a chore, get it approved, earn extra Arcade minutes. A grown-up approves with the family PIN (set in Family settings). Minutes go to today’s screen-time bonus.</p>
+<script src="family-rules.js"></script><p class="arc-hud" id="hud"></p><div id="list"></div><div class="row"><input id="new" class="grow" placeholder="Add a chore (e.g. Feed the cat)"><select id="min"><option>5</option><option selected>10</option><option>15</option><option>20</option></select> min <button class="g" id="add">Add</button></div>
+<div id="world"></div>
+</main><script src="common.js"></script><script src="scores.js"></script><script src="arcade.js"></script><script>
+{
+let C=load('chores',[{n:'Make your bed',m:5},{n:'Tidy your room',m:15},{n:'Help with dinner',m:10},{n:'Homework done',m:20}]),done=load('done',{});const day=isoDay();if(done.day!==day)done={day,ids:[]};
+function draw(){const earned=C.filter((c,i)=>done.ids.includes(i)).reduce((a,c)=>a+c.m,0);$('hud').textContent=`Earned today: ${earned} minutes`;
+  $('list').innerHTML=C.map((c,i)=>`<div class="ch ${done.ids.includes(i)?'done':''}"><span>${esc(c.n)} · <b>+${c.m} min</b></span>${done.ids.includes(i)?'✅':`<button class="b" data-i="${i}">Done! Approve</button>`}<button class="g" data-x="${i}" title="Remove">✕</button></div>`).join('')}
+$('list').onclick=async e=>{const b=e.target.closest('[data-i]'),x=e.target.closest('[data-x]');
+  if(x){C.splice(+x.dataset.x,1);done.ids=done.ids.filter(k=>k!==+x.dataset.x).map(k=>k>+x.dataset.x?k-1:k);save('chores',C);save('done',done);return draw()}if(!b)return;const i=+b.dataset.i;
+  const pin=FAM.rules().pin?prompt('Grown-up: type the family PIN to approve'):'';if(pin===null)return;if(!(await FAM.check(pin||'')))return toast('That PIN isn’t right.');
+  done.ids.push(i);save('done',done);FAM.addBonus(C[i].m);ARC.best(C.filter((c,k)=>done.ids.includes(k)).reduce((a,c)=>a+c.m,0));[523,659,784].forEach((f,k)=>tone(f,.12,'triangle',.08,k*.08));toast(`🎉 +${C[i].m} minutes of screen time today!`);draw()};
+$('add').onclick=()=>{const n=$('new').value.trim();if(!n)return;C.push({n,m:+$('min').value});save('chores',C);$('new').value='';draw()};draw();
+if(!FAM.rules().pin)$('hud').insertAdjacentHTML('afterend','<p class="muted">Tip: no family PIN is set, so anyone can approve. Set one in Family settings.</p>');
+}
+</script></body></html>
