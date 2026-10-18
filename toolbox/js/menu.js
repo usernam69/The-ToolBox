@@ -16,6 +16,10 @@ toolbar.innerHTML=`<button class="g" id="surprise" title="Open a random app">�
  <button class="g" id="qrBtn" title="Open on a phone">📱 QR code</button><button class="b" id="installBtn" hidden>⬇ Install app</button>
  <span class="chip" id="offline" title="Offline status">⚪ Checking offline…</span>`;
 document.querySelector('header.hero').after(toolbar);
+// days in a row you opened the menu (kept as a list of dates on this device)
+{const day=d=>d.toLocaleDateString('sv'),days=menuLS.get('tb_visitDays',[]),today=day(new Date());if(!days.includes(today)){days.push(today);menuLS.set('tb_visitDays',days.slice(-400))}
+  let n=0;const d=new Date();while(days.includes(day(d))){n++;d.setDate(d.getDate()-1)}
+  if(n>=2){const s=document.createElement('span');s.className='chip';s.id='visitStreak';s.title='Days in a row you opened The ToolBox';s.textContent=`🔥 ${n}-day streak`;toolbar.append(s)}}
 
 // favorites: a ☆ on every app card, pinned row on the home screen
 const favs=()=>menuLS.get('menu_favs',[]);

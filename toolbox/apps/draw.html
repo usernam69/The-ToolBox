@@ -5,7 +5,7 @@
 #feed{height:260px;overflow:auto;font-size:14px}#feed div{padding:2px 0}.ok{color:var(--good);font-weight:700}#scores li{justify-content:space-between}</style></head>
 <body data-app="draw" data-cat="bigger" data-title="Draw &amp; guess"><main>
 <div id="lanPanel"></div>
-<div id="game" hidden><div><div class="row"><b id="status" class="grow"></b><b id="timer"></b></div><div id="word"></div><canvas id="board" width="800" height="600"></canvas>
+<div id="game" hidden><div><div class="row"><b id="status" class="grow"></b><b id="timer"></b><button class="g" id="replay" title="Watch the drawing being made again" aria-label="Replay the drawing">▶</button></div><div id="word"></div><canvas id="board" width="800" height="600"></canvas>
 <div class="row" id="tools"><span id="swatches" class="row" style="margin:0"></span><label>Size <input type="range" id="size" min="2" max="30" value="6"></label><button class="g" id="clear">Clear</button><button class="g" id="undo">↶</button></div></div>
 <div class="box"><b>Scores</b><ul class="clean" id="scores"></ul><button class="b" id="start" style="width:100%">Start game</button>
 <h3>Guesses</h3><div id="feed"></div><div class="row"><input id="guess" class="grow" placeholder="Type your guess" autocomplete="off"><button class="g" id="gsend">↵</button></div></div></div>
@@ -20,6 +20,11 @@ function redraw(){x.fillStyle='#fff';x.fillRect(0,0,800,600);x.lineCap=x.lineJoi
 const P=e=>{const r=c.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*800),Math.round((e.clientY-r.top)/r.height*600)]};
 c.onpointerdown=e=>{if(!iDraw()||(turn&&turn.over))return;c.setPointerCapture(e.pointerId);cur={c:col,w:+$('size').value,p:[P(e)],id:uid()};strokes.push(cur);redraw();outbox.push({k:'new',s:{...cur,p:[...cur.p]}})};
 c.onpointermove=e=>{if(!cur)return;const p=P(e);cur.p.push(p);redraw();outbox.push({k:'pt',id:cur.id,p})};c.onpointerup=()=>cur=null;
+// ▶ draws the strokes again, one segment at a time, then puts the real picture back
+let rp=false;$('replay').onclick=()=>{if(rp)return;const all=strokes.map(s=>({c:s.c,w:s.w,p:[...s.p]}));if(!all.length)return toast('Nothing drawn yet.');rp=true;
+  x.fillStyle='#fff';x.fillRect(0,0,800,600);x.lineCap=x.lineJoin='round';let i=0,j=1;const t=setInterval(()=>{const s=all[i];if(!s){clearInterval(t);rp=false;redraw();return}
+    x.strokeStyle=s.c;x.lineWidth=s.w;x.beginPath();if(s.p.length===1){x.moveTo(s.p[0][0],s.p[0][1]);x.lineTo(s.p[0][0]+.1,s.p[0][1])}else{x.moveTo(s.p[j-1][0],s.p[j-1][1]);x.lineTo(s.p[j][0],s.p[j][1])}x.stroke();
+    if(s.p.length===1||++j>=s.p.length){i++;j=1}},8)};
 setInterval(()=>{if(!outbox.length||local)return;LAN.send({type:'draw',ops:outbox,from:me});outbox=[]},60);
 function applyOps(ops){ops.forEach(o=>{if(o.k==='new')strokes.push(o.s);else if(o.k==='pt'){const s=strokes.find(s=>s.id===o.id);if(s)s.p.push(o.p)}});redraw()}
 $('clear').onclick=()=>{if(!iDraw())return;strokes=[];redraw();if(!local)LAN.send({type:'clear',from:me})};$('undo').onclick=()=>{if(!iDraw())return;strokes.pop();redraw();if(!local)LAN.send({type:'undo',from:me})};

@@ -14,6 +14,7 @@ const CATEGORIES=[
   ['soundboard','Soundboard','🔊','Buttons for sound effects, including ones you record.','apps/soundboard.html'],
   ['eat','What should I eat?','🍕','Spin the wheel and dinner is decided.','apps/eat.html'],
   ['ascii','ASCII art','🔤','Turn a picture or a word into text art.','apps/ascii.html'],
+  ['ask','Ask the ToolBox','🧭','Say what you want to do and it finds the right apps.','apps/ask.html'],
   ['countdown','Big countdown','⏳','A full-screen countdown to a birthday, holiday or trip.','apps/countdown.html']]},
  {id:'games',name:'Games & Arcade',emoji:'🎮',blurb:'84 games: platformers, puzzles, classics, party games and odd experiments.',apps:[
   ['parkour','Parkour platformer','🏃','Tight jumps, timed runs and a ghost of your best run.','apps/parkour.html'],

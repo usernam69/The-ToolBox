@@ -253,6 +253,7 @@ Keys built in code (like `best`+level) show their fixed start.
 | `tb_trash` | js/core.js |
 | `tb_trash` | js/system.js |
 | `tb_typingBest` | js/more.js |
+| `tb_visitDays` | js/menu.js |
 | `tb_waterGoal` | js/life.js |
 | `tb_weekNotes` | js/review.js |
 | `tb_wins` | js/daily.js |

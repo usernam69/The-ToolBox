@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ask the ToolBox</title><link rel="stylesheet" href="common.css">
+<style>#res .apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:10px}.app{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;text-decoration:none;color:var(--ink)}.app:hover{border-color:var(--accent)}.app .e{font-size:30px;line-height:1.1}.app b{display:block}.app span{font-size:13px;color:var(--muted)}.app .e{font-size:30px;color:inherit}.why{padding:10px;border-radius:10px;background:var(--bg);margin-top:10px}</style></head>
+<body data-app="ask" data-cat="quick" data-title="Ask the ToolBox"><main>
+<p class="sub">Say what you want to do, like “split a bill with friends” or “something relaxing to play”, and it finds the apps. With an AI key it understands anything you type. Without one, it matches your words to app names and descriptions.</p>
+<div class="row"><input id="q" class="grow" placeholder="What do you want to do?" autocomplete="off"><button class="b" id="go">Find apps</button></div>
+<div id="res"></div>
+<div id="keyBox" style="margin-top:12px"></div>
+</main>
+<script src="registry.js"></script><script src="common.js"></script>
+<script type="module">
+import {AI} from './ai.js';
+AI.panel($('keyBox'));
+const SCHEMA={type:'object',additionalProperties:false,required:['ids','why'],properties:{ids:{type:'array',items:{type:'string'}},why:{type:'string'}}};
+const apps=ALL_APPS.filter(a=>a.id!=='ask');
+const list=apps.map(a=>`${a.id}|${a.name}|${String(a.desc||'').slice(0,70)}`).join('\n');
+const card=a=>`<a class="app" href="../${esc(a.href)}"><span class="e">${a.emoji}</span><div><b>${esc(a.name)}</b><span>${esc(a.desc||'')}</span></div></a>`;
+// no key: score each app by how many of your words appear in its name and description
+function offline(q){const STOP=/^(with|the|and|for|that|this|from|some|what|want|get|make|use|something|how|can|you|my|our|your|into|about|have|need|like|play|find)$/;
+  const words=q.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2&&!STOP.test(w)).map(w=>w.length>4?w.replace(/(ing|es|s)$/,''):w);if(!words.length)return[];
+  return apps.map(a=>{const name=a.name.toLowerCase(),hay=(name+' '+(a.desc||'')).toLowerCase();return{a,s:words.reduce((n,w)=>n+(name.includes(w)?3:hay.includes(w)?1:0),0)}}).filter(x=>x.s>0).sort((p,q)=>q.s-p.s).slice(0,6).map(x=>x.a)}
+const show=(found,why)=>{$('res').innerHTML=(why?`<div class="why">${esc(why)}</div>`:'')+(found.length?`<div class="apps">${found.map(card).join('')}</div>`:'<p class="muted">Nothing matched. Try other words.</p>')};
+async function run(){const q=$('q').value.trim();if(!q)return toast('Type what you want to do first.');$('go').disabled=true;$('go').textContent='Looking…';
+  try{
+    if(AI.ready()){
+      const r=await AI.ask({system:'You help someone find the right app in a collection called The ToolBox. You get the list of apps, one per line as id|name|description. Pick the 1 to 5 apps that best fit what the person wants, best first. Only use ids from the list. In why, write one friendly sentence on how the first pick helps.',user:`What I want to do: ${q}\n\nApps:\n${list}`,schema:SCHEMA,effort:'low'});
+      const found=r.ids.map(id=>apps.find(a=>a.id===id)).filter(Boolean).slice(0,5);
+      show(found.length?found:offline(q),r.why);
+    }else show(offline(q),'No AI key added, so this matched your words to the app names. Add a key below for smarter answers.');
+  }catch(e){show(offline(q),'The AI could not answer ('+e.message+'), so this matched your words instead.')}
+  finally{$('go').disabled=false;$('go').textContent='Find apps'}}
+$('go').onclick=run;$('q').onkeydown=e=>{if(e.key==='Enter')run()};$('q').focus();
+</script></body></html>

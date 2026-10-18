@@ -6,13 +6,19 @@ const ARC={
   // opened from the Tournament bracket (?bracket=<match>&p1=&p2=): show who is playing, and send the winner back
   match:(()=>{const q=new URLSearchParams(location.search);return q.get('bracket')?{key:q.get('bracket'),p:[(q.get('p1')||'Player 1').slice(0,40),(q.get('p2')||'Player 2').slice(0,40)]}:null})(),
   report(k){if(!ARC.match||(k!==0&&k!==1))return;try{localStorage.setItem('tb_bracketResult',JSON.stringify({key:ARC.match.key,p:ARC.match.p,k}))}catch{}toast(`🏆 ${ARC.match.p[k]} goes through! Back to the bracket…`);setTimeout(()=>location.href='bracket.html',2200)},
-  best(score,{lower=false,key='best'}={}){const b=load(key,null),isNew=b===null||(lower?score<b:score>b);if(isNew)save(key,score);ARC.daily(score);return{best:isNew?score:b,isNew}},
+  // opened from a friend's "Challenge a friend" link (?challenge=<score>): the score to beat
+  challenge:(()=>{const n=parseFloat(new URLSearchParams(location.search).get('challenge'));return isFinite(n)?{score:n}:null})(),
+  last:null,
+  best(score,{lower=false,key='best'}={}){const b=load(key,null),isNew=b===null||(lower?score<b:score>b);if(isNew)save(key,score);ARC.daily(score);
+    ARC.last={score,lower};const c=ARC.challenge;if(c&&(lower?score<c.score:score>c.score)&&!c.won){c.won=true;toast(`🏁 You beat your friend's ${c.score}!`)}
+    return{best:isNew?score:b,isNew}},
   board(id,opts={}){const el=$('world');if(el&&typeof worldBoard==='function')worldBoard(el,'arc-'+id,{getScore:()=>load(opts.key||'best',0),...opts})},
   // today's scores, read by the Daily mix and by Wrapped
   daily(score){try{const k='tb_arcadeDay',d=JSON.parse(localStorage.getItem(k)||'{}'),day=isoDay();if(d.day!==day){d.day=day;d.s={}}d.s[APP]=Math.max(d.s[APP]||0,+score||0);localStorage.setItem(k,JSON.stringify(d))}catch{}},
   loop(fn){let last=performance.now(),on=true;const f=t=>{if(!on)return;const dt=Math.min(.05,(t-last)/1000);last=t;fn(dt);requestAnimationFrame(f)};requestAnimationFrame(f);return()=>on=false},
   over(text,again,el=document.querySelector('main')){let o=$('arcOver');if(!o){o=document.createElement('div');o.id='arcOver';o.className='box';o.style.cssText='text-align:center;margin:10px auto;max-width:420px';el.append(o)}
-    o.hidden=false;o.innerHTML=`<p style="font-size:20px;margin:0 0 8px">${text}</p>${again?'<button class="b">Play again</button>':''}`;if(again)o.querySelector('button').onclick=()=>{o.hidden=true;again()};[523,392,330].forEach((f,i)=>tone(f,.15,'triangle',.08,i*.12))},
+    const L=ARC.last;o.hidden=false;o.innerHTML=`<p style="font-size:20px;margin:0 0 8px">${text}</p>${again?'<button class="b">Play again</button>':''}${L?' <button class="g" id="arcChal" title="Copy a link; your friend plays and tries to beat this score">🏁 Challenge a friend</button>':''}`;if(again)o.querySelector('button').onclick=()=>{o.hidden=true;again()};
+    if(L)$('arcChal').onclick=()=>{const u=location.href.split(/[?#]/)[0]+'?challenge='+L.score;navigator.clipboard.writeText(u).then(()=>toast('Link copied. Send it to a friend!'),()=>prompt('Copy this link:',u))};[523,392,330].forEach((f,i)=>tone(f,.15,'triangle',.08,i*.12))},
   hideOver(){const o=$('arcOver');if(o)o.hidden=true},
   rng(seed){let s=0;for(const c of String(seed))s=(s*31+c.charCodeAt(0))>>>0;s=s||1;return()=>((s=Math.imul(s^s>>>15,1|s)+0x6d2b79f5>>>0)%1e9)/1e9},
   shuffle(a,r=Math.random){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a},
@@ -34,3 +40,4 @@ const ARC={
     return R}
 };
 if(ARC.match){const b=document.createElement('p');b.className='box';b.style.textAlign='center';b.innerHTML=`🏆 Bracket match: <b>${esc(ARC.match.p[0])}</b> (player 1) vs <b>${esc(ARC.match.p[1])}</b> (player 2)`;document.querySelector('main')?.prepend(b)}
+if(ARC.challenge){const b=document.createElement('p');b.className='box';b.style.textAlign='center';b.innerHTML=`🏁 A friend challenged you! Score to beat: <b>${esc(String(ARC.challenge.score))}</b>`;(document.querySelector('main .sub')||document.querySelector('main').firstChild).before(b)}

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "The ToolBox",
-  "version": "1.6.4",
+  "version": "1.7.0",
   "description": "Open any ToolBox app or tool from Chrome's toolbar, or type \"tb\" and a name in the address bar.",
   "action": { "default_popup": "popup.html", "default_title": "The ToolBox" },
   "omnibox": { "keyword": "tb" },

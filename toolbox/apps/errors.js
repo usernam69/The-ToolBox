@@ -1,12 +1,13 @@
 // The version number (the release script updates it) and the error catcher.
-var TB_VERSION='1.6.4';
+var TB_VERSION='1.7.0';
 // release date and the apps changed in this release (both written by the release script)
-var TB_DATE='2026-10-16';var TB_CHANGED=[];
+var TB_DATE='2026-10-18';var TB_CHANGED=['draw','ask'];
 // every version gets a fun codename, worked out from its number
 function TB_CODENAME(v){let h=0;for(const c of v)h=h*31+c.charCodeAt(0)>>>0;const A=['Sneaky','Bouncy','Cosmic','Fuzzy','Turbo','Sleepy','Shiny','Brave','Wobbly','Zippy','Quiet','Mighty'],B=['Sam','Otter','Comet','Pickle','Badger','Noodle','Falcon','Muffin','Gecko','Pixel','Walrus','Taco'];return A[h%A.length]+' '+B[(h>>4)%B.length]};
 
 // What changed in each version: the menu shows the newest once, the Changelog app shows them all.
 var TB_NEWS=[
+ ['1.7.0','Four ideas from The Probe: a daily streak on the menu, Ask the ToolBox (say what you want and it finds the apps), Challenge a friend at the end of every arcade game, and a Replay button in Draw and guess.'],
  ['1.6.4','Fix: the website updates again. It had been stuck on 1.2.2, so everything since then (the games, the Arcade, music, any AI key) is now live.'],
  ['1.6.3','Fix: the Windows and Linux downloads on GitHub build again.'],
  ['1.6.2','Fixes: Daily mix finds its games again, and music now starts on your first tap even in a page that opened in the background.'],
