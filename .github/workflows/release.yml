@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     defaults: { run: { working-directory: toolbox-desktop } }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: toolbox-desktop } }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install
@@ -33,7 +33,7 @@ jobs:
   extension:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: cp toolbox/apps/registry.js toolbox-extension/ && cd toolbox-extension && zip -r ../TheToolBox-extension.zip .
       # the whole web app in one zip: unzip it on a USB stick and open index.html, no internet needed
       - run: cd toolbox && zip -r ../TheToolBox-web.zip .
