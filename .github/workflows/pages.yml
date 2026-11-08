@@ -25,7 +25,7 @@ jobs:
         with:
           path: toolbox
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
   # after deploying, open the live site in a real browser; if a page throws errors, open an issue so it gets fixed
   live-check:
     needs: deploy
